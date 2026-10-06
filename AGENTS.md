@@ -14,6 +14,8 @@ Quizlet-style flashcard app. React + Tailwind UI, Cloudflare Worker (Hono) API, 
 - `npm run types`: after changing `wrangler.jsonc`.
 - `npm run gen:icons` / `npm run gen:og`: after changing `assets/icons/*` or `assets/og/card.html`.
 
+Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` needs it), TypeScript 6.x (`typescript-eslint` rejects 7), `compatibility_date` (see `wrangler.jsonc`).
+
 ## Rules
 
 ### Look

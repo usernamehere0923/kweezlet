@@ -2,6 +2,9 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "kweezlet",
   "main": "worker/index.ts",
+  // Keep at or below what @cloudflare/vitest-pool-workers' bundled runtime supports,
+  // or `npm test` fails with "requires compatibility date ..., but the newest date
+  // supported by this server binary is ...".
   "compatibility_date": "2026-08-15",
   "observability": { "enabled": true },
   // The UI is served as static files. Only /api/* reaches the worker code;
