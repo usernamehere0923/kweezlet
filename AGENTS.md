@@ -4,7 +4,7 @@ Quizlet-style flashcard app. React + Tailwind UI, Cloudflare Worker (Hono) API, 
 
 ## Commands
 
-- `npm run dev`: app + API + database on http://localhost:5173. Login `demo` / `demo`.
+- `npm run dev`: app + API + database on http://localhost:5173. Login `demo` / `demo`. He usually starts it by double-clicking `Start kweezlet.command`. Page loads forever after a config change → restart with `npm run dev -- --force`.
 - `npm run dev -- --host`: same, reachable from the iPhone at `http://<mac-ip>:5173` (same wifi).
 - `npm test`: worker tests (real Workers runtime). `npm run check`: types + lint + format. **Run both before every commit.**
 - `npm run format`: fix formatting.
