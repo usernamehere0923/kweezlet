@@ -34,6 +34,7 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 ### Database
 
 - Schema changes = a NEW file `migrations/000N_name.sql`. Never edit a migration that already ran.
+- There is no staging: `db:migrate:remote` changes his real cards. Before telling him to run it, remind him to tap Settings → "Download my data" on the live app first. Mistake afterwards → fix with a new migration; last resort: D1 Time Travel (restore up to 7 days back).
 - Every business table has `user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE`.
 - Every query on user data has `WHERE user_id = ?` bound to `c.get("user").id`. Never trust a `user_id` from the request.
 - Every table with `user_id` goes into `exportTables` in `worker/export.ts` ("Download my data"). A test fails if one is missing.
