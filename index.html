@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>kweezlet</title>
+    <meta name="description" content="Learn anything, card by card." />
+    <meta name="theme-color" content="#f0eee6" />
+
+    <!-- Icons and home-screen app. Sources in assets/icons, PNGs written by
+         `npm run gen:icons` and committed. -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="kweezlet" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+
+    <!-- Link preview card (iMessage, WhatsApp, Slack...). The image comes from
+         `npm run gen:og`. __PUBLIC_URL__ is filled in by vite.config.ts from
+         PUBLIC_URL in .env.production, because previews need absolute URLs. -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="kweezlet" />
+    <meta property="og:title" content="kweezlet" />
+    <meta property="og:description" content="Learn anything, card by card." />
+    <meta property="og:url" content="__PUBLIC_URL__/" />
+    <meta property="og:image" content="__PUBLIC_URL__/og.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="kweezlet: a stack of flashcards, one reading el gato, the cat" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="kweezlet" />
+    <meta name="twitter:description" content="Learn anything, card by card." />
+    <meta name="twitter:image" content="__PUBLIC_URL__/og.png" />
+    <meta name="twitter:image:alt" content="kweezlet: a stack of flashcards, one reading el gato, the cat" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

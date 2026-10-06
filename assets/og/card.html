@@ -1,0 +1,137 @@
+<!doctype html>
+<!-- The link-preview card (1200x630). Render with: npm run gen:og
+     It holds nothing that can go stale: no counts, no dates, no user data.
+     The K mark is the same three strokes as assets/icons/icon.svg. -->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @font-face {
+        font-family: "Anthropic Sans";
+        src: url("../../src/fonts/SansWebVariable-TextRegular.woff2") format("woff2");
+        font-weight: 300 800;
+      }
+      @font-face {
+        font-family: "Anthropic Serif";
+        src: url("../../src/fonts/SerifWebVariable-TextRegular.woff2") format("woff2");
+        font-weight: 300 800;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+        background: #f0eee6;
+        font-family: "Anthropic Sans", system-ui;
+        color: #141413;
+        -webkit-font-smoothing: antialiased;
+      }
+      .left {
+        position: absolute;
+        left: 80px;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        width: 560px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 26px;
+      }
+      .word {
+        font-family: "Anthropic Serif", Georgia;
+        font-size: 84px;
+        letter-spacing: -2px;
+        line-height: 1;
+      }
+      .tagline {
+        margin-top: 34px;
+        font-size: 38px;
+        line-height: 1.3;
+        color: #5e5d59;
+      }
+      .stack {
+        position: absolute;
+        right: 64px;
+        top: 125px;
+        width: 420px;
+        height: 380px;
+      }
+      .card {
+        position: absolute;
+        inset: 40px 0 40px 0;
+        border: 1px solid #e8e6dc;
+        border-radius: 22px;
+        background: #faf9f5;
+        box-shadow:
+          0 2px 4px rgb(20 20 19 / 0.04),
+          0 24px 48px -16px rgb(20 20 19 / 0.18);
+      }
+      .c1 {
+        transform: rotate(-10deg) translate(-26px, 10px);
+        background: #ddebe8;
+      }
+      .c2 {
+        transform: rotate(-4deg) translate(-8px, 2px);
+        background: #f6e4da;
+      }
+      .c3 {
+        transform: rotate(4deg);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+      }
+      .label {
+        position: absolute;
+        top: 24px;
+        left: 30px;
+        font-size: 17px;
+        font-weight: 600;
+        letter-spacing: 1.5px;
+        text-transform: uppercase;
+        color: #8f8d86;
+      }
+      .term {
+        font-family: "Anthropic Serif", Georgia;
+        font-size: 60px;
+      }
+      .def {
+        font-size: 32px;
+        color: #c6613f;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="left">
+      <div class="brand">
+        <svg viewBox="0 0 64 64" width="96" height="96">
+          <rect x="0.5" y="0.5" width="63" height="63" rx="14" fill="#faf9f5" stroke="#dedcd1" />
+          <g stroke="#d97757" stroke-width="7" stroke-linecap="round" fill="none">
+            <path d="M23 16 V48" />
+            <path d="M42 16 L24 33" />
+            <path d="M30 28 L43 48" />
+          </g>
+        </svg>
+        <span class="word">kweezlet</span>
+      </div>
+      <div class="tagline">Learn anything,<br />card by card.</div>
+    </div>
+    <div class="stack">
+      <div class="card c1"></div>
+      <div class="card c2"></div>
+      <div class="card c3">
+        <span class="label">Term</span>
+        <span class="term">el gato</span>
+        <span class="def">the cat</span>
+      </div>
+    </div>
+  </body>
+</html>

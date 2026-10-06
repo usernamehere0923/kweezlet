@@ -1,0 +1,10 @@
+<!-- Android "maskable": the launcher may crop to a circle, so the K is shrunk
+     into the central 80% safe zone. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" fill="#f0eee6"/>
+  <g transform="translate(32 32) scale(0.78) translate(-32.5 -32)" stroke="#d97757" stroke-width="7" stroke-linecap="round" fill="none">
+    <path d="M23 16 V48"/>
+    <path d="M42 16 L24 33"/>
+    <path d="M30 28 L43 48"/>
+  </g>
+</svg>

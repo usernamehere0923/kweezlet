@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "kweezlet",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-08-15",
+  "observability": { "enabled": true },
+  // The UI is served as static files. Only /api/* reaches the worker code;
+  // every other unknown path gets index.html so the React router can handle it.
+  "assets": {
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*"],
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "kweezlet",
+      // Placeholder until `wrangler d1 create kweezlet` runs. Local dev accepts any id.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "USER_CHANNEL", "class_name": "UserChannel" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["UserChannel"] }],
+}

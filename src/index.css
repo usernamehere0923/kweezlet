@@ -1,0 +1,176 @@
+@import "tailwindcss";
+
+/* Self-hosted variable fonts, the same files ../rongo ships.
+   They are Anthropic's typefaces: fine for this private app. If kweezlet ever
+   goes public as a product, point the three --font-* tokens below at free
+   look-alikes (Inter, Source Serif, JetBrains Mono) and delete these files. */
+@font-face {
+  font-family: "Anthropic Sans";
+  src: url("./fonts/SansWebVariable-TextRegular.woff2") format("woff2");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Anthropic Serif";
+  src: url("./fonts/SerifWebVariable-TextRegular.woff2") format("woff2");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Anthropic Serif";
+  src: url("./fonts/SerifWebVariable-TextRegularItalic.woff2") format("woff2");
+  font-weight: 300 800;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Anthropic Mono";
+  src: url("./fonts/MonoVariableVariable-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+/* font-display: block, not swap: a fallback font has nothing at these
+   codepoints, so swapping would flash empty boxes where an icon belongs. */
+@font-face {
+  font-family: "Anthropic Icons";
+  src: url("./fonts/Icons-Variable.woff2") format("woff2-variations");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: block;
+}
+
+/* THE design tokens. Components use them as Tailwind classes (bg-surface,
+   text-muted, border-line, ...). No other colours anywhere, no dark mode. */
+@theme {
+  --color-bg: #f0eee6; /* the warm beige page */
+  --color-surface: #faf9f5; /* cards, inputs, nav */
+  --color-sunken: #e8e6dc; /* hover on ghost things, tracks */
+  --color-line: #dedcd1; /* borders */
+  --color-line-soft: #e8e6dc; /* quiet borders, dividers */
+
+  --color-ink: #141413; /* main text, never pure black */
+  --color-ink-soft: #3d3d3a;
+  --color-muted: #5e5d59; /* secondary text */
+  --color-faint: #8f8d86; /* placeholders, hints */
+
+  --color-accent: #d97757; /* Claude orange: focus ring, highlights */
+  --color-accent-strong: #c6613f; /* primary button */
+  --color-accent-deep: #b0532f; /* primary button pressed */
+  --color-accent-wash: #f6e4da;
+  --color-on-accent: #faf9f5; /* text on orange/teal/red fills */
+
+  --color-teal: #2f7f7a; /* links, secondary actions, tags */
+  --color-teal-strong: #256561;
+  --color-teal-wash: #ddebe8;
+
+  --color-correct: #5a8c5a;
+  --color-correct-wash: #e2ebdc;
+  --color-wrong: #c14638;
+  --color-wrong-strong: #a83a2e;
+  --color-wrong-wash: #f5dfda;
+
+  --font-sans: "Anthropic Sans", system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-serif: "Anthropic Serif", Georgia, "Times New Roman", Times, serif;
+  --font-mono: "Anthropic Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --radius-ui: 10px;
+  --radius-ui-lg: 12px;
+  --radius-ui-xl: 16px;
+
+  --shadow-raised: 0 1px 2px rgb(20 20 19 / 0.04), 0 8px 24px -10px rgb(20 20 19 / 0.14);
+  --shadow-overlay: 0 24px 48px -12px rgb(20 20 19 / 0.24);
+
+  --animate-shake: shake 0.4s ease-in-out;
+  --animate-slide-up: slide-up 0.22s ease-out;
+  --animate-fade-in: fade-in 0.18s ease-out;
+
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20%,
+    60% {
+      transform: translateX(-6px);
+    }
+    40%,
+    80% {
+      transform: translateX(6px);
+    }
+  }
+  @keyframes slide-up {
+    from {
+      transform: translateY(12px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* One focus ring for everything: keyboard users always see where they are. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  ::placeholder {
+    color: var(--color-faint);
+    opacity: 1;
+  }
+
+  ::selection {
+    background: var(--color-accent-wash);
+  }
+
+  /* Tailwind v4 dropped the pointer cursor on buttons. */
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line) transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,10 @@
+<!-- iPhone home screen (apple-touch-icon). Square and full-bleed: iOS rounds
+     the corners itself, and draws its own edge, so no border. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect width="64" height="64" fill="#f0eee6"/>
+  <g stroke="#d97757" stroke-width="7" stroke-linecap="round" fill="none">
+    <path d="M23 16 V48"/>
+    <path d="M42 16 L24 33"/>
+    <path d="M30 28 L43 48"/>
+  </g>
+</svg>

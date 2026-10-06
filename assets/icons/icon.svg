@@ -1,0 +1,13 @@
+<!-- kweezlet's mark: an orange K on the app's beige. The K is three
+     round-capped strokes, not font text, so it renders without our fonts and
+     stays crisp at 16px. The same strokes live in tile-touch.svg,
+     tile-maskable.svg, src/ui/Logo.tsx and assets/og/card.html: there is no
+     shared include, mirror any change by hand. Then: npm run gen:icons -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <rect x="0.5" y="0.5" width="63" height="63" rx="14" fill="#f0eee6" stroke="#dedcd1"/>
+  <g stroke="#d97757" stroke-width="7" stroke-linecap="round" fill="none">
+    <path d="M23 16 V48"/>
+    <path d="M42 16 L24 33"/>
+    <path d="M30 28 L43 48"/>
+  </g>
+</svg>
