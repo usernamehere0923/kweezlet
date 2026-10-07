@@ -88,6 +88,7 @@ Right now kweezlet can log you in and show its building blocks, but you can't ma
    > I want to create my own study sets. A set has a title and a list of terms; each term has a word and its meaning.
    > On the home page I want to see all my sets and a button to create a new one. When I create a set, I type a title and add terms one by one. When I tap a set, I see all its terms.
    > Also add three sample sets for demo, like Spanish animals, colours and numbers.
+   > Build the screens only from the building blocks on the Design page (`src/ui`), so everything looks like the rest of kweezlet. If a piece is missing, add it to `src/ui` and show it on the Design page. Follow all rules in `AGENTS.md`: both languages, phone first, tests.
    > First show me your plan in short steps and wait until I say go. Then build one step at a time and tell me in simple words what each part does.
 
 3. Read the plan. Anything unclear? Ask: _"What is a migration?"_, _"Why does every table need user_id?"_. Then say **go**.
