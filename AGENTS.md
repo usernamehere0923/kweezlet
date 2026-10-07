@@ -64,6 +64,7 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 - Card images: no R2 (it needs a credit card). Ask before picking an image approach.
 - Sharing sets between users breaks the "only your own rows" rule on purpose. Ask first.
 - New dependencies: ask first.
+- PWA = installable only (`public/manifest.webmanifest`, icons). No service worker, no offline support: decided, don't build or suggest it.
 
 ### Fonts
 
