@@ -72,11 +72,36 @@ You can close Terminal now. You won't need it every day.
 
 1. **Start the app:** double-click `Start kweezlet.command` in the `kweezlet` folder. A window opens (leave it open) and the app appears in your browser.
    Log in with `demo` / `demo`. Click **Design** to see all the building blocks.
-2. **Build:** in OpenCode, describe what you want. For example: _"I want to create study sets with a title and a list of terms."_
+2. **Build:** in OpenCode, describe what you want. Not sure what? Start with Part 4.
    It already knows the project rules (they are in `AGENTS.md`).
 3. **Stop the app:** close the window from step 1.
 
 Try it on your iPhone (same wifi): ask OpenCode _"start the app for my iPhone"_.
+
+## Part 4: Your first task
+
+Right now kweezlet can log you in and show its building blocks, but you can't make any cards yet. Your first task: **your own study sets**.
+
+1. Start the app (Part 3) and click **Design** once. That's what your screens will be built from.
+2. In OpenCode, paste this:
+
+   > I want to create my own study sets. A set has a title and a list of terms; each term has a word and its meaning.
+   > On the home page I want to see all my sets and a button to create a new one. When I create a set, I type a title and add terms one by one. When I tap a set, I see all its terms.
+   > Also add three sample sets for demo, like Spanish animals, colours and numbers.
+   > First show me your plan in short steps and wait until I say go. Then build one step at a time and tell me in simple words what each part does.
+
+3. Read the plan. Anything unclear? Ask: _"What is a migration?"_, _"Why does every table need user_id?"_. Then say **go**.
+4. After each step, try it in the browser. On the phone too: _"start the app for my iPhone"_.
+5. Works? OpenCode saves it with a commit and pushes it to GitHub. You will see it in the chat.
+
+Done when you can create a set, see it on the home page, open it, and it's still there after closing and restarting the app.
+
+**What next** (one at a time, same way):
+
+- _"When I open a set, I want to study it with flashcards: tap to flip, arrows for next and previous, and Know it / Still learning."_
+- _"I want to edit and delete my sets."_
+- _"Add a Test mode: 4 possible answers per term, a score at the end."_
+- Put it online: ask _"help me deploy kweezlet for the first time"_ (needs the Cloudflare account from Part 1).
 
 ## When something is stuck
 
