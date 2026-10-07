@@ -1,16 +1,15 @@
 # kweezlet
 
-Quizlet-style flashcard app. React + Tailwind UI, Cloudflare Worker (Hono) API, D1 (SQLite) database, one Durable Object for live sync. Everything runs locally; no account needed for dev.
+Quizlet-style flashcard app. React + Tailwind UI, Cloudflare Worker (Hono) API, D1 (SQLite) database, one Durable Object for live sync.
 
 ## Commands
 
 - `npm run dev`: app + API + database on http://localhost:5173. Login `demo` / `demo`. He usually starts it by double-clicking `Start kweezlet.command`. Page loads forever after a config change → restart with `npm run dev -- --force`.
 - `npm run dev -- --host`: same, reachable from the iPhone at `http://<mac-ip>:5173` (same wifi).
-- `npm test`: worker tests (real Workers runtime). `npm run check`: types + lint + format. **Run both before every commit.**
-- `npm run format`: fix formatting.
-- `npm run db:migrate`: apply new migrations locally. `npm run db:reset`: wipe local DB, re-migrate, re-create demo.
+- `npm test`: worker (Workers runtime) + UI (jsdom) tests. `npm run check`: types + lint + format; `npm run format` fixes formatting.
+- `npm run db:migrate`: apply new migrations locally, keeps data. `npm run db:reset` wipes all his local data: only when he asks to start over. Wrong demo password → `user:add -- demo demo`.
 - `npm run user:add -- <name> <password> [--remote]`: create user / reset password. No registration in the app.
-- `npm run deploy`: build + upload. Before: `npm run db:migrate:remote` if there are new migrations.
+- `npm run deploy`: build + upload (setup: `README.md`). New migrations → `db:migrate:remote` first.
 - `npm run types`: after changing `wrangler.jsonc`.
 - `npm run gen:icons` / `npm run gen:og`: after changing `assets/icons/*` or `assets/og/card.html`.
 
@@ -24,7 +23,8 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 - Colours and fonts only via the tokens in `src/index.css` `@theme` (`bg-surface`, `text-muted`, `border-line`, `font-serif`...). No `#hex`, no new colours, no dark mode.
 - One orange (primary) button per screen. Teal = secondary/links. Green/red only for correct/wrong.
 - Missing a component? Add it to `src/ui` (or `src/ui/study`), export it from `index.ts`, show it on `/design`.
-- Mobile first: check every screen at 390px wide. Inputs stay `text-base` (16px) or iOS zooms in.
+- Mobile first, 390px wide. Inputs stay `text-base` (16px) or iOS zooms in.
+- Visible change → drive the running app with Playwright (chromium, 390px), look at a screenshot. Green tests alone are not "done".
 
 ### Text
 
@@ -39,7 +39,6 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 - Every query on user data has `WHERE user_id = ?` bound to `c.get("user").id`. Never trust a `user_id` from the request.
 - Every table with `user_id` goes into `exportTables` in `worker/export.ts` ("Download my data"). A test fails if one is missing.
 - Values always via `.bind(...)`, never pasted into SQL strings.
-- Full-text search: D1 supports SQLite FTS5 (virtual table + triggers). Not built yet.
 
 ### API
 
@@ -50,6 +49,16 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 - After a write the user's other devices should see: `await notify(c.env, user.id, "topic")` in the worker, `useLive("topic", reload)` in the page.
 - Example of the full pattern (table, scoped route, export): `test/ownership.test.ts`.
 
+### Git
+
+- Work only on `main`: no feature branches, no worktrees, no PRs. He doesn't know them.
+- Commit after every step that works (`check` + `test` green), not one big commit at the end. Message: what changed, in plain words. Then push.
+
+### Tests and coverage
+
+- CI checks every push to `main`: `test:coverage` floor 95% lines (`vitest.config.ts`), 75% of changed lines (`scripts/patch-coverage.sh`). Red → write the test, never lower a number.
+- Worker → `test/*.test.ts`. UI → `*.test.tsx` next to the code, helpers in `src/test/`. Query by role/label.
+
 ### Before asking for anything new
 
 - Card images: no R2 (it needs a credit card). Ask before picking an image approach.
@@ -59,11 +68,3 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 ### Fonts
 
 The Anthropic fonts in `src/fonts` are fine for this private app. If kweezlet ever goes public as a product, switch `--font-*` in `src/index.css` to free fonts (Inter, Source Serif, JetBrains Mono) and delete the files. Never use Claude's name or logo.
-
-## Deploy (once)
-
-1. `npx wrangler login` (your own Cloudflare account, free, no card).
-2. `npx wrangler d1 create kweezlet`, put the printed `database_id` into `wrangler.jsonc`.
-3. `npm run db:migrate:remote`, `npm run user:add -- <you> '<password>' --remote`.
-4. `npm run deploy`, then put the printed URL into `.env.production` as `PUBLIC_URL` and deploy again (link previews need it).
-5. On the iPhone: open the URL in Safari, Share, "Add to Home Screen".

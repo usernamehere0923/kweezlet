@@ -1,0 +1,42 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+    steps:
+      # fetch-depth: 0: scripts/patch-coverage.sh diffs against the PR base.
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 26
+          cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install diff-cover==10.3.0
+      - run: npm ci
+      - run: npm run check
+      # Fails under the floor in vitest.config.ts (coverage.thresholds).
+      - run: npm run test:coverage
+      # Work happens straight on main: a push is checked against the commit
+      # before it, a PR against its base.
+      - name: Patch coverage
+        run: ./scripts/patch-coverage.sh "${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}"
+      - run: npm run build
