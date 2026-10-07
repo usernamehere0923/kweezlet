@@ -6,7 +6,7 @@ Quizlet-style flashcard app. React + Tailwind UI, Cloudflare Worker (Hono) API, 
 
 - `npm run dev`: app + API + database on http://localhost:5173. Login `demo` / `demo`. He usually starts it by double-clicking `Start kweezlet.command`. Page loads forever after a config change → restart with `npm run dev -- --force`.
 - `npm run dev -- --host`: same, reachable from the iPhone at `http://<mac-ip>:5173` (same wifi).
-- `npm test`: worker tests (real Workers runtime). `npm run check`: types + lint + format. **Run both before every commit.**
+- `npm test`: worker tests (real Workers runtime) + UI tests (jsdom). `npm run check`: types + lint + format. **Run both before every commit.**
 - `npm run format`: fix formatting.
 - `npm run db:migrate`: apply new migrations locally. `npm run db:reset`: wipe local DB, re-migrate, re-create demo.
 - `npm run user:add -- <name> <password> [--remote]`: create user / reset password. No registration in the app.
@@ -49,6 +49,12 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 - The UI calls the API only through `api` from `src/lib/api.ts` (typed). 401 and server errors are handled there.
 - After a write the user's other devices should see: `await notify(c.env, user.id, "topic")` in the worker, `useLive("topic", reload)` in the page.
 - Example of the full pattern (table, scoped route, export): `test/ownership.test.ts`.
+
+### Tests and coverage
+
+- CI gates `main`: check, `npm run test:coverage` (floor 75% lines, `vitest.config.ts`), patch coverage (75% of changed lines, `scripts/patch-coverage.sh`), build. Red → write the test, never lower a number.
+- Worker → `test/*.test.ts`. UI → `*.test.tsx` next to the code with `renderUi`, `mockApi`, `FakeSocket` from `src/test/`. Query by role/label, like a user.
+- `[skip patch-coverage]` in a commit message only for changes without logic (reformat, rename).
 
 ### Before asking for anything new
 

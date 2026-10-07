@@ -19,12 +19,23 @@ jobs:
     env:
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
     steps:
+      # fetch-depth: 0: scripts/patch-coverage.sh diffs against the PR base.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: 26
           cache: npm
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: pip install diff-cover==10.3.0
       - run: npm ci
       - run: npm run check
-      - run: npm test
+      # Fails under the floor in vitest.config.ts (coverage.thresholds).
+      - run: npm run test:coverage
+      - name: Patch coverage
+        if: github.event_name == 'pull_request'
+        run: ./scripts/patch-coverage.sh "origin/${{ github.base_ref }}"
       - run: npm run build
