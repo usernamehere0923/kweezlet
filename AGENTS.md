@@ -38,6 +38,7 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 - Every business table has `user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE`.
 - Every query on user data has `WHERE user_id = ?` bound to `c.get("user").id`. Never trust a `user_id` from the request.
 - Every table with `user_id` goes into `exportTables` in `worker/export.ts` ("Download my data"). A test fails if one is missing.
+- New table with user data → sample rows for `demo` in `scripts/seed.ts` (`db:reset` runs it). Local only.
 - Values always via `.bind(...)`, never pasted into SQL strings.
 
 ### API
