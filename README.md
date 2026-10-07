@@ -8,12 +8,21 @@ A Quizlet-style flashcard app, built as a learning project: learning to build a 
 
 ## Run it locally
 
-Needs a current Node.js (`brew install node` on a Mac; CI uses Node 26). No Cloudflare account needed: the Worker, database and live sync all run on your machine.
+### What you need
+
+- Apple developer tools (`xcode-select --install`): git and compilers
+- [Homebrew](https://brew.sh), then `brew install node` (current Node.js; CI uses 26)
+- git with your name and email (`git config --global user.name` / `user.email`)
+
+Fresh Mac? [SETUP.md](SETUP.md) walks through all of it step by step. No Cloudflare account needed: the Worker, database and live sync all run on your machine.
+
+### Start
 
 Once:
 
 ```sh
 npm install
+npx playwright install chromium # browser for checking screens
 npm run db:migrate              # create the local database
 npm run user:add -- demo demo   # create the demo user
 ```
@@ -23,6 +32,8 @@ Every day:
 ```sh
 npm run dev   # http://localhost:5173, log in with demo / demo
 ```
+
+Or double-click `Start kweezlet.command`: it applies new migrations, then starts the app and opens the browser.
 
 The local database lives in `.wrangler/state/` and keeps everything between restarts (sets, settings, users).
 
@@ -38,8 +49,6 @@ Before every commit:
 npm run check           # types, lint, format (npm run format fixes formatting)
 npm run test:coverage   # worker + UI tests, fails under 95% line coverage
 ```
-
-First-time setup on a fresh Mac, step by step: [SETUP.md](SETUP.md).
 
 ## Deploy to Cloudflare
 
