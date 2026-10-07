@@ -8,7 +8,7 @@ Part 1 and 2 happen once, together with your dad (about 45 minutes). After that,
 | ----------------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------- |
 | **Xiaomi MiMo** ([platform.xiaomimimo.com](https://platform.xiaomimimo.com))        | The AI that writes code with you                            | Now                                         |
 | **Cloudflare** ([dash.cloudflare.com/sign-up](https://dash.cloudflare.com/sign-up)) | Putting kweezlet online, so it works on your phone anywhere | When you want it live. Free, no credit card |
-| **GitHub** ([github.com/signup](https://github.com/signup))                         | Backup of your code in the cloud                            | Later, optional                             |
+| **GitHub** (you already have one: `usernamehere0923`)                               | Your code lives there; every change is saved there          | Now                                         |
 
 **Xiaomi MiMo:** sign up, pick a plan (Token Plan, or pay-as-you-go) and create an **API key**. It looks like `tp-...` or `sk-...`. Keep it secret: anyone with it can use your plan.
 
@@ -34,25 +34,34 @@ A window pops up: click **Install**. "Already installed" is fine too.
 It asks for the Mac password (the letters stay invisible while typing, that's normal).
 At the end it shows **"Next steps"** with two or three lines: run those too, then close Terminal and open a new one.
 
-**3. Node.js and OpenCode**
+**3. Node.js, GitHub tool and OpenCode**
 
 ```sh
-brew install node
+brew install node gh
 brew install --cask opencode-desktop
 ```
 
-**4. Tell git who you are** (your own name; the email only goes into your project history)
+**4. Tell git who you are**
+
+Your project is public on GitHub, so everyone can read the email in it. Use this GitHub address instead of your real one; it still counts as you:
 
 ```sh
 git config --global user.name "Your Name"
-git config --global user.email "you@example.com"
+git config --global user.email "339172114+usernamehere0923@users.noreply.github.com"
 ```
 
-**5. Get the project ready**
+**5. Get the project**
 
-Put the `kweezlet` folder into your home folder, then:
+Log in to GitHub. Choose **GitHub.com**, **HTTPS**, **Yes** (use it for git), **Login with a web browser**, then type the code it shows into the browser:
 
 ```sh
+gh auth login
+```
+
+Download the project into your home folder and get it ready:
+
+```sh
+gh repo clone usernamehere0923/kweezlet ~/kweezlet
 cd ~/kweezlet
 npm install
 npx playwright install chromium
