@@ -1,21 +1,10 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { describe, expect, test, vi } from "vitest";
-import { App } from "./App";
 import { SERVER_ERROR_EVENT } from "./lib/api";
 import { clientId } from "./lib/live";
+import { ME, renderApp } from "./test/render";
 import { FakeSocket, mockApi } from "./test/server";
-
-const ME = { username: "demo", locale: "en" };
-
-function renderApp(path = "/") {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <App />
-    </MemoryRouter>,
-  );
-}
 
 describe("login", () => {
   test("anonymous user sees the login page and can sign in", async () => {
@@ -68,10 +57,11 @@ describe("logged in", () => {
   });
 
   test("a 401 from any call sends the user back to the login page", async () => {
-    mockApi({ "GET /api/me": () => ({ json: ME }), "POST /api/logout": () => ({ status: 401 }) });
+    // Session expired: saving a setting answers 401. Not logout, which leaves anyway.
+    mockApi({ "GET /api/me": () => ({ json: ME }), "PATCH /api/me/settings": () => ({ status: 401 }) });
     renderApp("/settings");
-    await userEvent.setup().click(await screen.findByRole("button", { name: "Log out" }));
-    expect(await screen.findByLabelText("Username")).toBeTruthy();
+    await userEvent.setup().click(await screen.findByRole("radio", { name: "Deutsch" }));
+    expect(await screen.findByLabelText("Benutzername")).toBeTruthy();
   });
 
   test("server errors show a toast", async () => {

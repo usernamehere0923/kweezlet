@@ -56,7 +56,8 @@ Put the `kweezlet` folder into your home folder, then:
 cd ~/kweezlet
 npm install
 npx playwright install chromium
-npm run db:reset
+npm run db:migrate
+npm run user:add -- demo demo
 ```
 
 **6. Connect OpenCode to MiMo**
@@ -80,5 +81,5 @@ Try it on your iPhone (same wifi): ask OpenCode _"start the app for my iPhone"_.
 ## When something is stuck
 
 - **The page keeps loading forever:** close the start window, double-click `Start kweezlet.command` again.
-- **"Wrong username or password" for demo:** ask OpenCode to run `npm run db:reset` (this wipes your test data on this Mac, not the live app).
+- **"Wrong username or password" for demo:** ask OpenCode to run `npm run user:add -- demo demo`. It sets the password back to `demo` and keeps your cards.
 - **Anything else:** copy the red error text and paste it into OpenCode.

@@ -48,7 +48,7 @@ describe("fields", () => {
 });
 
 describe("Modal", () => {
-  test("opens, closes via button, Escape and backdrop", async () => {
+  test("opens, closes via button, backdrop and Escape", async () => {
     const onClose = vi.fn();
     const { rerender } = renderUi(
       <Modal open={false} onClose={onClose} title="Delete set?">
@@ -65,7 +65,9 @@ describe("Modal", () => {
     expect(dialog.open).toBe(true);
     await userEvent.click(screen.getByRole("button", { name: "Close", hidden: true }));
     fireEvent.click(dialog);
-    expect(onClose).toHaveBeenCalledTimes(2);
+    // Escape makes the browser close the dialog natively, which fires "close".
+    fireEvent(dialog, new Event("close"));
+    expect(onClose).toHaveBeenCalledTimes(3);
     rerender(<Modal open={false} onClose={onClose} title="Delete set?" />);
     expect(dialog.open).toBe(false);
   });

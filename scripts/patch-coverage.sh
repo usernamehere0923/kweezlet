@@ -31,9 +31,17 @@ fi
 base="$(git merge-base "$BASE_REF" HEAD)"
 
 # Escape hatch for changes that add no logic (wholesale reformat, rename): put
-# [skip patch-coverage] in a commit message on the branch. The floor still applies.
-if git log --format='%B' "$base"..HEAD | grep -qF '[skip patch-coverage]'; then
-  echo "::warning::patch-coverage SKIPPED: a commit on this branch carries [skip patch-coverage]."
+# [skip patch-coverage] in the commit message. Only when EVERY checked commit
+# carries it, so one marked reformat cannot wave through logic next to it.
+# The floor still applies. Each message is read whole into a variable: under
+# pipefail, `git log | grep -q` can SIGPIPE git log and flip the result.
+skip=0
+for sha in $(git rev-list "$base"..HEAD); do
+  msg="$(git log -1 --format=%B "$sha")"
+  if [[ "$msg" == *"[skip patch-coverage]"* ]]; then skip=1; else skip=0 && break; fi
+done
+if [[ "$skip" -eq 1 ]]; then
+  echo "::warning::patch-coverage SKIPPED: every commit carries [skip patch-coverage]."
   exit 0
 fi
 
@@ -48,8 +56,9 @@ if grep -q 'No lines with coverage information' "$OUT"; then
   changed="$(git diff --name-only "$base"...HEAD -- 'src/*.ts' 'src/*.tsx' 'worker/*.ts' |
     grep -vE '(\.test\.tsx?|\.d\.ts|^src/test/.*)$' || true)"
   if [[ -n "$changed" ]] && ! grep -qF -f <(sed 's/^/SF:/' <<<"$changed") "$REPORT"; then
-    if ! sed -n 's/^SF://p' "$REPORT" | head -1 | xargs test -e; then
-      echo "patch-coverage: FAIL: sources changed but $REPORT paths do not match git's." >&2
+    first="$(sed -n 's/^SF://p' "$REPORT" | head -n 1)"
+    if [[ -z "$first" || ! -e "$first" ]]; then
+      echo "patch-coverage: FAIL: sources changed but $REPORT is empty or its paths do not match git's." >&2
       fail=1
     fi
   fi

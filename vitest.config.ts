@@ -42,7 +42,7 @@ export default defineConfig(async () => {
         exclude: ["**/*.test.*", "src/test/**", "src/main.tsx"],
         reporter: ["text-summary", "lcovonly"],
         reportsDirectory: "coverage",
-        thresholds: { lines: 75 },
+        thresholds: { lines: 95 },
       },
     },
   };

@@ -10,21 +10,33 @@ A Quizlet-style flashcard app, built as a learning project: learning to build a 
 
 Needs a current Node.js (`brew install node` on a Mac; CI uses Node 26). No Cloudflare account needed: the Worker, database and live sync all run on your machine.
 
+Once:
+
 ```sh
 npm install
-npm run db:reset   # create the local database and the demo user
-npm run dev        # http://localhost:5173, log in with demo / demo
+npm run db:migrate              # create the local database
+npm run user:add -- demo demo   # create the demo user
 ```
+
+Every day:
+
+```sh
+npm run dev   # http://localhost:5173, log in with demo / demo
+```
+
+The local database lives in `.wrangler/state/` and keeps everything between restarts (sets, settings, users).
 
 - On your phone (same wifi): `npm run dev -- --host`, then open `http://<your-mac-ip>:5173`.
 - Page loads forever after a config change: `npm run dev -- --force`.
-- More local users: `npm run user:add -- <name> <password>`.
+- More local users, or a forgotten password: `npm run user:add -- <name> <password>`.
+- New file in `migrations/`: `npm run db:migrate`. Keeps your data.
+- Start over from an empty database: `npm run db:reset`. **Deletes all local data**, then re-creates `demo`.
 
 Before every commit:
 
 ```sh
 npm run check           # types, lint, format (npm run format fixes formatting)
-npm run test:coverage   # worker + UI tests, fails under 75% line coverage
+npm run test:coverage   # worker + UI tests, fails under 95% line coverage
 ```
 
 First-time setup on a fresh Mac, step by step: [SETUP.md](SETUP.md).

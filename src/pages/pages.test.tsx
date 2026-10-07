@@ -1,24 +1,13 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router";
 import { describe, expect, test } from "vitest";
-import { App } from "../App";
+import { ME, renderApp } from "../test/render";
 import { mockApi } from "../test/server";
-
-const ME = { username: "demo", locale: "en" };
-
-function renderAt(path: string) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <App />
-    </MemoryRouter>,
-  );
-}
 
 describe("settings", () => {
   test("changing the language saves it on the server", async () => {
     const { calls } = mockApi({ "GET /api/me": () => ({ json: ME }), "PATCH /api/me/settings": () => ({ json: {} }) });
-    renderAt("/settings");
+    renderApp("/settings");
     await userEvent.click(await screen.findByRole("radio", { name: "Deutsch" }));
     expect(await screen.findByLabelText("Aktuelles Passwort")).toBeTruthy();
     await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ locale: "de-CH" }));
@@ -35,7 +24,7 @@ describe("settings", () => {
 
   test("password: mismatch is caught before sending", async () => {
     const { calls } = mockApi({ "GET /api/me": () => ({ json: ME }) });
-    renderAt("/settings");
+    renderApp("/settings");
     await fillPassword("old-password", "new-password", "other-password");
     expect(await screen.findByText("The two passwords do not match")).toBeTruthy();
     expect(calls.some((c) => c.path === "/api/me/password")).toBe(false);
@@ -49,7 +38,7 @@ describe("settings", () => {
         json: { error: "validation", fields: { current: "wrong_password", next: "made_up_code" } },
       }),
     });
-    renderAt("/settings");
+    renderApp("/settings");
     await fillPassword("old-password", "new-password", "new-password");
     expect(await screen.findByText("That is not your current password")).toBeTruthy();
     expect(screen.getByText("Invalid value")).toBeTruthy();
@@ -57,7 +46,7 @@ describe("settings", () => {
 
   test("password: success clears the form", async () => {
     mockApi({ "GET /api/me": () => ({ json: ME }), "POST /api/me/password": () => ({ json: { ok: true } }) });
-    renderAt("/settings");
+    renderApp("/settings");
     await fillPassword("old-password", "new-password", "new-password");
     expect(await screen.findByText(/Password changed/)).toBeTruthy();
     expect((screen.getByLabelText("Current password") as HTMLInputElement).value).toBe("");
@@ -65,7 +54,7 @@ describe("settings", () => {
 
   test("logout goes back to the login page", async () => {
     const { calls } = mockApi({ "GET /api/me": () => ({ json: ME }), "POST /api/logout": () => ({ json: {} }) });
-    renderAt("/settings");
+    renderApp("/settings");
     expect(await screen.findByText("Logged in as demo")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Log out" }));
     expect(await screen.findByLabelText("Username")).toBeTruthy();
@@ -76,7 +65,7 @@ describe("settings", () => {
 describe("design page", () => {
   test("every demo control can be used without crashing", async () => {
     const { calls } = mockApi({ "GET /api/me": () => ({ json: ME }), "POST /api/live/ping": () => ({ json: {} }) });
-    renderAt("/design");
+    renderApp("/design");
     const main = await screen.findByRole("main");
     const user = userEvent.setup();
     for (const box of within(main).getAllByRole("textbox")) {

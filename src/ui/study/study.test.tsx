@@ -36,20 +36,27 @@ describe("FlipCard", () => {
     expect(onFlip.mock.calls).toEqual([[true], [false]]);
   });
 
-  test("Space is ignored while typing, with modifiers, and with hotkey off", () => {
+  test("Space is ignored while typing, with modifiers, and on a focused button", () => {
     const onFlip = vi.fn();
     renderUi(
       <>
-        <FlipCard front="a" back="the cat" onFlip={onFlip} hotkey={false} />
-        <FlipCard front="b" back="b" onFlip={onFlip} />
+        <FlipCard front="el gato" back="the cat" onFlip={onFlip} />
         <input aria-label="field" />
       </>,
     );
     fireEvent.keyDown(screen.getByLabelText("field"), { key: " " });
     fireEvent.keyDown(document.body, { key: " ", ctrlKey: true });
     fireEvent.keyDown(document.body, { key: "x" });
-    fireEvent.keyDown(screen.getAllByRole("button")[0], { key: " " });
+    fireEvent.keyDown(flipCard(), { key: " " });
     expect(onFlip).not.toHaveBeenCalled();
+  });
+
+  test("hotkey off: Space does nothing", () => {
+    const onFlip = vi.fn();
+    renderUi(<FlipCard front="el gato" back="the cat" onFlip={onFlip} hotkey={false} />);
+    fireEvent.keyDown(document.body, { key: " " });
+    expect(onFlip).not.toHaveBeenCalled();
+    expect(backHidden()).toBe("true");
   });
 
   test("controlled: follows the flipped prop", () => {

@@ -35,7 +35,8 @@ jobs:
       - run: npm run check
       # Fails under the floor in vitest.config.ts (coverage.thresholds).
       - run: npm run test:coverage
+      # Work happens straight on main: a push is checked against the commit
+      # before it, a PR against its base.
       - name: Patch coverage
-        if: github.event_name == 'pull_request'
-        run: ./scripts/patch-coverage.sh "origin/${{ github.base_ref }}"
+        run: ./scripts/patch-coverage.sh "${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}"
       - run: npm run build

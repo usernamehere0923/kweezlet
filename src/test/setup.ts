@@ -36,6 +36,9 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  // Tests may pin it with defineProperty; drop back to jsdom's own getter.
+  Reflect.deleteProperty(document, "visibilityState");
 });
