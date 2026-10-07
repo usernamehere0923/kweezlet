@@ -20,7 +20,7 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 ### Look
 
 - Build screens ONLY from `src/ui` (`import { Button, Card, FlipCard } from "../ui"`). The `/design` page shows every piece with a snippet.
-- Colours and fonts only via the tokens in `src/index.css` `@theme` (`bg-surface`, `text-muted`, `border-line`, `font-serif`...). No `#hex`, no new colours, no dark mode.
+- Styling only via the tokens in `src/index.css` `@theme` (`bg-surface`, `text-muted`, `border-line`...). No `#hex`, no new colours, no dark mode.
 - One orange (primary) button per screen. Teal = secondary/links. Green/red only for correct/wrong.
 - Missing a component? Add it to `src/ui` (or `src/ui/study`), export it from `index.ts`, show it on `/design`.
 - Mobile first, 390px wide. Inputs stay `text-base` (16px) or iOS zooms in.
@@ -65,7 +65,3 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 - Sharing sets between users breaks the "only your own rows" rule on purpose. Ask first.
 - New dependencies: ask first.
 - PWA = installable only (`public/manifest.webmanifest`, icons). No service worker, no offline support: decided, don't build or suggest it.
-
-### Fonts
-
-The Anthropic fonts in `src/fonts` are fine for this private app. If kweezlet ever goes public as a product, switch `--font-*` in `src/index.css` to free fonts (Inter, Source Serif, JetBrains Mono) and delete the files. Never use Claude's name or logo.
