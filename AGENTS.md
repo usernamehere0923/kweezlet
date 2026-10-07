@@ -56,7 +56,7 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 
 ### Tests and coverage
 
-- CI gates `main`: `test:coverage` floor 95% lines (`vitest.config.ts`), 75% of changed lines (`scripts/patch-coverage.sh`). Red → write the test, never lower a number.
+- CI checks every push to `main`: `test:coverage` floor 95% lines (`vitest.config.ts`), 75% of changed lines (`scripts/patch-coverage.sh`). Red → write the test, never lower a number.
 - Worker → `test/*.test.ts`. UI → `*.test.tsx` next to the code, helpers in `src/test/`. Query by role/label.
 
 ### Before asking for anything new
