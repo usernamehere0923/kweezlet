@@ -10,7 +10,7 @@
 # diff-cover (pip install diff-cover==10.3.0).
 set -euo pipefail
 
-BASE_REF="${1:-origin/main}"
+BASE_REF="${1:-origin/master}"
 PATCH_MIN="${PATCH_MIN:-75}"
 REPORT=coverage/lcov.info
 OUT=coverage/patch.md

@@ -2,7 +2,7 @@ name: ci
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
 
 concurrency:
@@ -35,7 +35,7 @@ jobs:
       - run: npm run check
       # Fails under the floor in vitest.config.ts (coverage.thresholds).
       - run: npm run test:coverage
-      # Work happens straight on main: a push is checked against the commit
+      # Work happens straight on master: a push is checked against the commit
       # before it, a PR against its base.
       - name: Patch coverage
         run: ./scripts/patch-coverage.sh "${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}"

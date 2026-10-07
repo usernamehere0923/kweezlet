@@ -51,12 +51,12 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 
 ### Git
 
-- Work only on `main`: no feature branches, no worktrees, no PRs. He doesn't know them.
+- Work only on `master`: no feature branches, no worktrees, no PRs. He doesn't know them.
 - Commit after every step that works (`check` + `test` green), not one big commit at the end. Message: what changed, in plain words. Then push.
 
 ### Tests and coverage
 
-- CI checks every push to `main`: `test:coverage` floor 95% lines (`vitest.config.ts`), 75% of changed lines (`scripts/patch-coverage.sh`). Red → write the test, never lower a number.
+- CI checks every push to `master`: `test:coverage` floor 95% lines (`vitest.config.ts`), 75% of changed lines (`scripts/patch-coverage.sh`). Red → write the test, never lower a number.
 - Worker → `test/*.test.ts`. UI → `*.test.tsx` next to the code, helpers in `src/test/`. Query by role/label.
 
 ### Before asking for anything new
