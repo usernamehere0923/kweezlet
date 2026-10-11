@@ -66,6 +66,7 @@ export const en = {
   "sets.langHint": "Optional. Used for audio and grading later.",
   "sets.termsNeeded": "Add at least one term.",
   "sets.termsIncomplete": "Fill in both fields of a term, or delete the row.",
+  "sets.termsChanged": "These terms were changed on another device. Reload the page and try again.",
 
   "notFound.title": "Page not found",
   "notFound.text": "This page does not exist (yet).",

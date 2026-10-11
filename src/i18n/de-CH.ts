@@ -68,6 +68,8 @@ export const deCH: Record<keyof typeof en, string> = {
   "sets.langHint": "Optional. Wird später für Audio und zum Prüfen verwendet.",
   "sets.termsNeeded": "Füge mindestens einen Begriff hinzu.",
   "sets.termsIncomplete": "Fülle beide Felder eines Begriffs aus, oder lösche die Zeile.",
+  "sets.termsChanged":
+    "Diese Begriffe wurden auf einem anderen Gerät geändert. Seite neu laden und nochmals versuchen.",
 
   "notFound.title": "Seite nicht gefunden",
   "notFound.text": "Diese Seite gibt es (noch) nicht.",

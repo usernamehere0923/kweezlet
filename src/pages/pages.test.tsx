@@ -263,6 +263,21 @@ describe("set form", () => {
 
     expect(await screen.findByText("Too long")).toBeTruthy();
   });
+
+  test("a stale term id tells the user to reload", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets/7": () => ({ json: SPANISH_DETAIL }),
+      "PATCH /api/sets/7": () => ({ status: 400, json: { error: "validation", fields: { terms: "invalid_value" } } }),
+    });
+    renderApp("/sets/7/edit");
+    await screen.findByDisplayValue("Spanish animals");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByText("These terms were changed on another device. Reload the page and try again."),
+    ).toBeTruthy();
+  });
 });
 
 /** Marks and stars are merged server-side; this fake behaves the same way. */

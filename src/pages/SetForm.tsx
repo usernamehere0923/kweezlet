@@ -7,6 +7,7 @@ import {
   Button,
   ButtonLink,
   Card,
+  FormError,
   Heading,
   PageTitle,
   Select,
@@ -121,7 +122,11 @@ export function SetFormPage() {
         const serverErrors = await fieldErrors(res);
         setErrors(serverErrors);
         if (Object.keys(serverErrors).some((field) => field.startsWith("terms"))) {
-          setFormError(t("sets.termsIncomplete"));
+          // "invalid_value" means a term id went stale (changed on another
+          // device); the other codes mean the row itself is not filled in.
+          setFormError(
+            t(serverErrors.terms === "validation.invalid_value" ? "sets.termsChanged" : "sets.termsIncomplete"),
+          );
         }
       }
     } finally {
@@ -218,11 +223,7 @@ export function SetFormPage() {
               {t("study.addTerm")}
             </Button>
           </div>
-          {formError && (
-            <p role="alert" className="mt-3 text-sm text-wrong">
-              {formError}
-            </p>
-          )}
+          {formError && <FormError className="mt-3">{formError}</FormError>}
         </section>
 
         <div className="flex items-center gap-2">
