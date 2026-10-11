@@ -54,7 +54,15 @@ export function FlashcardsPage() {
         }
         const data = await res.json();
         setSet(data);
-        setOrder(data.terms.map((_, i) => i));
+        // Surviving terms keep their shuffled place; new ones go to the end.
+        setOrder((prev) => {
+          const had = new Set(prev);
+          const seen = new Set(data.terms.map((term) => term.id));
+          return [
+            ...prev.filter((termId) => seen.has(termId)),
+            ...data.terms.map((term) => term.id).filter((termId) => !had.has(termId)),
+          ];
+        });
       }),
     [id, navigate],
   );
@@ -71,9 +79,16 @@ export function FlashcardsPage() {
 
   // The deck is the shuffled order, cut down to the chosen filter. Marking a
   // card can pull it out of the deck; the index clamps when that happens.
-  const deck = useMemo(() => (set ? order.filter((i) => matches(filter, set.terms[i])) : []), [set, order, filter]);
-  const at = Math.min(index, deck.length - 1);
-  const current = set?.terms[deck[at]] ?? null;
+  const deck = useMemo(() => {
+    if (!set) return [];
+    const byId = new Map(set.terms.map((term) => [term.id, term]));
+    return order.flatMap((termId) => {
+      const term = byId.get(termId);
+      return term && matches(filter, term) ? [term] : [];
+    });
+  }, [set, order, filter]);
+  const at = deck.length === 0 ? 0 : Math.min(Math.max(index, 0), deck.length - 1);
+  const current = deck[at] ?? null;
 
   function updateTerm(termId: number, state: Partial<SetTerm>) {
     setSet((s) =>
@@ -109,7 +124,10 @@ export function FlashcardsPage() {
 
   async function mark(status: "still_learning" | "know_it") {
     if (!current) return;
-    if (await saveState(current.id, { status })) goTo(Math.min(at + 1, deck.length - 1));
+    // A card that no longer matches the filter leaves the deck and the next
+    // one slides into its place: stay put instead of jumping over it.
+    const keeps = matches(filter, { ...current, status });
+    if (await saveState(current.id, { status })) goTo(keeps ? at + 1 : at);
   }
 
   async function toggleStar() {

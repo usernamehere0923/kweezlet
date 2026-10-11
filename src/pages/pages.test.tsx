@@ -1,8 +1,8 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { ME, renderApp } from "../test/render";
-import { mockApi } from "../test/server";
+import { FakeSocket, mockApi } from "../test/server";
 
 describe("settings", () => {
   test("changing the language saves it on the server", async () => {
@@ -266,24 +266,37 @@ describe("set form", () => {
 });
 
 /** Marks and stars are merged server-side; this fake behaves the same way. */
-function flashcardsApi() {
-  const marked: Record<number, { status: string; starred: boolean }> = {
-    71: { status: "know_it", starred: true },
-  };
+function flashcardsApi(detail = SPANISH_DETAIL) {
+  const marked: Record<number, { status: string; starred: boolean }> = Object.fromEntries(
+    detail.terms.map((term) => [term.id, { status: term.status, starred: term.starred }]),
+  );
   const state = (termId: number) => (body: unknown) => {
     const b = body as { status?: string; starred?: boolean };
     const current = marked[termId] ?? { status: "unseen", starred: false };
-    marked[termId] = { status: b.status ?? current.status, starred: b.starred ?? current.starred };
+    marked[termId] = {
+      status: b.status === undefined ? current.status : (b.status ?? "unseen"),
+      starred: b.starred === undefined ? current.starred : !!b.starred,
+    };
     return { json: { termId, ...marked[termId] } };
   };
   return {
     "GET /api/me": () => ({ json: ME }),
-    "GET /api/sets/7": () => ({ json: SPANISH_DETAIL }),
+    "GET /api/sets/7": () => ({ json: detail }),
     "POST /api/study/day": () => ({ json: { streak: 3 } }),
-    "PATCH /api/terms/70/state": state(70),
-    "PATCH /api/terms/71/state": state(71),
+    ...Object.fromEntries(detail.terms.map((term) => [`PATCH /api/terms/${term.id}/state`, state(term.id)])),
   };
 }
+
+/** Three cards still in progress: needed to see a card being skipped. */
+const THREE_DETAIL = {
+  ...SPANISH,
+  termCount: 3,
+  terms: [
+    { id: 70, term: "el perro", definition: "the dog", position: 0, status: "still_learning", starred: false },
+    { id: 71, term: "el gato", definition: "the cat", position: 1, status: "still_learning", starred: false },
+    { id: 72, term: "el caballo", definition: "the horse", position: 2, status: "still_learning", starred: false },
+  ],
+};
 
 describe("flashcards", () => {
   test("shows the first card with progress and the streak", async () => {
@@ -370,5 +383,38 @@ describe("flashcards", () => {
 
     await userEvent.click(screen.getByRole("button", { name: "Still learning" }));
     expect(await screen.findByText("No cards here")).toBeTruthy();
+  });
+
+  test("marking a card does not skip the next one", async () => {
+    mockApi(flashcardsApi(THREE_DETAIL));
+    renderApp("/sets/7/flashcards");
+    await screen.findByText("el perro");
+    await userEvent.click(screen.getByRole("radio", { name: "Still learning" }));
+    expect(screen.getByText("1 / 3")).toBeTruthy();
+
+    // el perro is marked and leaves the deck, el gato must be next in line.
+    await userEvent.click(screen.getByRole("button", { name: "Know it" }));
+    expect(screen.getByText("el gato")).toBeTruthy();
+    expect(screen.getByText("1 / 2")).toBeTruthy();
+  });
+
+  test("a live update keeps the shuffle order", async () => {
+    mockApi(flashcardsApi());
+    renderApp("/sets/7/flashcards");
+    await screen.findByText("el perro");
+
+    // random() = 0 makes the shuffle deterministic: the last card comes first.
+    const random = vi.spyOn(Math, "random").mockReturnValue(0);
+    await userEvent.click(screen.getByRole("button", { name: "Shuffle" }));
+    random.mockRestore();
+    expect(screen.getByText("el gato")).toBeTruthy();
+
+    // A write on any of the user's devices arrives over the live channel.
+    await waitFor(() => expect(FakeSocket.instances.length).toBeGreaterThan(0));
+    await act(async () => {
+      FakeSocket.last.receive(JSON.stringify({ topic: "study", data: null }));
+    });
+    expect(screen.getByText("el gato")).toBeTruthy();
+    expect(screen.queryByText("el perro")).toBeNull();
   });
 });
