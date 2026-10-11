@@ -13,6 +13,7 @@ import { SetDetailPage } from "./pages/SetDetail";
 import { SetFormPage } from "./pages/SetForm";
 import { FlashcardsPage } from "./pages/Flashcards";
 import { LearnPage } from "./pages/Learn";
+import { TestPage } from "./pages/Test";
 import { AppShell, ErrorBoundary, Spinner, ToastProvider, useToast, type NavItem } from "./ui";
 
 export function App() {
@@ -87,6 +88,7 @@ function LoggedInApp() {
           <Route path="/sets/:id/edit" element={<SetFormPage />} />
           <Route path="/sets/:id/flashcards" element={<FlashcardsPage />} />
           <Route path="/sets/:id/learn" element={<LearnPage />} />
+          <Route path="/sets/:id/test" element={<TestPage />} />
           <Route path="/design" element={<DesignSystemPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />

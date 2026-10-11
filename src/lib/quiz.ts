@@ -68,9 +68,10 @@ function makeQuestion(term: SetTerm, pool: SetTerm[], kind: QuestionKind): TestQ
 /** A fresh paper: shuffled terms, question types in turn, one matching round. */
 export function buildTest(terms: SetTerm[], settings: TestSettings): TestPaper {
   const pick = shuffle(terms).slice(0, Math.min(settings.count, terms.length));
-  const types = settings.types.length > 0 ? settings.types : (["written"] as QuestionKind[]);
+  // No question types chosen means a matching-only paper.
+  const kinds = settings.types;
   return {
-    questions: pick.map((term, i) => makeQuestion(term, pick, types[i % types.length])),
+    questions: kinds.length === 0 ? [] : pick.map((term, i) => makeQuestion(term, pick, kinds[i % kinds.length])),
     matching: settings.matching
       ? shuffle(terms)
           .slice(0, Math.min(5, terms.length))

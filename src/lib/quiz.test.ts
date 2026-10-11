@@ -33,6 +33,12 @@ describe("buildTest", () => {
     expect(paper.questions.map((question) => question.kind)).toEqual(["choice", "written", "choice"]);
   });
 
+  test("no question types means a matching-only paper", () => {
+    const paper = buildTest(TERMS, { count: 3, types: [], matching: true });
+    expect(paper.questions).toEqual([]);
+    expect(paper.matching).toHaveLength(4);
+  });
+
   test("true/false statements are right or wrong as built", () => {
     vi.spyOn(Math, "random").mockReturnValue(0); // always takes the lying definition
     const wrong = buildTest(TERMS, { count: 2, types: ["truefalse"], matching: false });
