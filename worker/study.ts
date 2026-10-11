@@ -13,8 +13,19 @@ const stateBody = z.object({
   status: z.enum(STATUSES).nullish(),
   starred: z.boolean().nullish(),
 });
-/** A local day, YYYY-MM-DD. The client computes it in the user's timezone. */
-const dayBody = z.object({ day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) });
+/**
+ * A local day, YYYY-MM-DD. The client computes it in the user's timezone.
+ * Not just the shape: 2026-02-31 would poison the streak (see streakOf).
+ */
+const dayBody = z.object({
+  day: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .refine((day) => {
+      const time = new Date(`${day}T00:00:00Z`).getTime();
+      return !Number.isNaN(time) && new Date(time).toISOString().slice(0, 10) === day;
+    }),
+});
 
 function previousDay(day: string): string {
   return new Date(new Date(`${day}T00:00:00Z`).getTime() - 86_400_000).toISOString().slice(0, 10);
@@ -49,9 +60,11 @@ export const studyRoutes = new Hono<AppEnv>()
       .prepare("SELECT status, starred FROM term_state WHERE user_id = ? AND term_id = ?")
       .bind(user.id, id)
       .first<{ status: Status | null; starred: number }>();
-    // Anything the request leaves out keeps its old value.
-    const status = body.status ?? current?.status ?? null;
-    const starred = body.starred ?? !!current?.starred;
+    // Omitted keeps the old value, null clears it. (Two devices writing the
+    // same term at the same moment can still lose one change; marking is
+    // cheap to repeat, so that race is left alone.)
+    const status = body.status === undefined ? (current?.status ?? null) : body.status;
+    const starred = body.starred === undefined ? !!current?.starred : !!body.starred;
     await db
       .prepare(
         `INSERT INTO term_state (user_id, term_id, set_id, status, starred, updated_at) VALUES (?, ?, ?, ?, ?, unixepoch())

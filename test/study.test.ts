@@ -62,6 +62,19 @@ describe("PATCH /api/terms/:id/state", () => {
     const res = await api(`/api/terms/${termId}/state`, { method: "PATCH", cookie, json: { status: "know_it" } });
     expect(res.status).toBe(404);
   });
+
+  it("clearing a mark puts the term back to unseen", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const { termId } = await addSetWithTerm(anna);
+    const cookie = await login("anna", "secret-pw");
+
+    await api(`/api/terms/${termId}/state`, { method: "PATCH", cookie, json: { status: "know_it", starred: true } });
+    let res = await api(`/api/terms/${termId}/state`, { method: "PATCH", cookie, json: { status: null } });
+    expect(await res.json()).toEqual({ termId, status: "unseen", starred: true });
+
+    res = await api(`/api/terms/${termId}/state`, { method: "PATCH", cookie, json: { starred: null } });
+    expect(await res.json()).toEqual({ termId, status: "unseen", starred: false });
+  });
 });
 
 describe("POST /api/study/day", () => {
@@ -89,6 +102,15 @@ describe("POST /api/study/day", () => {
     expect(await res.json()).toEqual({ streak: 1 });
   });
 
+  it("the streak survives the turn of the year", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const cookie = await login("anna", "secret-pw");
+    await env.DB.prepare("INSERT INTO study_days (user_id, day) VALUES (?, '2026-12-31')").bind(anna).run();
+
+    const res = await api("/api/study/day", { method: "POST", cookie, json: { day: "2027-01-01" } });
+    expect(await res.json()).toEqual({ streak: 2 });
+  });
+
   it("a day that is not a day is a validation error", async () => {
     await addUser("anna", "secret-pw");
     const cookie = await login("anna", "secret-pw");
@@ -96,5 +118,17 @@ describe("POST /api/study/day", () => {
     const res = await api("/api/study/day", { method: "POST", cookie, json: { day: "yesterday" } });
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "validation", fields: { day: "invalid_format" } });
+  });
+
+  it("impossible days never reach the streak", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const cookie = await login("anna", "secret-pw");
+
+    for (const day of ["2026-02-31", "2026-13-01", "2026-00-10"]) {
+      const res = await api("/api/study/day", { method: "POST", cookie, json: { day } });
+      expect(res.status, day).toBe(400);
+    }
+    const { results } = await env.DB.prepare("SELECT day FROM study_days WHERE user_id = ?").bind(anna).all();
+    expect(results).toEqual([]);
   });
 });
