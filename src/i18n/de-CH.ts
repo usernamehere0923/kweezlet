@@ -71,6 +71,15 @@ export const deCH: Record<keyof typeof en, string> = {
   "sets.termsChanged":
     "Diese Begriffe wurden auf einem anderen Gerät geändert. Seite neu laden und nochmals versuchen.",
 
+  "learn.askDefinition": "Welche Definition passt?",
+  "learn.askTerm": "Welcher Begriff passt?",
+  "learn.remaining": "Übrig",
+  "learn.familiar": "Bekannt",
+  "learn.mastered": "Gelernt",
+  "learn.allLearnedTitle": "Alles gelernt!",
+  "learn.allLearnedText": "Du hast jeden Begriff zweimal richtig beantwortet.",
+  "learn.studyAnyway": "Trotzdem lernen",
+
   "notFound.title": "Seite nicht gefunden",
   "notFound.text": "Diese Seite gibt es (noch) nicht.",
   "notFound.action": "Zurück zum Start",

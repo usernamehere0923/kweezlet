@@ -4,6 +4,7 @@ import type { SetDetail, SetTerm } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
+import { shuffle, useStudyDay } from "../lib/study";
 import {
   ButtonLink,
   CardNav,
@@ -21,12 +22,6 @@ import {
 type Side = "term" | "definition";
 type Filter = "all" | "still_learning" | "know_it" | "starred";
 
-/** Today as YYYY-MM-DD in the user's own timezone (the streak day). */
-function localDay(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
-
 function matches(filter: Filter, term: SetTerm): boolean {
   if (filter === "all") return true;
   if (filter === "starred") return term.starred;
@@ -43,7 +38,7 @@ export function FlashcardsPage() {
   const [order, setOrder] = useState<number[]>([]);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const [streak, setStreak] = useState(0);
+  const streak = useStudyDay();
 
   const reload = useCallback(
     () =>
@@ -68,11 +63,6 @@ export function FlashcardsPage() {
   );
 
   useEffect(() => void reload(), [reload]);
-  useEffect(() => {
-    void api.study.day.$post({ json: { day: localDay() } }).then(async (res) => {
-      if (res.ok) setStreak((await res.json()).streak);
-    });
-  }, []);
   // Another device marked or renamed something: catch up, keep the position.
   useLive("study", () => void reload());
   useLive("sets", () => void reload());
@@ -101,15 +91,8 @@ export function FlashcardsPage() {
     setFlipped(false);
   }
 
-  function shuffle() {
-    setOrder((cards) => {
-      const mixed = [...cards];
-      for (let i = mixed.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [mixed[i], mixed[j]] = [mixed[j], mixed[i]];
-      }
-      return mixed;
-    });
+  function reshuffle() {
+    setOrder((cards) => shuffle(cards));
     goTo(0);
   }
 
@@ -214,7 +197,7 @@ export function FlashcardsPage() {
               total={deck.length}
               onPrev={() => goTo(at - 1)}
               onNext={() => goTo(at + 1)}
-              onShuffle={shuffle}
+              onShuffle={reshuffle}
             />
           </div>
 

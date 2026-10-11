@@ -68,6 +68,15 @@ export const en = {
   "sets.termsIncomplete": "Fill in both fields of a term, or delete the row.",
   "sets.termsChanged": "These terms were changed on another device. Reload the page and try again.",
 
+  "learn.askDefinition": "Which definition fits?",
+  "learn.askTerm": "Which term fits?",
+  "learn.remaining": "Remaining",
+  "learn.familiar": "Familiar",
+  "learn.mastered": "Learned",
+  "learn.allLearnedTitle": "Everything learned!",
+  "learn.allLearnedText": "You answered every term correctly twice.",
+  "learn.studyAnyway": "Study anyway",
+
   "notFound.title": "Page not found",
   "notFound.text": "This page does not exist (yet).",
   "notFound.action": "Back home",
