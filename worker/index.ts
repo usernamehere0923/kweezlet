@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { accountRoutes } from "./account";
 import { authRoutes, requireUser } from "./auth";
 import { liveRoutes } from "./live";
+import { setRoutes } from "./sets";
 import type { AppEnv } from "./types";
 
 // Only /api/* reaches this code (see wrangler.jsonc); everything else is the React app.
@@ -11,6 +12,7 @@ const app = new Hono<AppEnv>()
   .route("/api", authRoutes)
   .route("/api/me", accountRoutes)
   .route("/api", liveRoutes)
+  .route("/api", setRoutes)
   .all("/api/*", (c) => c.json({ error: "not_found" as const }, 404));
 
 app.onError((err, c) => {
