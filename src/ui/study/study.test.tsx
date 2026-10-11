@@ -63,6 +63,13 @@ describe("FlipCard", () => {
     renderUi(<FlipCard front="el gato" back="the cat" flipped />);
     expect(backHidden()).toBe("false");
   });
+
+  test("frontLabel and backLabel replace the corner labels", () => {
+    renderUi(<FlipCard front="the cat" back="el gato" frontLabel="Definition" backLabel="Term" />);
+    const hidden = (text: string) => screen.getByText(text).closest("[aria-hidden]")!.getAttribute("aria-hidden");
+    expect(hidden("Definition")).toBe("false");
+    expect(hidden("Term")).toBe("true");
+  });
 });
 
 describe("CardNav", () => {

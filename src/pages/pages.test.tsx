@@ -106,8 +106,8 @@ const SWISS = {
 const SPANISH_DETAIL = {
   ...SPANISH,
   terms: [
-    { id: 70, term: "el perro", definition: "the dog", position: 0 },
-    { id: 71, term: "el gato", definition: "the cat", position: 1 },
+    { id: 70, term: "el perro", definition: "the dog", position: 0, status: "unseen", starred: false },
+    { id: 71, term: "el gato", definition: "the cat", position: 1, status: "know_it", starred: true },
   ],
 };
 
@@ -262,5 +262,86 @@ describe("set form", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByText("Too long")).toBeTruthy();
+  });
+});
+
+/** Marks and stars are merged server-side; this fake behaves the same way. */
+function flashcardsApi() {
+  const marked: Record<number, { status: string; starred: boolean }> = {
+    71: { status: "know_it", starred: true },
+  };
+  const state = (termId: number) => (body: unknown) => {
+    const b = body as { status?: string; starred?: boolean };
+    const current = marked[termId] ?? { status: "unseen", starred: false };
+    marked[termId] = { status: b.status ?? current.status, starred: b.starred ?? current.starred };
+    return { json: { termId, ...marked[termId] } };
+  };
+  return {
+    "GET /api/me": () => ({ json: ME }),
+    "GET /api/sets/7": () => ({ json: SPANISH_DETAIL }),
+    "POST /api/study/day": () => ({ json: { streak: 3 } }),
+    "PATCH /api/terms/70/state": state(70),
+    "PATCH /api/terms/71/state": state(71),
+  };
+}
+
+describe("flashcards", () => {
+  test("shows the first card with progress and the streak", async () => {
+    mockApi(flashcardsApi());
+    renderApp("/sets/7/flashcards");
+    expect(await screen.findByText("el perro")).toBeTruthy();
+    expect(screen.getByText("1 / 2")).toBeTruthy();
+    expect(screen.getByText("3 day streak")).toBeTruthy();
+    expect(screen.getByText("Known 1")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Back to the set" })).toBeTruthy();
+  });
+
+  test("records the study day with the local date", async () => {
+    const { calls } = mockApi(flashcardsApi());
+    renderApp("/sets/7/flashcards");
+    await screen.findByText("el perro");
+    const body = calls.find((c) => c.path === "/api/study/day")?.body as { day: string };
+    expect(body.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  test("marking a card records it and moves on", async () => {
+    const { calls } = mockApi(flashcardsApi());
+    renderApp("/sets/7/flashcards");
+    await userEvent.click(await screen.findByRole("button", { name: "Know it" }));
+
+    await waitFor(() =>
+      expect(calls.find((c) => c.path === "/api/terms/70/state")?.body).toEqual({ status: "know_it" }),
+    );
+    expect(screen.getByText("2 / 2")).toBeTruthy();
+    expect(screen.getByText("el gato")).toBeTruthy();
+  });
+
+  test("starring sends starred and lights the star up", async () => {
+    const { calls } = mockApi(flashcardsApi());
+    renderApp("/sets/7/flashcards");
+    await userEvent.click(await screen.findByRole("button", { name: "Star this term" }));
+
+    await waitFor(() => expect(calls.find((c) => c.path === "/api/terms/70/state")?.body).toEqual({ starred: true }));
+    expect(await screen.findByRole("button", { name: "Remove the star" })).toBeTruthy();
+  });
+
+  test("definition first puts the definition on the front", async () => {
+    mockApi(flashcardsApi());
+    renderApp("/sets/7/flashcards");
+    await screen.findByText("el perro");
+    const onFront = (text: string) => screen.getByText(text).closest('[aria-hidden="false"]') !== null;
+    expect(onFront("el perro")).toBe(true);
+    expect(onFront("the dog")).toBe(false);
+
+    await userEvent.click(await screen.findByRole("radio", { name: "Definition first" }));
+    expect(onFront("the dog")).toBe(true);
+    expect(onFront("el perro")).toBe(false);
+  });
+
+  test("shuffling keeps all the cards", async () => {
+    mockApi(flashcardsApi());
+    renderApp("/sets/7/flashcards");
+    await userEvent.click(await screen.findByRole("button", { name: "Shuffle" }));
+    expect(screen.getByText("1 / 2")).toBeTruthy();
   });
 });

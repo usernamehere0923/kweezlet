@@ -153,6 +153,12 @@ export const en = {
   "study.resultScore": "{correct} of {total} correct",
   "study.studyAgain": "Study again",
   "study.done": "Done",
+  "study.backToSet": "Back to the set",
+  "study.cardOrder": "Show first",
+  "study.termFirst": "Term first",
+  "study.definitionFirst": "Definition first",
+  "study.starTerm": "Star this term",
+  "study.unstarTerm": "Remove the star",
   "study.streak_one": "{count} day streak",
   "study.streak_other": "{count} day streak",
 };

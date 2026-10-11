@@ -61,7 +61,13 @@ export const studyRoutes = new Hono<AppEnv>()
       .bind(user.id, id, term.set_id, status, starred ? 1 : 0)
       .run();
     await notify(c.env, user.id, "study");
-    return c.json({ termId: id, status: status ?? "unseen", starred }, 200);
+    // Annotated so the status keeps its literal type for the UI's typed client.
+    const result: { termId: number; status: "unseen" | Status; starred: boolean } = {
+      termId: id,
+      status: status ?? "unseen",
+      starred,
+    };
+    return c.json(result, 200);
   })
 
   // "I studied today": remember the day and answer the new streak length.

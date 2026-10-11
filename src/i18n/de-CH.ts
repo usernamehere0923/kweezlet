@@ -156,6 +156,12 @@ export const deCH: Record<keyof typeof en, string> = {
   "study.resultScore": "{correct} von {total} richtig",
   "study.studyAgain": "Nochmals lernen",
   "study.done": "Fertig",
+  "study.backToSet": "Zurück zum Set",
+  "study.cardOrder": "Zeige zuerst",
+  "study.termFirst": "Begriff zuerst",
+  "study.definitionFirst": "Definition zuerst",
+  "study.starTerm": "Begriff markieren",
+  "study.unstarTerm": "Markierung entfernen",
   "study.streak_one": "{count} Tag in Folge",
   "study.streak_other": "{count} Tage in Folge",
 };
