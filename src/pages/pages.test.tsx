@@ -82,3 +82,102 @@ describe("design page", () => {
     expect(screen.queryByText("Oops, this screen crashed")).toBeNull();
   });
 });
+
+const SPANISH = {
+  id: 7,
+  title: "Spanish animals",
+  description: "chapter 1",
+  termLang: "es",
+  defLang: "en",
+  termCount: 2,
+  createdAt: 1,
+  updatedAt: 1,
+};
+const SWISS = {
+  id: 8,
+  title: "Swiss history",
+  description: "",
+  termLang: null,
+  defLang: null,
+  termCount: 1,
+  createdAt: 1,
+  updatedAt: 1,
+};
+const SPANISH_DETAIL = {
+  ...SPANISH,
+  terms: [
+    { id: 70, term: "el perro", definition: "the dog", position: 0 },
+    { id: 71, term: "el gato", definition: "the cat", position: 1 },
+  ],
+};
+
+describe("study sets", () => {
+  test("home lists my sets and finds them by search", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": (_body, query) => ({
+        json: [SPANISH, SWISS].filter((s) => !query.q || s.title.toLowerCase().includes(query.q.toLowerCase())),
+      }),
+    });
+    renderApp("/");
+    expect(await screen.findByText("Spanish animals")).toBeTruthy();
+    expect(screen.getByText("Swiss history")).toBeTruthy();
+
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search your sets" }), "swiss");
+    await waitFor(() => expect(calls.filter((c) => c.path === "/api/sets").at(-1)?.query.q).toBe("swiss"));
+    expect(screen.getByText("Swiss history")).toBeTruthy();
+    expect(screen.queryByText("Spanish animals")).toBeNull();
+  });
+
+  test("home offers to create the first set when there are none", async () => {
+    mockApi({ "GET /api/me": () => ({ json: ME }), "GET /api/sets": () => ({ json: [] }) });
+    renderApp("/");
+    expect(await screen.findByText("No sets yet")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Create your first set" })).toBeTruthy();
+  });
+
+  test("a search without hits can be cleared", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": (_body, query) => ({
+        json: [SPANISH, SWISS].filter((s) => !query.q || s.title.toLowerCase().includes(query.q.toLowerCase())),
+      }),
+    });
+    renderApp("/");
+    await userEvent.type(await screen.findByRole("searchbox", { name: "Search your sets" }), "zzz");
+    expect(await screen.findByText("Nothing matches your search")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(await screen.findByText("Spanish animals")).toBeTruthy();
+  });
+
+  test("set detail shows the terms and starts flashcards", async () => {
+    mockApi({ "GET /api/me": () => ({ json: ME }), "GET /api/sets/7": () => ({ json: SPANISH_DETAIL }) });
+    renderApp("/sets/7");
+    expect(await screen.findByRole("heading", { level: 1, name: "Spanish animals" })).toBeTruthy();
+    expect(screen.getByText("chapter 1")).toBeTruthy();
+    expect(screen.getByText("el perro")).toBeTruthy();
+    expect(screen.getByText("the dog")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Flashcards" })).toBeTruthy();
+  });
+
+  test("a set that is gone shows the not-found screen", async () => {
+    mockApi({ "GET /api/me": () => ({ json: ME }), "GET /api/sets/7": () => ({ status: 404 }) });
+    renderApp("/sets/7");
+    expect(await screen.findByText("Page not found")).toBeTruthy();
+  });
+
+  test("deleting a set asks first, then deletes", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [] }),
+      "GET /api/sets/7": () => ({ json: SPANISH_DETAIL }),
+      "DELETE /api/sets/7": () => ({ json: { ok: true } }),
+    });
+    renderApp("/sets/7");
+    await userEvent.click(await screen.findByRole("button", { name: "Delete set" }));
+    expect(await screen.findByText("Delete this set?")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.path === "/api/sets/7")).toBe(true));
+    expect(await screen.findByText("Set deleted")).toBeTruthy();
+  });
+});

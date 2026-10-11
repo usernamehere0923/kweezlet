@@ -9,6 +9,7 @@ import { HomePage } from "./pages/Home";
 import { LoginPage } from "./pages/Login";
 import { NotFoundPage } from "./pages/NotFound";
 import { SettingsPage } from "./pages/Settings";
+import { SetDetailPage } from "./pages/SetDetail";
 import { AppShell, ErrorBoundary, Spinner, ToastProvider, useToast, type NavItem } from "./ui";
 
 export function App() {
@@ -78,6 +79,7 @@ function LoggedInApp() {
       <ErrorBoundary key={location.pathname}>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/sets/:id" element={<SetDetailPage />} />
           <Route path="/design" element={<DesignSystemPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />

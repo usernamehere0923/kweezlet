@@ -6,6 +6,7 @@ import { validate } from "./validate";
 
 /** Languages a set's terms / definitions can be in. `null` = not set. */
 export const LANGUAGES = ["en", "de", "fr", "it", "es"] as const;
+export type Language = (typeof LANGUAGES)[number];
 export const languageSchema = z.enum(LANGUAGES);
 
 const idParam = z.object({ id: z.coerce.number().int().positive() });
@@ -53,10 +54,15 @@ function likePattern(q: string): string {
   return `%${q.replace(/[\\%_]/g, (m) => `\\${m}`)}%`;
 }
 
+// The JSON shapes of the routes below. The UI imports these as types.
+export type SetSummary = ReturnType<typeof toSetJson>;
+export type SetTerm = TermRow;
+export type SetDetail = SetSummary & { terms: SetTerm[] };
+
 const SET_COLUMNS = "id, title, description, term_lang, def_lang, created_at, updated_at";
 
 /** The set with all its terms, or null when it is not the user's. */
-async function loadSetDetail(db: D1Database, userId: number, id: number) {
+async function loadSetDetail(db: D1Database, userId: number, id: number): Promise<SetDetail | null> {
   const set = await db
     .prepare(`SELECT ${SET_COLUMNS} FROM sets WHERE id = ? AND user_id = ?`)
     .bind(id, userId)
