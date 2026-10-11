@@ -7,7 +7,9 @@ import { addUser, api, login } from "./helpers";
 async function addSetWithTerm(userId: number) {
   await env.DB.prepare("INSERT INTO sets (user_id, title) VALUES (?, 'Set')").bind(userId).run();
   const set = await env.DB.prepare("SELECT id FROM sets WHERE user_id = ?").bind(userId).first<{ id: number }>();
-  await env.DB.prepare("INSERT INTO terms (user_id, set_id, term, definition, position) VALUES (?, ?, 'hola', 'hello', 0)")
+  await env.DB.prepare(
+    "INSERT INTO terms (user_id, set_id, term, definition, position) VALUES (?, ?, 'hola', 'hello', 0)",
+  )
     .bind(userId, set!.id)
     .run();
   const term = await env.DB.prepare("SELECT id FROM terms WHERE user_id = ?").bind(userId).first<{ id: number }>();
@@ -18,7 +20,9 @@ describe("study progress", () => {
   it("is part of the user's export", async () => {
     const anna = await addUser("anna", "secret-pw");
     const { setId, termId } = await addSetWithTerm(anna);
-    await env.DB.prepare("INSERT INTO term_state (user_id, term_id, set_id, status, starred) VALUES (?, ?, ?, 'know_it', 1)")
+    await env.DB.prepare(
+      "INSERT INTO term_state (user_id, term_id, set_id, status, starred) VALUES (?, ?, ?, 'know_it', 1)",
+    )
       .bind(anna, termId, setId)
       .run();
     await env.DB.prepare("INSERT INTO study_days (user_id, day) VALUES (?, '2026-10-11')").bind(anna).run();

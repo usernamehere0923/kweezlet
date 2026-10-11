@@ -77,5 +77,13 @@ export const studyRoutes = new Hono<AppEnv>()
       .prepare("SELECT day FROM study_days WHERE user_id = ? ORDER BY day DESC")
       .bind(user.id)
       .all<{ day: string }>();
-    return c.json({ streak: streakOf(results.map((row) => row.day), day) }, 200);
+    return c.json(
+      {
+        streak: streakOf(
+          results.map((row) => row.day),
+          day,
+        ),
+      },
+      200,
+    );
   });
