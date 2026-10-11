@@ -41,8 +41,9 @@ function toSetJson(row: SetRow & { term_count?: number }) {
     id: row.id,
     title: row.title,
     description: row.description,
-    termLang: row.term_lang,
-    defLang: row.def_lang,
+    // Written through languageSchema, so the text is a known language or null.
+    termLang: row.term_lang as Language | null,
+    defLang: row.def_lang as Language | null,
     termCount: row.term_count ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -156,7 +157,8 @@ export const setRoutes = new Hono<AppEnv>()
       .first<{ id: number }>();
     await replaceTerms(db, user.id, created!.id, body.terms);
     await notify(c.env, user.id, "sets");
-    return c.json(await loadSetDetail(db, user.id, created!.id), 201);
+    // The set was just written, so the reload cannot miss it.
+    return c.json((await loadSetDetail(db, user.id, created!.id))!, 201);
   })
 
   // Replace a set's data. Terms with an id are updated in place.
@@ -176,7 +178,8 @@ export const setRoutes = new Hono<AppEnv>()
       return c.json({ error: "validation" as const, fields: { terms: "invalid_value" } }, 400);
     }
     await notify(c.env, user.id, "sets");
-    return c.json(await loadSetDetail(db, user.id, id), 200);
+    // The set exists (the UPDATE above changed a row), so the reload cannot miss.
+    return c.json((await loadSetDetail(db, user.id, id))!, 200);
   })
 
   // Delete a set; its terms go with it.

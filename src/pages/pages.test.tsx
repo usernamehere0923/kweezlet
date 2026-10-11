@@ -181,3 +181,86 @@ describe("study sets", () => {
     expect(await screen.findByText("Set deleted")).toBeTruthy();
   });
 });
+
+describe("set form", () => {
+  test("creating a set sends the form and opens the set", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "POST /api/sets": () => ({ status: 201, json: { ...SPANISH_DETAIL, id: 9 } }),
+      "GET /api/sets/9": () => ({ json: { ...SPANISH_DETAIL, id: 9 } }),
+    });
+    renderApp("/sets/new");
+    await userEvent.type(await screen.findByLabelText("Title"), "Spanish animals");
+    await userEvent.type(screen.getByLabelText("Term"), "el perro");
+    await userEvent.type(screen.getByLabelText("Definition"), "the dog");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "POST")?.body).toEqual({
+        title: "Spanish animals",
+        description: "",
+        termLang: null,
+        defLang: null,
+        terms: [{ term: "el perro", definition: "the dog" }],
+      }),
+    );
+    expect(await screen.findByRole("heading", { level: 1, name: "Spanish animals" })).toBeTruthy();
+    expect(await screen.findByText("Saved")).toBeTruthy();
+  });
+
+  test("a half-filled row is caught before sending", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "POST /api/sets": () => ({ status: 201, json: {} }),
+    });
+    renderApp("/sets/new");
+    await userEvent.type(await screen.findByLabelText("Title"), "Spanish animals");
+    await userEvent.type(screen.getByLabelText("Term"), "el perro");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("Fill in both fields of a term, or delete the row.")).toBeTruthy();
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+  });
+
+  test("a set needs at least one term", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "POST /api/sets": () => ({ status: 201, json: {} }),
+    });
+    renderApp("/sets/new");
+    await userEvent.type(await screen.findByLabelText("Title"), "Spanish animals");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("Add at least one term.")).toBeTruthy();
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+  });
+
+  test("editing keeps the ids of the terms", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets/7": () => ({ json: SPANISH_DETAIL }),
+      "PATCH /api/sets/7": () => ({ json: SPANISH_DETAIL }),
+    });
+    renderApp("/sets/7/edit");
+    expect((await screen.findByDisplayValue("Spanish animals")) as HTMLInputElement).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
+    const body = calls.find((c) => c.method === "PATCH")?.body as { terms: { id: number }[] };
+    expect(body.terms.map((term) => term.id)).toEqual([70, 71]);
+  });
+
+  test("server field errors show under the field", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "POST /api/sets": () => ({ status: 400, json: { error: "validation", fields: { title: "too_big" } } }),
+    });
+    renderApp("/sets/new");
+    await userEvent.type(await screen.findByLabelText("Title"), "A very long title");
+    await userEvent.type(screen.getByLabelText("Term"), "a");
+    await userEvent.type(screen.getByLabelText("Definition"), "b");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText("Too long")).toBeTruthy();
+  });
+});

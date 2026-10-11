@@ -57,6 +57,15 @@ export const en = {
   "sets.deleteTitle": "Delete this set?",
   "sets.deleteText": "This cannot be undone.",
   "sets.deleted": "Set deleted",
+  "sets.fieldTitle": "Title",
+  "sets.fieldDescription": "Description",
+  "sets.fieldDescriptionHint": "Optional",
+  "sets.languages": "Languages",
+  "sets.langTerms": "Language of the terms",
+  "sets.langDefs": "Language of the definitions",
+  "sets.langHint": "Optional. Used for audio and grading later.",
+  "sets.termsNeeded": "Add at least one term.",
+  "sets.termsIncomplete": "Fill in both fields of a term, or delete the row.",
 
   "notFound.title": "Page not found",
   "notFound.text": "This page does not exist (yet).",
@@ -81,6 +90,13 @@ export const en = {
 
   "locale.en": "English",
   "locale.de-CH": "Deutsch",
+
+  "lang.none": "Not set",
+  "lang.en": "English",
+  "lang.de": "Deutsch",
+  "lang.fr": "Français",
+  "lang.it": "Italiano",
+  "lang.es": "Español",
 
   "design.title": "Design system",
   "design.intro": "Every building block of kweezlet. Copy the snippet, change the text, done.",

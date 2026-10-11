@@ -59,6 +59,15 @@ export const deCH: Record<keyof typeof en, string> = {
   "sets.deleteTitle": "Dieses Set löschen?",
   "sets.deleteText": "Das kann nicht rückgängig gemacht werden.",
   "sets.deleted": "Set gelöscht",
+  "sets.fieldTitle": "Titel",
+  "sets.fieldDescription": "Beschreibung",
+  "sets.fieldDescriptionHint": "Optional",
+  "sets.languages": "Sprachen",
+  "sets.langTerms": "Sprache der Begriffe",
+  "sets.langDefs": "Sprache der Definitionen",
+  "sets.langHint": "Optional. Wird später für Audio und zum Prüfen verwendet.",
+  "sets.termsNeeded": "Füge mindestens einen Begriff hinzu.",
+  "sets.termsIncomplete": "Fülle beide Felder eines Begriffs aus, oder lösche die Zeile.",
 
   "notFound.title": "Seite nicht gefunden",
   "notFound.text": "Diese Seite gibt es (noch) nicht.",
@@ -83,6 +92,13 @@ export const deCH: Record<keyof typeof en, string> = {
 
   "locale.en": "English",
   "locale.de-CH": "Deutsch",
+
+  "lang.none": "Nicht gesetzt",
+  "lang.en": "English",
+  "lang.de": "Deutsch",
+  "lang.fr": "Français",
+  "lang.it": "Italiano",
+  "lang.es": "Español",
 
   "design.title": "Design-System",
   "design.intro": "Alle Bausteine von kweezlet. Snippet kopieren, Text anpassen, fertig.",
