@@ -4,7 +4,7 @@ import type { SetDetail, SetTerm } from "../../worker/sets";
 import { useT, type TKey } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
-import { normalizeAnswer, shuffle, useStudyDay } from "../lib/study";
+import { gradeAnswer, shuffle, useStudyDay } from "../lib/study";
 import {
   AnswerInput,
   AnswerOption,
@@ -231,7 +231,7 @@ export function LearnPage() {
                 value={typed}
                 onChange={setTyped}
                 state={feedback ?? "idle"}
-                onSubmit={() => submitAnswer(normalizeAnswer(typed) === normalizeAnswer(question.answer), typed)}
+                onSubmit={() => submitAnswer(gradeAnswer(typed, question.answer), typed)}
               />
             ) : (
               <div className="flex flex-col gap-3">

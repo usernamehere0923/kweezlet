@@ -563,4 +563,20 @@ describe("learn", () => {
     expect(await screen.findByText("the cat")).toBeTruthy();
     expect(screen.getByText("Which term fits?")).toBeTruthy();
   });
+
+  test("smart grading accepts a small typo", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const improving = {
+      ...LEARN_DETAIL,
+      terms: LEARN_DETAIL.terms.map((term) => (term.streak === 0 ? { ...term, streak: 1 } : term)),
+    };
+    mockApi(learnApi(improving));
+    renderApp("/sets/7/learn");
+
+    // Written questions from the start: both terms have one correct answer.
+    expect(await screen.findByText("Familiar 2")).toBeTruthy();
+    await userEvent.type(screen.getByLabelText("Your answer"), "el gat");
+    await userEvent.click(screen.getByRole("button", { name: "Check" }));
+    expect(await screen.findByText("Correct!")).toBeTruthy();
+  });
 });

@@ -31,7 +31,57 @@ export function shuffle<T>(list: T[]): T[] {
   return mixed;
 }
 
-/** How written answers are compared: " The  Dog " and "the dog" are equal. */
+/**
+ * How written answers are compared: " The  Dog " and "the dog" are equal.
+ * Accents and punctuation do not matter either: "café" answers "cafe".
+ */
 export function normalizeAnswer(text: string): string {
-  return text.trim().toLowerCase().replace(/\s+/g, " ");
+  return text
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .replace(/ß/g, "ss")
+    .replace(/['’ʼ]/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+/**
+ * Smart grading: a small typo still counts, and a "/" in the definition offers
+ * alternatives ("the dog / hund" is answered by either). Numbers and very
+ * short answers have to be exact.
+ */
+export function gradeAnswer(given: string, expected: string): boolean {
+  const said = normalizeAnswer(given);
+  return expected
+    .split("/")
+    .map(normalizeAnswer)
+    .filter(Boolean)
+    .some((alternative) => closeEnough(said, alternative));
+}
+
+/** Typos allowed: one for words from four characters, two for long ones. */
+function closeEnough(said: string, expected: string): boolean {
+  if (said === expected) return true;
+  // Numbers are answered exactly: 1291 is not 1292.
+  if (/^\d+$/.test(expected)) return false;
+  const tolerance = expected.length < 4 ? 0 : Math.min(2, Math.floor((expected.length - 4) / 5) + 1);
+  if (tolerance === 0 || Math.abs(said.length - expected.length) > tolerance) return false;
+  return editDistance(said, expected) <= tolerance;
+}
+
+/** Levenshtein distance, with adjacent transpositions ("teh" = one typo). */
+function editDistance(a: string, b: string): number {
+  const d: number[][] = [Array.from({ length: b.length + 1 }, (_, i) => i)];
+  for (let r = 1; r <= a.length; r++) {
+    d[r] = [r];
+    for (let c = 1; c <= b.length; c++) {
+      d[r][c] = Math.min(d[r - 1][c] + 1, d[r][c - 1] + 1, d[r - 1][c - 1] + (a[r - 1] === b[c - 1] ? 0 : 1));
+      if (r > 1 && c > 1 && a[r - 1] === b[c - 2] && a[r - 2] === b[c - 1]) {
+        d[r][c] = Math.min(d[r][c], d[r - 2][c - 2] + 1);
+      }
+    }
+  }
+  return d[a.length][b.length];
 }
