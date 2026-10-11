@@ -107,8 +107,8 @@ describe("GET /api/sets/:id", () => {
       createdAt: expect.any(Number),
       updatedAt: expect.any(Number),
       terms: [
-        { id: expect.any(Number), term: "el perro", definition: "the dog", position: 0 },
-        { id: expect.any(Number), term: "el gato", definition: "the cat", position: 1 },
+        { id: expect.any(Number), term: "el perro", definition: "the dog", position: 0, status: "unseen", starred: false },
+        { id: expect.any(Number), term: "el gato", definition: "the cat", position: 1, status: "unseen", starred: false },
       ],
     });
   });
@@ -165,8 +165,8 @@ describe("POST /api/sets", () => {
       createdAt: expect.any(Number),
       updatedAt: expect.any(Number),
       terms: [
-        { id: expect.any(Number), term: "el perro", definition: "the dog", position: 0 },
-        { id: expect.any(Number), term: "el gato", definition: "the cat", position: 1 },
+        { id: expect.any(Number), term: "el perro", definition: "the dog", position: 0, status: "unseen", starred: false },
+        { id: expect.any(Number), term: "el gato", definition: "the cat", position: 1, status: "unseen", starred: false },
       ],
     });
 
@@ -234,8 +234,8 @@ describe("PATCH /api/sets/:id", () => {
       terms: { id: number; term: string; definition: string }[];
     };
     expect(after.terms).toEqual([
-      { id: perro.id, term: "el perro", definition: "the dog (updated)", position: 0 },
-      { id: expect.any(Number), term: "el caballo", definition: "the horse", position: 1 },
+      { id: perro.id, term: "el perro", definition: "the dog (updated)", position: 0, status: "unseen", starred: false },
+      { id: expect.any(Number), term: "el caballo", definition: "the horse", position: 1, status: "unseen", starred: false },
     ]);
     expect(after.terms.map((t) => t.id)).not.toContain(gato.id);
   });

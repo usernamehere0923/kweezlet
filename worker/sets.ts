@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { notify } from "./live";
+import type { Status } from "./study";
 import type { AppEnv } from "./types";
 import { validate } from "./validate";
 
@@ -34,7 +35,14 @@ type SetRow = {
   created_at: number;
   updated_at: number;
 };
-type TermRow = { id: number; term: string; definition: string; position: number };
+type TermRow = {
+  id: number;
+  term: string;
+  definition: string;
+  position: number;
+  status: Status | null;
+  starred: number;
+};
 
 function toSetJson(row: SetRow & { term_count?: number }) {
   return {
@@ -57,7 +65,16 @@ function likePattern(q: string): string {
 
 // The JSON shapes of the routes below. The UI imports these as types.
 export type SetSummary = ReturnType<typeof toSetJson>;
-export type SetTerm = TermRow;
+/** "unseen" = the term has no mark yet (worker/study.ts stores the rest). */
+export type TermStatus = "unseen" | Status;
+export type SetTerm = {
+  id: number;
+  term: string;
+  definition: string;
+  position: number;
+  status: TermStatus;
+  starred: boolean;
+};
 export type SetDetail = SetSummary & { terms: SetTerm[] };
 
 const SET_COLUMNS = "id, title, description, term_lang, def_lang, created_at, updated_at";
@@ -70,10 +87,19 @@ async function loadSetDetail(db: D1Database, userId: number, id: number): Promis
     .first<SetRow>();
   if (!set) return null;
   const { results: terms } = await db
-    .prepare("SELECT id, term, definition, position FROM terms WHERE set_id = ? AND user_id = ? ORDER BY position")
+    .prepare(
+      `SELECT t.id, t.term, t.definition, t.position, ts.status, COALESCE(ts.starred, 0) AS starred
+         FROM terms t
+         LEFT JOIN term_state ts ON ts.term_id = t.id AND ts.user_id = t.user_id
+        WHERE t.set_id = ? AND t.user_id = ?
+        ORDER BY t.position`,
+    )
     .bind(id, userId)
     .all<TermRow>();
-  return { ...toSetJson({ ...set, term_count: terms.length }), terms };
+  return {
+    ...toSetJson({ ...set, term_count: terms.length }),
+    terms: terms.map((row) => ({ ...row, status: row.status ?? "unseen", starred: !!row.starred })),
+  };
 }
 
 /**
