@@ -52,7 +52,8 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 
 ### Git
 
-- Work only on `master`: no feature branches, no worktrees, no PRs. He doesn't know them.
+- One branch and pull request per phase (like `phase-2-learn`), merged into `master` when it is green: merge commit, then delete the branch. Trivial fixes (docs, formatting) may go straight to `master`.
+- No worktrees. `master` is a protected branch: it cannot be force-pushed.
 - Commit after every step that works (`check` + `test` green), not one big commit at the end. Message: what changed, in plain words. Then push.
 
 ### Tests and coverage
