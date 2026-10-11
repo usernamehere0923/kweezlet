@@ -344,4 +344,31 @@ describe("flashcards", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Shuffle" }));
     expect(screen.getByText("1 / 2")).toBeTruthy();
   });
+
+  test("the filter cuts the deck down to matching cards", async () => {
+    mockApi(flashcardsApi());
+    renderApp("/sets/7/flashcards");
+    await screen.findByText("el perro");
+
+    await userEvent.click(screen.getByRole("radio", { name: "Know it" }));
+    expect(screen.getByText("1 / 1")).toBeTruthy();
+    expect(screen.getByText("el gato")).toBeTruthy();
+    expect(screen.queryByText("el perro")).toBeNull();
+
+    await userEvent.click(screen.getByRole("radio", { name: "Starred" }));
+    expect(screen.getByText("1 / 1")).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("radio", { name: "Still learning" }));
+    expect(await screen.findByText("No cards here")).toBeTruthy();
+  });
+
+  test("marking a card can empty the filtered deck", async () => {
+    mockApi(flashcardsApi());
+    renderApp("/sets/7/flashcards");
+    await userEvent.click(await screen.findByRole("radio", { name: "Know it" }));
+    expect(screen.getByText("el gato")).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("button", { name: "Still learning" }));
+    expect(await screen.findByText("No cards here")).toBeTruthy();
+  });
 });

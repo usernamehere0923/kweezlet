@@ -159,6 +159,11 @@ export const en = {
   "study.definitionFirst": "Definition first",
   "study.starTerm": "Star this term",
   "study.unstarTerm": "Remove the star",
+  "study.filterLabel": "Show",
+  "study.filter.all": "All",
+  "study.filter.starred": "Starred",
+  "study.emptyDeckTitle": "No cards here",
+  "study.emptyDeckText": "Change the filter, or mark some cards first.",
   "study.streak_one": "{count} day streak",
   "study.streak_other": "{count} day streak",
 };

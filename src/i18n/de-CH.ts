@@ -162,6 +162,11 @@ export const deCH: Record<keyof typeof en, string> = {
   "study.definitionFirst": "Definition zuerst",
   "study.starTerm": "Begriff markieren",
   "study.unstarTerm": "Markierung entfernen",
+  "study.filterLabel": "Zeigen",
+  "study.filter.all": "Alle",
+  "study.filter.starred": "Gemerkt",
+  "study.emptyDeckTitle": "Keine Karten hier",
+  "study.emptyDeckText": "Wechsle den Filter oder markiere zuerst einige Karten.",
   "study.streak_one": "{count} Tag in Folge",
   "study.streak_other": "{count} Tage in Folge",
 };
