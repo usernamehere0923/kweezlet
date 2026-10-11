@@ -13,6 +13,7 @@ const stateBody = z.object({
   status: z.enum(STATUSES).nullish(),
   starred: z.boolean().nullish(),
 });
+const answerBody = z.object({ correct: z.boolean() });
 /**
  * A local day, YYYY-MM-DD. The client computes it in the user's timezone.
  * Not just the shape: 2026-02-31 would poison the streak (see streakOf).
@@ -79,6 +80,64 @@ export const studyRoutes = new Hono<AppEnv>()
       termId: id,
       status: status ?? "unseen",
       starred,
+    };
+    return c.json(result, 200);
+  })
+
+  // An answer in Learn mode: counts it and moves the streak. Two correct in a
+  // row learn the term ("know it"), a wrong answer drops it to "still
+  // learning" — the flashcards marks follow along.
+  .post("/terms/:id/answer", validate("param", idParam), validate("json", answerBody), async (c) => {
+    const user = c.get("user");
+    const { id } = c.req.valid("param");
+    const { correct } = c.req.valid("json");
+    const db = c.env.DB;
+    const term = await db
+      .prepare("SELECT set_id FROM terms WHERE id = ? AND user_id = ?")
+      .bind(id, user.id)
+      .first<{ set_id: number }>();
+    if (!term) return c.json({ error: "not_found" as const }, 404);
+    const stats = await db
+      .prepare("SELECT correct, wrong, streak FROM term_stats WHERE user_id = ? AND term_id = ?")
+      .bind(user.id, id)
+      .first<{ correct: number; wrong: number; streak: number }>();
+    const mark = await db
+      .prepare("SELECT status FROM term_state WHERE user_id = ? AND term_id = ?")
+      .bind(user.id, id)
+      .first<{ status: Status | null }>();
+
+    const next = {
+      correct: (stats?.correct ?? 0) + (correct ? 1 : 0),
+      wrong: (stats?.wrong ?? 0) + (correct ? 0 : 1),
+      streak: correct ? (stats?.streak ?? 0) + 1 : 0,
+    };
+    // One correct answer leaves the user's own mark alone.
+    const status: Status | null = !correct ? "still_learning" : next.streak >= 2 ? "know_it" : (mark?.status ?? null);
+    const statements = [
+      db
+        .prepare(
+          `INSERT INTO term_stats (user_id, term_id, set_id, correct, wrong, streak, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, unixepoch())
+           ON CONFLICT (user_id, term_id) DO UPDATE SET
+             correct = excluded.correct, wrong = excluded.wrong, streak = excluded.streak, last_seen_at = unixepoch()`,
+        )
+        .bind(user.id, id, term.set_id, next.correct, next.wrong, next.streak),
+    ];
+    if (status !== (mark?.status ?? null)) {
+      statements.push(
+        db
+          .prepare(
+            `INSERT INTO term_state (user_id, term_id, set_id, status, starred, updated_at) VALUES (?, ?, ?, ?, 0, unixepoch())
+             ON CONFLICT (user_id, term_id) DO UPDATE SET status = excluded.status, updated_at = unixepoch()`,
+          )
+          .bind(user.id, id, term.set_id, status),
+      );
+    }
+    await db.batch(statements);
+    await notify(c.env, user.id, "study");
+    const result: { termId: number; correct: number; wrong: number; streak: number; status: "unseen" | Status } = {
+      termId: id,
+      ...next,
+      status: status ?? "unseen",
     };
     return c.json(result, 200);
   })

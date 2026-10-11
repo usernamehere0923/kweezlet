@@ -106,8 +106,8 @@ const SWISS = {
 const SPANISH_DETAIL = {
   ...SPANISH,
   terms: [
-    { id: 70, term: "el perro", definition: "the dog", position: 0, status: "unseen", starred: false },
-    { id: 71, term: "el gato", definition: "the cat", position: 1, status: "know_it", starred: true },
+    { id: 70, term: "el perro", definition: "the dog", position: 0, status: "unseen", starred: false, streak: 0 },
+    { id: 71, term: "el gato", definition: "the cat", position: 1, status: "know_it", starred: true, streak: 2 },
   ],
 };
 
@@ -307,9 +307,33 @@ const THREE_DETAIL = {
   ...SPANISH,
   termCount: 3,
   terms: [
-    { id: 70, term: "el perro", definition: "the dog", position: 0, status: "still_learning", starred: false },
-    { id: 71, term: "el gato", definition: "the cat", position: 1, status: "still_learning", starred: false },
-    { id: 72, term: "el caballo", definition: "the horse", position: 2, status: "still_learning", starred: false },
+    {
+      id: 70,
+      term: "el perro",
+      definition: "the dog",
+      position: 0,
+      status: "still_learning",
+      starred: false,
+      streak: 0,
+    },
+    {
+      id: 71,
+      term: "el gato",
+      definition: "the cat",
+      position: 1,
+      status: "still_learning",
+      starred: false,
+      streak: 0,
+    },
+    {
+      id: 72,
+      term: "el caballo",
+      definition: "the horse",
+      position: 2,
+      status: "still_learning",
+      starred: false,
+      streak: 0,
+    },
   ],
 };
 

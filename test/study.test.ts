@@ -83,6 +83,69 @@ describe("PATCH /api/terms/:id/state", () => {
   });
 });
 
+describe("POST /api/terms/:id/answer", () => {
+  it("two correct answers in a row learn the term", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const { setId, termId } = await addSetWithTerm(anna);
+    const cookie = await login("anna", "secret-pw");
+
+    // One correct answer is not enough to say "I know it".
+    let res = await api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct: true } });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ termId, correct: 1, wrong: 0, streak: 1, status: "unseen" });
+
+    res = await api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct: true } });
+    expect(await res.json()).toEqual({ termId, correct: 2, wrong: 0, streak: 2, status: "know_it" });
+
+    // The set detail carries the same numbers to the Learn screen.
+    const detail = (await (await api(`/api/sets/${setId}`, { cookie })).json()) as {
+      terms: { streak: number; status: string }[];
+    };
+    expect(detail.terms[0]).toEqual(expect.objectContaining({ streak: 2, status: "know_it" }));
+  });
+
+  it("a wrong answer resets the streak and drops the mark", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const { termId } = await addSetWithTerm(anna);
+    const cookie = await login("anna", "secret-pw");
+    await api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct: true } });
+    await api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct: true } });
+
+    const res = await api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct: false } });
+    expect(await res.json()).toEqual({ termId, correct: 2, wrong: 1, streak: 0, status: "still_learning" });
+  });
+
+  it("one correct answer leaves the user's own mark alone", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const { termId } = await addSetWithTerm(anna);
+    const cookie = await login("anna", "secret-pw");
+    await api(`/api/terms/${termId}/state`, { method: "PATCH", cookie, json: { status: "still_learning" } });
+
+    const res = await api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct: true } });
+    expect(await res.json()).toEqual({ termId, correct: 1, wrong: 0, streak: 1, status: "still_learning" });
+  });
+
+  it("another user's term is a 404", async () => {
+    await addUser("anna", "secret-pw");
+    const ben = await addUser("ben", "secret-pw");
+    const { termId } = await addSetWithTerm(ben);
+    const cookie = await login("anna", "secret-pw");
+
+    const res = await api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct: true } });
+    expect(res.status).toBe(404);
+  });
+
+  it("correct has to be a yes or a no", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const { termId } = await addSetWithTerm(anna);
+    const cookie = await login("anna", "secret-pw");
+
+    const res = await api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct: "yes" } });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "validation", fields: { correct: "invalid_type" } });
+  });
+});
+
 describe("POST /api/study/day", () => {
   it("counts the days in a row up to today", async () => {
     const anna = await addUser("anna", "secret-pw");
