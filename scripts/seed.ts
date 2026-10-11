@@ -37,6 +37,12 @@ const statements: string[] = [
      (${demo}, ${term("Spanish animals", "el perro")}, ${set("Spanish animals")}, 'know_it', 0),
      (${demo}, ${term("Spanish animals", "el gato")}, ${set("Spanish animals")}, 'know_it', 1),
      (${demo}, ${term("Swiss history", "1291")}, ${set("Swiss history")}, 'still_learning', 1)`,
+  // The Learn numbers behind those marks: two in a row = learned.
+  `INSERT INTO term_stats (user_id, term_id, set_id, correct, wrong, streak) VALUES
+     (${demo}, ${term("Spanish animals", "el perro")}, ${set("Spanish animals")}, 2, 0, 2),
+     (${demo}, ${term("Spanish animals", "el gato")}, ${set("Spanish animals")}, 2, 0, 2),
+     (${demo}, ${term("Spanish animals", "el caballo")}, ${set("Spanish animals")}, 1, 0, 1),
+     (${demo}, ${term("Swiss history", "1291")}, ${set("Swiss history")}, 1, 1, 0)`,
   // Studied today and on the two days before: a three day streak.
   `INSERT INTO study_days (user_id, day) VALUES (${demo}, '${day(0)}'), (${demo}, '${day(1)}'), (${demo}, '${day(2)}')`,
 ];

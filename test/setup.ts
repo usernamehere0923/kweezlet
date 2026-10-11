@@ -8,6 +8,7 @@ await applyD1Migrations(env.DB, env.TEST_MIGRATIONS);
 beforeEach(async () => {
   await env.DB.batch([
     env.DB.prepare("DROP TABLE IF EXISTS notes"),
+    env.DB.prepare("DELETE FROM term_stats"),
     env.DB.prepare("DELETE FROM study_days"),
     env.DB.prepare("DELETE FROM term_state"),
     env.DB.prepare("DELETE FROM terms"),

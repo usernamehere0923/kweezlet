@@ -25,10 +25,16 @@ describe("study progress", () => {
     )
       .bind(anna, termId, setId)
       .run();
+    await env.DB.prepare(
+      "INSERT INTO term_stats (user_id, term_id, set_id, correct, wrong, streak) VALUES (?, ?, ?, 2, 1, 2)",
+    )
+      .bind(anna, termId, setId)
+      .run();
     await env.DB.prepare("INSERT INTO study_days (user_id, day) VALUES (?, '2026-10-11')").bind(anna).run();
 
     const data = await exportUserData(env.DB, anna);
     expect(data.term_state).toEqual([expect.objectContaining({ status: "know_it", starred: 1 })]);
+    expect(data.term_stats).toEqual([expect.objectContaining({ correct: 2, wrong: 1, streak: 2 })]);
     expect(data.study_days).toEqual([expect.objectContaining({ day: "2026-10-11" })]);
   });
 });
