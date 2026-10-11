@@ -102,29 +102,32 @@ async function loadSetDetail(db: D1Database, userId: number, id: number): Promis
   };
 }
 
+/** Ids of the terms this user has in this set. */
+async function ownedTermIds(db: D1Database, userId: number, setId: number): Promise<Set<number>> {
+  const { results } = await db
+    .prepare("SELECT id FROM terms WHERE set_id = ? AND user_id = ?")
+    .bind(setId, userId)
+    .all<{ id: number }>();
+  return new Set(results.map((row) => row.id));
+}
+
 /**
- * Makes the stored terms exactly the given list: new ones are inserted, given
- * ids are updated (their id survives, so study progress sticks to the term),
- * ids that disappear are deleted. Returns false when a given id is not one of
- * this user's terms in this set.
+ * The statements that make the stored terms exactly the given list: new ones
+ * are inserted, given ids are updated in place (their id survives, so study
+ * progress sticks to the term), ids that disappear are deleted. `known` must
+ * be the set's owned term ids; every given id must be in it.
  */
-async function replaceTerms(
+function termStatements(
   db: D1Database,
   userId: number,
   setId: number,
   terms: z.infer<typeof termShape>[],
-): Promise<boolean> {
-  const { results: existing } = await db
-    .prepare("SELECT id FROM terms WHERE set_id = ? AND user_id = ?")
-    .bind(setId, userId)
-    .all<{ id: number }>();
-  const known = new Set(existing.map((row) => row.id));
-  if (terms.some((t) => t.id !== undefined && !known.has(t.id))) return false;
-
+  known: Set<number>,
+): D1PreparedStatement[] {
   const keep = new Set(terms.flatMap((t) => (t.id === undefined ? [] : [t.id])));
-  const statements: D1PreparedStatement[] = existing
-    .filter((row) => !keep.has(row.id))
-    .map((row) => db.prepare("DELETE FROM terms WHERE id = ? AND user_id = ?").bind(row.id, userId));
+  const statements: D1PreparedStatement[] = [...known]
+    .filter((termId) => !keep.has(termId))
+    .map((termId) => db.prepare("DELETE FROM terms WHERE id = ? AND user_id = ?").bind(termId, userId));
   terms.forEach((t, position) => {
     statements.push(
       t.id === undefined
@@ -138,8 +141,12 @@ async function replaceTerms(
             .bind(t.term, t.definition, position, t.id, setId, userId),
     );
   });
-  await db.batch(statements);
-  return true;
+  return statements;
+}
+
+/** True when every given term id is one of this user's terms in this set. */
+function allIdsOwned(terms: z.infer<typeof termShape>[], known: Set<number>): boolean {
+  return terms.every((t) => t.id === undefined || known.has(t.id));
 }
 
 export const setRoutes = new Hono<AppEnv>()
@@ -150,7 +157,7 @@ export const setRoutes = new Hono<AppEnv>()
     const like = likePattern(q);
     const { results } = await c.env.DB.prepare(
       `SELECT s.id, s.title, s.description, s.term_lang, s.def_lang, s.created_at, s.updated_at,
-              (SELECT COUNT(*) FROM terms t WHERE t.set_id = s.id) AS term_count
+              (SELECT COUNT(*) FROM terms t WHERE t.set_id = s.id AND t.user_id = s.user_id) AS term_count
          FROM sets s
         WHERE s.user_id = ?
           AND (s.title LIKE ? ESCAPE '\\' OR s.description LIKE ? ESCAPE '\\'
@@ -175,13 +182,17 @@ export const setRoutes = new Hono<AppEnv>()
     const user = c.get("user");
     const body = c.req.valid("json");
     const db = c.env.DB;
+    // A new set's terms are new terms; it cannot adopt existing ones.
+    if (body.terms.some((t) => t.id !== undefined)) {
+      return c.json({ error: "validation" as const, fields: { terms: "invalid_value" } }, 400);
+    }
     const created = await db
       .prepare(
         "INSERT INTO sets (user_id, title, description, term_lang, def_lang) VALUES (?, ?, ?, ?, ?) RETURNING id",
       )
       .bind(user.id, body.title, body.description ?? "", body.termLang ?? null, body.defLang ?? null)
       .first<{ id: number }>();
-    await replaceTerms(db, user.id, created!.id, body.terms);
+    await db.batch(termStatements(db, user.id, created!.id, body.terms, new Set()));
     await notify(c.env, user.id, "sets");
     // The set was just written, so the reload cannot miss it.
     return c.json((await loadSetDetail(db, user.id, created!.id))!, 201);
@@ -193,18 +204,26 @@ export const setRoutes = new Hono<AppEnv>()
     const { id } = c.req.valid("param");
     const body = c.req.valid("json");
     const db = c.env.DB;
-    const updated = await db
-      .prepare(
-        "UPDATE sets SET title = ?, description = ?, term_lang = ?, def_lang = ?, updated_at = unixepoch() WHERE id = ? AND user_id = ?",
-      )
-      .bind(body.title, body.description ?? "", body.termLang ?? null, body.defLang ?? null, id, user.id)
-      .run();
-    if (!updated.meta.changes) return c.json({ error: "not_found" as const }, 404);
-    if (!(await replaceTerms(db, user.id, id, body.terms))) {
+    const set = await db
+      .prepare("SELECT id FROM sets WHERE id = ? AND user_id = ?")
+      .bind(id, user.id)
+      .first<{ id: number }>();
+    if (!set) return c.json({ error: "not_found" as const }, 404);
+    const known = await ownedTermIds(db, user.id, id);
+    if (!allIdsOwned(body.terms, known)) {
       return c.json({ error: "validation" as const, fields: { terms: "invalid_value" } }, 400);
     }
+    // One batch: the set and its terms change together or not at all.
+    await db.batch([
+      db
+        .prepare(
+          "UPDATE sets SET title = ?, description = ?, term_lang = ?, def_lang = ?, updated_at = unixepoch() WHERE id = ? AND user_id = ?",
+        )
+        .bind(body.title, body.description ?? "", body.termLang ?? null, body.defLang ?? null, id, user.id),
+      ...termStatements(db, user.id, id, body.terms, known),
+    ]);
     await notify(c.env, user.id, "sets");
-    // The set exists (the UPDATE above changed a row), so the reload cannot miss.
+    // The set exists (checked above), so the reload cannot miss it.
     return c.json((await loadSetDetail(db, user.id, id))!, 200);
   })
 

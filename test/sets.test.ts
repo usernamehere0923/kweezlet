@@ -226,6 +226,21 @@ describe("POST /api/sets", () => {
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "validation", fields: { terms: "too_small" } });
   });
+
+  it("a new set cannot adopt existing terms", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const cookie = await login("anna", "secret-pw");
+    const id = await addSet(anna, "Mine", "", [["a", "b"]]);
+    const mine = (await (await api(`/api/sets/${id}`, { cookie })).json()) as { terms: { id: number }[] };
+
+    const res = await api("/api/sets", {
+      method: "POST",
+      cookie,
+      json: { title: "Copy", terms: [{ id: mine.terms[0].id, term: "a", definition: "b" }] },
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "validation", fields: { terms: "invalid_value" } });
+  });
 });
 
 describe("PATCH /api/sets/:id", () => {
@@ -292,7 +307,31 @@ describe("PATCH /api/sets/:id", () => {
     const res = await api(`/api/sets/${mine}`, {
       method: "PATCH",
       cookie,
-      json: { title: "Mine", terms: [{ id: otherTerms.terms[0].id, term: "c", definition: "d" }] },
+      json: { title: "Hijacked", terms: [{ id: otherTerms.terms[0].id, term: "c", definition: "d" }] },
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "validation", fields: { terms: "invalid_value" } });
+
+    // Nothing at all was written: the request is all-or-nothing.
+    const after = (await (await api(`/api/sets/${mine}`, { cookie })).json()) as { title: string; terms: unknown[] };
+    expect(after.title).toBe("Mine");
+    expect(after.terms).toEqual([expect.objectContaining({ term: "a", definition: "b" })]);
+  });
+
+  it("refuses a term id that belongs to another user", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const ben = await addUser("ben", "secret-pw");
+    const cookie = await login("anna", "secret-pw");
+    const mine = await addSet(anna, "Mine", "", [["a", "b"]]);
+    const bens = await addSet(ben, "Ben's", "", [["c", "d"]]);
+    const benTerms = (await (await api(`/api/sets/${bens}`, { cookie: await login("ben", "secret-pw") })).json()) as {
+      terms: { id: number }[];
+    };
+
+    const res = await api(`/api/sets/${mine}`, {
+      method: "PATCH",
+      cookie,
+      json: { title: "Mine", terms: [{ id: benTerms.terms[0].id, term: "c", definition: "d" }] },
     });
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "validation", fields: { terms: "invalid_value" } });
