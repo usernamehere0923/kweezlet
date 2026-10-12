@@ -31,6 +31,11 @@ export function shuffle<T>(list: T[]): T[] {
   return mixed;
 }
 
+/** A duration as m:ss, e.g. 23 seconds -> "0:23" (the Match and Test clocks). */
+export function formatTime(seconds: number): string {
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
 /**
  * How written answers are compared: " The  Dog " and "the dog" are equal.
  * Accents and punctuation do not matter either: "café" answers "cafe".

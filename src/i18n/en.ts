@@ -96,6 +96,14 @@ export const en = {
   "test.true": "True",
   "test.false": "False",
 
+  "match.yourTime": "Your time",
+  "match.newBest": "New best time!",
+  "match.bestTime": "Best time {time}",
+  "match.playAgain": "Play again",
+  "match.timerLabel": "Time",
+  "match.tooFewTitle": "Match needs at least 3 terms",
+  "match.tooFewText": "Add more terms to this set, then come back and play.",
+
   "notFound.title": "Page not found",
   "notFound.text": "This page does not exist (yet).",
   "notFound.action": "Back home",

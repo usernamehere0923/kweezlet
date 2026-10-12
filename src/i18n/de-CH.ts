@@ -99,6 +99,14 @@ export const deCH: Record<keyof typeof en, string> = {
   "test.true": "Richtig",
   "test.false": "Falsch",
 
+  "match.yourTime": "Deine Zeit",
+  "match.newBest": "Neue Bestzeit!",
+  "match.bestTime": "Bestzeit {time}",
+  "match.playAgain": "Nochmals spielen",
+  "match.timerLabel": "Zeit",
+  "match.tooFewTitle": "Zuordnen braucht mindestens 3 Begriffe",
+  "match.tooFewText": "Füge mehr Begriffe zu diesem Set hinzu und komm dann zurück.",
+
   "notFound.title": "Seite nicht gefunden",
   "notFound.text": "Diese Seite gibt es (noch) nicht.",
   "notFound.action": "Zurück zum Start",

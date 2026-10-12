@@ -52,23 +52,41 @@ const modeIcons: Record<StudyMode, IconName> = {
   match: "sliders",
 };
 
-/** Big tappable tile to start a study mode. */
-export function StudyModeTile({ mode, onClick, active }: { mode: StudyMode; onClick?: () => void; active?: boolean }) {
+/** Big tappable tile to start a study mode. `hint` adds a small line under the label. */
+export function StudyModeTile({
+  mode,
+  onClick,
+  active,
+  hint,
+  disabled,
+}: {
+  mode: StudyMode;
+  onClick?: () => void;
+  active?: boolean;
+  /** Small muted line under the label, e.g. the best Match time. */
+  hint?: string;
+  disabled?: boolean;
+}) {
   const { t } = useT();
   return (
     <button
       type="button"
       onClick={onClick}
+      disabled={disabled}
       aria-pressed={active}
       className={cx(
-        "flex min-h-24 flex-col items-start justify-between gap-3 rounded-ui-xl border p-4 text-left transition-all hover:-translate-y-0.5 hover:shadow-raised",
+        "flex min-h-24 flex-col items-start justify-between gap-3 rounded-ui-xl border p-4 text-left transition-all",
+        disabled ? "cursor-default opacity-60" : "hover:-translate-y-0.5 hover:shadow-raised",
         active ? "border-accent bg-accent-wash" : "border-line-soft bg-surface hover:border-line",
       )}
     >
       <span className="flex size-10 items-center justify-center rounded-ui bg-teal-wash text-teal">
         <Icon name={modeIcons[mode]} size="1.3rem" />
       </span>
-      <span className="text-[15px] font-semibold text-ink">{t(`study.mode.${mode}`)}</span>
+      <span className="flex flex-col gap-0.5">
+        <span className="text-[15px] font-semibold text-ink">{t(`study.mode.${mode}`)}</span>
+        {hint && <span className="text-[13px] text-muted">{hint}</span>}
+      </span>
     </button>
   );
 }

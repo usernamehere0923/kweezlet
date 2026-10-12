@@ -5,7 +5,7 @@ import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
 import { buildTest, scoreTest, type MatchPair, type QuestionKind, type TestPaper } from "../lib/quiz";
-import { shuffle, useStudyDay } from "../lib/study";
+import { formatTime, shuffle, useStudyDay } from "../lib/study";
 import {
   AnswerOption,
   Button,
@@ -29,10 +29,6 @@ type TimerChoice = "off" | "5" | "10";
 type LengthChoice = "5" | "10" | "all";
 
 type Tile = { key: string; pairId: number; kind: "term" | "definition"; label: string };
-
-function formatTime(seconds: number): string {
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
 
 export function TestPage() {
   const { t, tn } = useT();

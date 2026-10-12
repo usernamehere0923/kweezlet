@@ -1,6 +1,7 @@
 import { useT } from "../../i18n";
 import { Button } from "../Button";
 import { Icon } from "../Icon";
+import { Tag } from "../surfaces";
 
 /** End-of-round screen: score ring, counts, "study again". */
 export function ResultSummary({
@@ -52,6 +53,47 @@ export function ResultSummary({
             {t("study.done")}
           </Button>
         )}
+      </div>
+    </div>
+  );
+}
+
+/** The end of a Match round: the time, "new best time!", play again / done. */
+export function MatchResult({
+  time,
+  isNewBest,
+  bestTime,
+  onPlayAgain,
+  onDone,
+}: {
+  /** The round's duration, already formatted ("0:23"). */
+  time: string;
+  isNewBest: boolean;
+  /** The best time to beat, same format. */
+  bestTime: string;
+  onPlayAgain: () => void;
+  onDone: () => void;
+}) {
+  const { t } = useT();
+  return (
+    <div className="flex flex-col items-center gap-6 rounded-ui-xl border border-line-soft bg-surface p-8 text-center">
+      {isNewBest && (
+        <Tag tone="accent" icon="starFilled">
+          {t("match.newBest")}
+        </Tag>
+      )}
+      <div>
+        <p className="text-sm font-medium text-muted">{t("match.yourTime")}</p>
+        <p className="font-serif text-5xl text-ink tabular-nums">{time}</p>
+      </div>
+      <p className="text-muted">{t("match.bestTime", { time: bestTime })}</p>
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+        <Button icon="retry" onClick={onPlayAgain}>
+          {t("match.playAgain")}
+        </Button>
+        <Button variant="ghost" onClick={onDone}>
+          {t("study.done")}
+        </Button>
       </div>
     </div>
   );
