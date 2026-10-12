@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { notifyLater } from "./live";
-import { LANGUAGES, type Language } from "./shared";
+import { dueSql, LANGUAGES, type Language } from "./shared";
 import type { Status } from "./study";
 import type { AppEnv } from "./types";
 import { idParam, validate } from "./validate";
@@ -41,6 +41,7 @@ type TermRow = {
   status: Status | null;
   starred: number;
   streak: number;
+  due: number;
 };
 
 function toSetJson(row: SetRow & { term_count?: number }) {
@@ -75,6 +76,8 @@ export type SetTerm = {
   starred: boolean;
   /** Correct answers in a row in Learn mode (worker/study.ts). */
   streak: number;
+  /** Due for a review right now (worker/review.ts, worker/shared.ts). */
+  due: boolean;
 };
 export type SetDetail = SetSummary & {
   terms: SetTerm[];
@@ -97,7 +100,7 @@ async function loadSetDetail(db: D1Database, userId: number, id: number): Promis
     db
       .prepare(
         `SELECT t.id, t.term, t.definition, t.position, ts.status, COALESCE(ts.starred, 0) AS starred,
-                COALESCE(st.streak, 0) AS streak
+                COALESCE(st.streak, 0) AS streak, ${dueSql("st")} AS due
            FROM terms t
            LEFT JOIN term_state ts ON ts.term_id = t.id AND ts.user_id = t.user_id
            LEFT JOIN term_stats st ON st.term_id = t.id AND st.user_id = t.user_id
@@ -111,7 +114,7 @@ async function loadSetDetail(db: D1Database, userId: number, id: number): Promis
   const terms = termRows!.results as TermRow[];
   return {
     ...toSetJson({ ...set, term_count: terms.length }),
-    terms: terms.map((row) => ({ ...row, status: row.status ?? "unseen", starred: !!row.starred })),
+    terms: terms.map((row) => ({ ...row, status: row.status ?? "unseen", starred: !!row.starred, due: !!row.due })),
     bestSeconds: set.best_seconds,
   };
 }

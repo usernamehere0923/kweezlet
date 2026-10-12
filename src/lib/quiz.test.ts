@@ -3,10 +3,46 @@ import type { SetTerm } from "../../worker/sets";
 import { buildMatchRound, buildTest, gradeQuestion, scoreTest, type MatchPair, type TestQuestion } from "./quiz";
 
 const TERMS: SetTerm[] = [
-  { id: 1, term: "el perro", definition: "the dog", position: 0, status: "unseen", starred: false, streak: 0 },
-  { id: 2, term: "el gato", definition: "the cat", position: 1, status: "unseen", starred: false, streak: 0 },
-  { id: 3, term: "el caballo", definition: "the horse", position: 2, status: "unseen", starred: false, streak: 0 },
-  { id: 4, term: "el pez", definition: "the fish", position: 3, status: "unseen", starred: false, streak: 0 },
+  {
+    id: 1,
+    term: "el perro",
+    definition: "the dog",
+    position: 0,
+    status: "unseen",
+    starred: false,
+    streak: 0,
+    due: true,
+  },
+  {
+    id: 2,
+    term: "el gato",
+    definition: "the cat",
+    position: 1,
+    status: "unseen",
+    starred: false,
+    streak: 0,
+    due: true,
+  },
+  {
+    id: 3,
+    term: "el caballo",
+    definition: "the horse",
+    position: 2,
+    status: "unseen",
+    starred: false,
+    streak: 0,
+    due: true,
+  },
+  {
+    id: 4,
+    term: "el pez",
+    definition: "the fish",
+    position: 3,
+    status: "unseen",
+    starred: false,
+    streak: 0,
+    due: true,
+  },
 ];
 
 describe("buildTest", () => {
