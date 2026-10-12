@@ -171,6 +171,9 @@ export const deCH: Record<keyof typeof en, string> = {
   "design.progressMotion": "Fortschritt in Bewegung",
   "design.progressMotionText":
     "So erscheint jeder Fortschrittsbalken, und nur so: die Spur blendet ein, die Füllung wischt von links herein. Änderungen gleiten.",
+  "design.motion": "Bewegung",
+  "design.motionText":
+    "Erfolge bekommen ihren Moment: eine richtige Antwort springt kurz auf, eine gute Runde füllt den Ring und wirft Konfetti. Karten gleiten zur nächsten, Buttons geben beim Drücken nach. Tippe auf Nochmals abspielen, dreh die Karte, geh weiter.",
   "design.replay": "Nochmals abspielen",
   "design.toastText": "Das ist ein Toast",
 

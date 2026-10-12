@@ -167,6 +167,9 @@ export const en = {
   "design.progressMotion": "Progress motion",
   "design.progressMotionText":
     "Every progress bar enters this way and nowhere else: the track fades in, the fill wipes in from the left. Changes slide.",
+  "design.motion": "Motion",
+  "design.motionText":
+    "Wins get a moment: a correct answer pops, a good round fills the ring and throws confetti. Cards slide to the next one, buttons press in. Tap Replay, flip the card, go next.",
   "design.replay": "Replay",
   "design.toastText": "This is a toast",
 
