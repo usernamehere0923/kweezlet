@@ -6,7 +6,7 @@ import { useStudySet } from "../lib/studySet";
 import { useMatchBoard } from "../lib/matchBoard";
 import { buildMatchRound, MATCH_PAIRS, MIN_MATCH_TERMS, type MatchTileData } from "../lib/quiz";
 import { formatTime, useStudyDay } from "../lib/study";
-import { ButtonLink, EmptyState, Heading, MatchResult, MatchTile, Spinner, StreakBadge, Tag, Text } from "../ui";
+import { ButtonLink, EmptyState, Heading, MatchResult, MatchTile, PageLoading, StreakBadge, Tag, Text } from "../ui";
 
 type RoundResult = { seconds: number; best: number; isNewBest: boolean };
 
@@ -86,11 +86,7 @@ export function MatchPage() {
   }
 
   if (!set) {
-    return (
-      <div className="flex justify-center py-16 text-muted">
-        <Spinner size={28} label={t("common.loading")} />
-      </div>
-    );
+    return <PageLoading label={t("common.loading")} />;
   }
 
   const elapsed = startedAt === null ? 0 : Math.floor(((finishedAt ?? now) - startedAt) / 1000);

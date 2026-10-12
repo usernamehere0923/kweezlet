@@ -16,3 +16,12 @@ export function Spinner({ size = 20, className, label }: { size?: number; classN
     </svg>
   );
 }
+
+/** A page's content while it loads: a big spinner, centered. */
+export function PageLoading({ label }: { label: string }) {
+  return (
+    <div className="flex justify-center py-16 text-muted">
+      <Spinner size={28} label={label} />
+    </div>
+  );
+}

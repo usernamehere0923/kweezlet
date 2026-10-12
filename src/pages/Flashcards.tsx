@@ -15,7 +15,7 @@ import {
   KnowItButtons,
   ProgressBar,
   SegmentedControl,
-  Spinner,
+  PageLoading,
   StreakBadge,
 } from "../ui";
 
@@ -103,11 +103,7 @@ export function FlashcardsPage() {
   }
 
   if (!set) {
-    return (
-      <div className="flex justify-center py-16 text-muted">
-        <Spinner size={28} label={t("common.loading")} />
-      </div>
-    );
+    return <PageLoading label={t("common.loading")} />;
   }
 
   const known = set.terms.filter((term) => term.status === "know_it").length;

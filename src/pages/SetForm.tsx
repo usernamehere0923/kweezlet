@@ -11,7 +11,7 @@ import {
   Heading,
   PageTitle,
   Select,
-  Spinner,
+  PageLoading,
   TermEditorRow,
   Text,
   TextField,
@@ -144,11 +144,7 @@ export function SetFormPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-16 text-muted">
-        <Spinner size={28} label={t("common.loading")} />
-      </div>
-    );
+    return <PageLoading label={t("common.loading")} />;
   }
 
   const languageOptions = (placeholder: string): Option<Language | "">[] => [

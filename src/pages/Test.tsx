@@ -16,7 +16,7 @@ import {
   MatchTile,
   ResultSummary,
   SegmentedControl,
-  Spinner,
+  PageLoading,
   StreakBadge,
   Tag,
   Text,
@@ -95,11 +95,7 @@ export function TestPage() {
   }
 
   if (!set) {
-    return (
-      <div className="flex justify-center py-16 text-muted">
-        <Spinner size={28} label={t("common.loading")} />
-      </div>
-    );
+    return <PageLoading label={t("common.loading")} />;
   }
 
   const canStart = withMatching || Object.values(kinds).some(Boolean);

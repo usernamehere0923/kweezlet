@@ -5,7 +5,7 @@ import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
 import { useUser } from "../lib/session";
-import { ButtonLink, EmptyState, PageTitle, SearchField, Spinner, StudySetCard } from "../ui";
+import { ButtonLink, EmptyState, PageTitle, SearchField, PageLoading, StudySetCard } from "../ui";
 
 /** How long typing has to pause before the search goes out. */
 const SEARCH_PAUSE_MS = 250;
@@ -41,9 +41,7 @@ export function HomePage() {
       <PageTitle subtitle={t("app.tagline")}>{t("home.greeting", { name: user.username })}</PageTitle>
 
       {sets === null ? (
-        <div className="flex justify-center py-16 text-muted">
-          <Spinner size={28} label={t("common.loading")} />
-        </div>
+        <PageLoading label={t("common.loading")} />
       ) : sets.length === 0 && !query && !q ? (
         <EmptyState
           icon="folderPlus"
