@@ -9,7 +9,7 @@ Quizlet-style flashcard app. React + Tailwind UI, Cloudflare Worker (Hono) API, 
 - `npm test`: worker (Workers runtime) + UI (jsdom) tests. `npm run check`: types + lint + format; `npm run format` fixes formatting.
 - `npm run db:migrate`: apply new migrations locally, keeps data. `npm run db:reset` wipes all his local data: only when he asks to start over. Wrong demo password → `user:add -- demo demo`.
 - `npm run user:add -- <name> <password> [--remote]`: create user / reset password. No registration in the app.
-- `npm run deploy`: build + upload (setup: `README.md`). New migrations → `db:migrate:remote` first.
+- `npm run deploy`: build + upload (setup: `README.md`). New migrations → `db:migrate:remote` first. Both ship GitHub's `master` only (`scripts/release.sh`), never the current branch.
 - `npm run types`: after changing `wrangler.jsonc`.
 - `npm run gen:icons` / `npm run gen:og`: after changing `assets/icons/*` or `assets/og/card.html`.
 
@@ -53,7 +53,7 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 ### Git
 
 - One branch and pull request per phase (like `phase-2-learn`), merged into `master` when it is green: merge commit, then delete the branch. Trivial fixes (docs, formatting) may go straight to `master`.
-- No worktrees. `master` is a protected branch: it cannot be force-pushed.
+- No worktrees (exception: the throwaway one `scripts/release.sh` creates and deletes). `master` is a protected branch: it cannot be force-pushed.
 - Commit after every step that works (`check` + `test` green), not one big commit at the end. Message: what changed, in plain words. Then push.
 
 ### Tests and coverage

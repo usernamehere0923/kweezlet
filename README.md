@@ -60,7 +60,7 @@ Free plan, no credit card. Everything runs with `wrangler`, which `npm install` 
    ```sh
    npx wrangler login
    ```
-2. Create the database and put the printed `database_id` into `wrangler.jsonc` (it is all zeros until then):
+2. Create the database and put the printed `database_id` into `wrangler.jsonc` (it is all zeros until then). Commit it to `master` and push: deploys only ship GitHub's `master`.
    ```sh
    npx wrangler d1 create kweezlet
    ```
@@ -69,7 +69,7 @@ Free plan, no credit card. Everything runs with `wrangler`, which `npm install` 
    npm run db:migrate:remote
    npm run user:add -- <you> '<password>' --remote
    ```
-4. Deploy, then put the printed URL into `.env.production` as `PUBLIC_URL` (link previews need it) and deploy again:
+4. Deploy, then put the printed URL into `.env.production` as `PUBLIC_URL` (link previews need it), commit it to `master`, push and deploy again:
    ```sh
    npm run deploy
    ```
@@ -80,6 +80,8 @@ Free plan, no credit card. Everything runs with `wrangler`, which `npm install` 
 ```sh
 npm run deploy
 ```
+
+`npm run deploy` and `npm run db:migrate:remote` always ship GitHub's `master`, from whatever branch you are on. They update your local `master` first and build in a temporary folder, so your current branch and unsaved changes stay as they are. Local `master` with commits not on GitHub: they stop.
 
 If the update has new files in `migrations/`, apply them first. There is no staging: this changes your real cards. **Before running it, open the live app and tap Settings → "Download my data".**
 
