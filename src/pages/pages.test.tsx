@@ -98,6 +98,8 @@ const SPANISH = {
   termLang: "es",
   defLang: "en",
   termCount: 2,
+  knownCount: 1,
+  learningCount: 0,
   createdAt: 1,
   updatedAt: 1,
 };
@@ -108,6 +110,8 @@ const SWISS = {
   termLang: null,
   defLang: null,
   termCount: 1,
+  knownCount: 0,
+  learningCount: 0,
   createdAt: 1,
   updatedAt: 1,
 };
@@ -130,6 +134,12 @@ describe("study sets", () => {
     renderApp("/");
     expect(await screen.findByText("Spanish animals")).toBeTruthy();
     expect(screen.getByText("Swiss history")).toBeTruthy();
+    // Each card shows how far along it is: one of the two Spanish terms is known.
+    const bars = screen.getAllByRole("progressbar");
+    expect(bars.map((bar) => [bar.getAttribute("aria-valuenow"), bar.getAttribute("aria-valuemax")])).toEqual([
+      ["1", "2"],
+      ["0", "1"],
+    ]);
 
     await userEvent.type(screen.getByRole("searchbox", { name: "Search your sets" }), "swiss");
     await waitFor(() => expect(calls.filter((c) => c.path === "/api/sets").at(-1)?.query.q).toBe("swiss"));
@@ -191,6 +201,9 @@ describe("study sets", () => {
     expect(screen.getByText("chapter 1")).toBeTruthy();
     expect(screen.getByText("el perro")).toBeTruthy();
     expect(screen.getByText("the dog")).toBeTruthy();
+    expect(screen.getByText("Known 1")).toBeTruthy();
+    expect(screen.getByText("Learning 0")).toBeTruthy();
+    expect(screen.getByText("New 1")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Flashcards" })).toBeTruthy();
   });
 

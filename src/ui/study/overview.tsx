@@ -2,19 +2,24 @@ import { useT } from "../../i18n";
 import { cx } from "../cx";
 import { Icon, type IconName } from "../Icon";
 import { Tag } from "../surfaces";
+import { ProgressBar } from "./studying";
 
-/** A study set in a list or search result. */
+/** A study set in a list or search result. `known` + `learning` add a thin progress bar. */
 export function StudySetCard({
   title,
   termCount,
   owner,
   tag,
+  known,
+  learning,
   onClick,
 }: {
   title: string;
   termCount: number;
   owner?: string;
   tag?: string;
+  known?: number;
+  learning?: number;
   onClick?: () => void;
 }) {
   const { tn, t } = useT();
@@ -39,6 +44,9 @@ export function StudySetCard({
           </span>
         )}
       </div>
+      {known !== undefined && termCount > 0 && (
+        <ProgressBar compact value={known} learning={learning ?? 0} max={termCount} />
+      )}
     </button>
   );
 }

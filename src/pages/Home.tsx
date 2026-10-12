@@ -99,6 +99,8 @@ export function HomePage() {
                   key={set.id}
                   title={set.title}
                   termCount={set.termCount}
+                  known={set.knownCount}
+                  learning={set.learningCount}
                   onClick={() => navigate(`/sets/${set.id}`)}
                 />
               ))}

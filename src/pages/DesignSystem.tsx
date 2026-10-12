@@ -445,6 +445,7 @@ function StudyKit() {
       <Section
         title="StudySetCard · StreakBadge"
         code={`<StudySetCard title="Spanish animals" termCount={6} owner="anna" tag="Spanish" onClick={open} />
+<StudySetCard title="Photosynthesis" termCount={24} known={9} learning={5} />   // known + learning: thin progress bar
 <StreakBadge days={5} />`}
       >
         <div className="mb-4">
@@ -453,7 +454,7 @@ function StudyKit() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StudySetCard title="Spanish animals" termCount={6} owner="anna" tag="Spanish" />
           <StudySetCard title="Capitals of Europe" termCount={1} owner="ben" />
-          <StudySetCard title="Photosynthesis" termCount={24} tag="Biology" />
+          <StudySetCard title="Photosynthesis" termCount={24} tag="Biology" known={9} learning={5} />
         </div>
       </Section>
 
@@ -477,7 +478,7 @@ function StudyKit() {
 
       <Section
         title="FlipCard · CardNav · KnowItButtons · ProgressBar"
-        code={`<ProgressBar value={known} learning={learning} max={terms.length} />
+        code={`<ProgressBar value={known} learning={learning} max={terms.length} />   // compact: thin, no counts
 <FlipCard front={card.term} back={card.definition} flipped={flipped} onFlip={setFlipped} />
 <CardNav index={i} total={terms.length} onPrev={prev} onNext={next} onShuffle={shuffle} />
 <KnowItButtons onKnowIt={...} onStillLearning={...} />`}
@@ -497,6 +498,7 @@ function StudyKit() {
             onKnowIt={() => setKnown((n) => Math.min(ANIMALS.length - learning, n + 1))}
           />
           <ProgressBar value={card + 1} max={ANIMALS.length} />
+          <ProgressBar compact value={known} learning={learning} max={ANIMALS.length} />
         </div>
       </Section>
 

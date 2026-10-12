@@ -14,6 +14,7 @@ import {
   Modal,
   PageTitle,
   PageLoading,
+  ProgressBar,
   StudyModeTile,
   TermList,
   Text,
@@ -88,6 +89,12 @@ export function SetDetailPage() {
           {t("sets.delete")}
         </Button>
       </div>
+
+      {set.termCount > 0 && (
+        <section className="mb-8">
+          <ProgressBar value={set.knownCount} learning={set.learningCount} max={set.termCount} />
+        </section>
+      )}
 
       <section className="mb-8">
         <Heading className="mb-3">{t("sets.study")}</Heading>
