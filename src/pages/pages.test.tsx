@@ -530,6 +530,21 @@ describe("learn", () => {
     expect(calls.filter((c) => c.path.endsWith("/answer"))).toHaveLength(4);
   });
 
+  test("Enter after the feedback does not count the answer again", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const typed = {
+      ...LEARN_DETAIL,
+      terms: LEARN_DETAIL.terms.map((term) => (term.id === 71 ? { ...term, streak: 1 } : term)),
+    };
+    const { calls } = mockApi(learnApi(typed));
+    renderApp("/sets/7/learn");
+
+    await userEvent.type(await screen.findByLabelText("Your answer"), "el gato{Enter}");
+    expect(await screen.findByText("Correct!")).toBeTruthy();
+    await userEvent.type(screen.getByLabelText("Your answer"), "{Enter}");
+    expect(calls.filter((c) => c.path.endsWith("/answer"))).toHaveLength(1);
+  });
+
   test("a wrong answer shows the right one and comes back", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
     const { calls } = mockApi(learnApi(LEARN_DETAIL));

@@ -56,6 +56,26 @@ describe("gradeAnswer", () => {
     expect(gradeAnswer("the cat", "the dog / hund")).toBe(false);
     expect(gradeAnswer("hnd", "the dog / hund")).toBe(true); // within an alternative
   });
+
+  test("the whole answer counts even when it has a slash", () => {
+    expect(gradeAnswer("km/h", "km/h")).toBe(true);
+    expect(gradeAnswer("h", "km/h")).toBe(false);
+    expect(gradeAnswer("the dog / hund", "the dog / hund")).toBe(true);
+    expect(gradeAnswer("1/2", "1/2")).toBe(true);
+    expect(gradeAnswer("1", "1/2")).toBe(false);
+  });
+
+  test("answers made only of symbols can be answered", () => {
+    expect(gradeAnswer("=", "=")).toBe(true);
+    expect(gradeAnswer(" % ", "%")).toBe(true);
+    expect(gradeAnswer("+", "=")).toBe(false);
+    expect(gradeAnswer("", "=")).toBe(false);
+  });
+
+  test("numbers inside text have to be exact", () => {
+    expect(gradeAnswer("year 1292", "Year 1291")).toBe(false);
+    expect(gradeAnswer("yeer 1291", "Year 1291")).toBe(true);
+  });
 });
 
 describe("shuffle", () => {

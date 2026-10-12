@@ -154,7 +154,8 @@ export function LearnPage() {
   }
 
   function submitAnswer(correct: boolean, given: string) {
-    if (!question) return;
+    // Enter in the read-only answer box must not count the answer twice.
+    if (!question || feedback) return;
     const inRound = (round.current.get(question.termId) ?? 0) + (correct ? 1 : 0);
     round.current.set(question.termId, correct ? inRound : 0);
     // Mistakes and half-learned terms come back later in this round.

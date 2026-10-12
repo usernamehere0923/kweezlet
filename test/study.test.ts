@@ -104,6 +104,19 @@ describe("POST /api/terms/:id/answer", () => {
     expect(detail.terms[0]).toEqual(expect.objectContaining({ streak: 2, status: "know_it" }));
   });
 
+  it("two answers sent at the same time both count", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const { termId } = await addSetWithTerm(anna);
+    const cookie = await login("anna", "secret-pw");
+
+    await Promise.all([
+      api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct: true } }),
+      api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct: true } }),
+    ]);
+    const res = await api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct: true } });
+    expect(await res.json()).toEqual({ termId, correct: 3, wrong: 0, streak: 3, status: "know_it" });
+  });
+
   it("a wrong answer resets the streak and drops the mark", async () => {
     const anna = await addUser("anna", "secret-pw");
     const { termId } = await addSetWithTerm(anna);
