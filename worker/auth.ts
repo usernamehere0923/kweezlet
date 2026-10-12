@@ -3,7 +3,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 import { constantTimeEqual, hashPassword, randomHex, sha256Hex } from "./crypto";
-import type { AppEnv, Locale } from "./types";
+import { publicUser, type AppEnv, type User } from "./types";
 import { validate } from "./validate";
 
 const COOKIE = "kz_session";
@@ -23,11 +23,11 @@ export const requireUser = createMiddleware<AppEnv>(async (c, next) => {
   if (!token) return c.json({ error: "unauthorized" as const }, 401);
   const tokenHash = await sha256Hex(token);
   const row = await c.env.DB.prepare(
-    `SELECT u.id, u.username, u.locale FROM sessions s JOIN users u ON u.id = s.user_id
+    `SELECT u.id, u.username, u.locale, u.level FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = ? AND s.expires_at > ?`,
   )
     .bind(tokenHash, now())
-    .first<{ id: number; username: string; locale: Locale }>();
+    .first<User>();
   if (!row) return c.json({ error: "unauthorized" as const }, 401);
   c.set("user", row);
   c.set("sessionTokenHash", tokenHash);
@@ -64,9 +64,9 @@ export const authRoutes = new Hono<AppEnv>()
     if ((recent?.n ?? 0) >= MAX_FAILURES) return c.json({ error: "rate_limited" as const }, 429);
 
     const user = await db
-      .prepare("SELECT id, username, locale, password_hash, salt FROM users WHERE username = ?")
+      .prepare("SELECT id, username, locale, level, password_hash, salt FROM users WHERE username = ?")
       .bind(username)
-      .first<{ id: number; username: string; locale: Locale; password_hash: string; salt: string }>();
+      .first<User & { password_hash: string; salt: string }>();
     const hash = await hashPassword(password, user?.salt ?? DUMMY_SALT);
     if (!user || !constantTimeEqual(hash, user.password_hash)) {
       await db
@@ -88,7 +88,7 @@ export const authRoutes = new Hono<AppEnv>()
       path: "/",
       maxAge: SESSION_DAYS * 86400,
     });
-    return c.json({ username: user.username, locale: user.locale }, 200);
+    return c.json(publicUser(user), 200);
   })
   .post("/logout", async (c) => {
     await c.env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(c.get("sessionTokenHash")).run();

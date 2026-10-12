@@ -6,7 +6,7 @@ describe("auth", () => {
     await addUser("anna", "secret-pw");
     const res = await api("/api/login", { method: "POST", json: { username: "anna", password: "secret-pw" } });
     expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ username: "anna", locale: "en" });
+    expect(await res.json()).toEqual({ username: "anna", locale: "en", level: "admin" });
     const cookie = res.headers.get("Set-Cookie")!;
     expect(cookie).toMatch(/kz_session=[0-9a-f]{64}/);
     expect(cookie).toMatch(/HttpOnly/i);

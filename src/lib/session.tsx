@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { useT, type Locale } from "../i18n";
+import type { PublicUser } from "../../worker/types";
+import { useT } from "../i18n";
 import { api, UNAUTHORIZED_EVENT } from "./api";
 
-export type Me = { username: string; locale: Locale };
+export type Me = PublicUser;
 
 type Session =
   { status: "loading"; user: null } | { status: "anonymous"; user: null } | { status: "loggedIn"; user: Me };

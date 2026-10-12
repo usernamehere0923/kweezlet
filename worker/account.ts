@@ -3,13 +3,12 @@ import { z } from "zod";
 import { constantTimeEqual, hashPassword, randomHex } from "./crypto";
 import { exportUserData } from "./export";
 import { notifyLater } from "./live";
-import { localeSchema, type AppEnv } from "./types";
+import { localeSchema, publicUser, type AppEnv } from "./types";
 import { validate } from "./validate";
 
 export const accountRoutes = new Hono<AppEnv>()
   .get("/", (c) => {
-    const { username, locale } = c.get("user");
-    return c.json({ username, locale }, 200);
+    return c.json(publicUser(c.get("user")), 200);
   })
 
   .patch("/settings", validate("json", z.object({ locale: localeSchema })), async (c) => {
