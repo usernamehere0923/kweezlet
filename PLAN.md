@@ -35,7 +35,7 @@ Migration numbers below are placeholders: use the next free `migrations/000N_` a
 
 The source quote is only proof if the server has the text to check it against. So the material is sent as **page-tagged text**, never as an opaque file:
 
-- **PDF**: the browser opens it with **pdf.js** (`pdfjs-dist`, new dependency, needs OK, lazy-loaded on this page only). It renders page thumbnails for the picker and extracts the text of each page. Selected pages go to the Worker as `<page n="5">…</page>`.
+- **PDF**: the browser opens it with **pdf.js** (`pdfjs-dist`, approved, lazy-loaded on this page only). It renders page thumbnails for the picker and extracts the text of each page. Selected pages go to the Worker as `<page n="5">…</page>`.
   - A page without a text layer (a scan) is sent as a rendered JPEG instead (max 1600 px, quality 0.8), tagged with its page number. Cards from such pages can't be checked and come back "unverified".
 - **Word, PowerPoint, Excel**: the Worker converts them with Workers AI `toMarkdown()` (free, no dependency); the result is split into sections (pptx: one per slide). If the conversion fails, the file is sent as a `file` part and every card is "unverified".
 - **Text file / pasted text**: used as is, as one page.
@@ -177,5 +177,5 @@ Estimate: 9–12 hours of build time (page picker and quote check add about 3–
 
 ### Open points
 
-- **New dependency `pdfjs-dist`** (Mozilla's PDF reader, about 1 MB, loaded only on the "From material" page): needed for the page picker and text extraction. AGENTS.md says ask first; the plan assumes yes.
+- **Dependency `pdfjs-dist`**: approved (2026-10-12). Lazy-loaded on the "From material" page only.
 - **Audio/lecture input** (like Quizlet's Coconote): left out; a 5.3-Flash file call can't take audio.
