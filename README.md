@@ -90,17 +90,6 @@ npm run db:migrate:remote
 npm run deploy
 ```
 
-### Moving from kweezlet.workers.dev to go.kweezlet.workers.dev
-
-The worker is called `go` now. The first deploy under that name creates a new worker; the old `kweezlet` one keeps running on the same database until you remove it. Once, after that deploy:
-
-1. Open the new URL, log in, check your sets are there.
-2. Remove the old worker (the database stays):
-   ```sh
-   npx wrangler delete --name kweezlet
-   ```
-3. On the iPhone: delete the old Home Screen icon, open the new URL in Safari, "Add to Home Screen".
-
 Something went wrong in the live database: fix it with a new migration. Last resort: D1 Time Travel restores the database up to 7 days back (Cloudflare dashboard → D1 → kweezlet).
 
 ## More
