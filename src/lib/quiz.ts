@@ -4,6 +4,9 @@ import { gradeAnswer, shuffle } from "./study";
 
 export type QuestionKind = "choice" | "truefalse" | "written";
 
+/** The bits of a term a question needs. SetTerm has them all. */
+export type QuestionTerm = Pick<SetTerm, "id" | "term" | "definition" | "streak">;
+
 export type TestQuestion = {
   kind: QuestionKind;
   termId: number;
@@ -58,7 +61,7 @@ export type TestSettings = {
 };
 
 /** One question on `term`; the wrong options come from `pool`. Learn uses it too. */
-export function makeQuestion(term: SetTerm, pool: SetTerm[], kind: QuestionKind): TestQuestion {
+export function makeQuestion(term: QuestionTerm, pool: QuestionTerm[], kind: QuestionKind): TestQuestion {
   // Written and multiple choice questions ask both ways round.
   const askTerm = kind === "truefalse" ? false : Math.random() < 0.5;
   const answer = askTerm ? term.term : term.definition;
@@ -90,6 +93,15 @@ export function makeQuestion(term: SetTerm, pool: SetTerm[], kind: QuestionKind)
     answer,
     options: kind === "written" ? [] : shuffle([...new Set([answer, ...distractors])]),
   };
+}
+
+/**
+ * A Learn-style question: multiple choice until the first correct answer,
+ * then written. Without other terms there is nothing to choose from, so those
+ * are written from the start. Learn and the review queue use it.
+ */
+export function buildQuestion(pool: QuestionTerm[], term: QuestionTerm): TestQuestion {
+  return makeQuestion(term, pool, term.streak >= 1 || pool.length < 2 ? "written" : "choice");
 }
 
 /** A fresh paper: shuffled terms, question types in turn, one matching round. */

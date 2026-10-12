@@ -109,6 +109,13 @@ export const en = {
   "match.tooFewTitle": "Match needs at least 3 terms",
   "match.tooFewText": "Add more terms to this set, then come back and play.",
 
+  "review.title": "Review",
+  "review.start": "Review now",
+  "review.due_one": "{count} card due",
+  "review.due_other": "{count} cards due",
+  "review.caughtUpTitle": "All caught up!",
+  "review.caughtUpText": "Nothing is due right now. Come back tomorrow.",
+
   "notFound.title": "Page not found",
   "notFound.text": "This page does not exist (yet).",
   "notFound.action": "Back home",

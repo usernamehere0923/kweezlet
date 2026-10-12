@@ -5,7 +5,7 @@ import type { SetTerm } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useStudySet } from "../lib/studySet";
-import { makeQuestion, type TestQuestion } from "../lib/quiz";
+import { buildQuestion, type TestQuestion } from "../lib/quiz";
 import { gradeAnswer, shuffle, useStudyDay } from "../lib/study";
 import {
   AnswerInput,
@@ -23,12 +23,6 @@ import {
   Text,
   type AnswerState,
 } from "../ui";
-
-/** Multiple choice until the first correct answer, then written. Without other
- * terms there is nothing to choose from, so those are written from the start. */
-function buildQuestion(terms: SetTerm[], term: SetTerm): TestQuestion {
-  return makeQuestion(term, terms, term.streak >= 1 || terms.length < 2 ? "written" : "choice");
-}
 
 export function LearnPage() {
   const { t } = useT();
@@ -69,7 +63,9 @@ export function LearnPage() {
   const startRound = useCallback(
     (all: SetTerm[], pick: SetTerm[]) => {
       round.current = new Map();
-      queue.current = shuffle(pick.map((term) => term.id));
+      // Terms due for a review come first (worker/shared.ts), then the rest.
+      const dueFirst = [...shuffle(pick.filter((term) => term.due)), ...shuffle(pick.filter((term) => !term.due))];
+      queue.current = dueFirst.map((term) => term.id);
       setScore({ correct: 0, total: 0 });
       setView("questions");
       draw(all);

@@ -112,6 +112,13 @@ export const deCH: Record<keyof typeof en, string> = {
   "match.tooFewTitle": "Zuordnen braucht mindestens 3 Begriffe",
   "match.tooFewText": "Füge mehr Begriffe zu diesem Set hinzu und komm dann zurück.",
 
+  "review.title": "Wiederholen",
+  "review.start": "Jetzt wiederholen",
+  "review.due_one": "{count} Karte fällig",
+  "review.due_other": "{count} Karten fällig",
+  "review.caughtUpTitle": "Alles erledigt!",
+  "review.caughtUpText": "Im Moment ist nichts fällig. Komm morgen zurück.",
+
   "notFound.title": "Seite nicht gefunden",
   "notFound.text": "Diese Seite gibt es (noch) nicht.",
   "notFound.action": "Zurück zum Start",

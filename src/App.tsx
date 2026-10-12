@@ -8,6 +8,7 @@ import { DesignSystemPage } from "./pages/DesignSystem";
 import { HomePage } from "./pages/Home";
 import { LoginPage } from "./pages/Login";
 import { NotFoundPage } from "./pages/NotFound";
+import { ReviewPage } from "./pages/Review";
 import { SettingsPage } from "./pages/Settings";
 import { SetDetailPage } from "./pages/SetDetail";
 import { SetFormPage } from "./pages/SetForm";
@@ -86,6 +87,7 @@ function LoggedInApp() {
       <ErrorBoundary key={location.pathname}>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/review" element={<ReviewPage />} />
           <Route path="/sets/new" element={<SetFormPage />} />
           <Route path="/sets/:id" element={<SetDetailPage />} />
           <Route path="/sets/:id/edit" element={<SetFormPage />} />
