@@ -16,6 +16,7 @@ import {
   PageLoading,
   QuestionCard,
   ResultSummary,
+  SlideSwap,
   StreakBadge,
   Tag,
 } from "../ui";
@@ -129,19 +130,21 @@ export function LearnPage() {
         />
       ) : (
         question && (
-          <QuestionCard
-            label={t(question.label)}
-            prompt={question.prompt}
-            answer={question.answer}
-            options={question.options}
-            typed={round.typed}
-            onTyped={round.setTyped}
-            picked={round.picked}
-            feedback={round.feedback}
-            onPick={(option) => onAnswer(round.pick(option))}
-            onSubmitTyped={() => onAnswer(round.submitTyped())}
-            onContinue={() => round.next(askFrom(set.terms))}
-          />
+          <SlideSwap id={question}>
+            <QuestionCard
+              label={t(question.label)}
+              prompt={question.prompt}
+              answer={question.answer}
+              options={question.options}
+              typed={round.typed}
+              onTyped={round.setTyped}
+              picked={round.picked}
+              feedback={round.feedback}
+              onPick={(option) => onAnswer(round.pick(option))}
+              onSubmitTyped={() => onAnswer(round.submitTyped())}
+              onContinue={() => round.next(askFrom(set.terms))}
+            />
+          </SlideSwap>
         )
       )}
     </div>

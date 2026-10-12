@@ -4,7 +4,13 @@ import { Icon, type IconName } from "../Icon";
 import { Tag } from "../surfaces";
 import { ProgressBar } from "./studying";
 
-/** A study set in a list or search result. `known` + `learning` add a thin progress bar. */
+/** Cards after this many rise together: a long list shouldn't keep you waiting. */
+const STAGGER_MAX = 8;
+
+/**
+ * A study set in a list or search result. `known` + `learning` add a thin progress bar.
+ * `index` (its place in the list) makes the cards rise in one after another.
+ */
 export function StudySetCard({
   title,
   termCount,
@@ -12,6 +18,7 @@ export function StudySetCard({
   tag,
   known,
   learning,
+  index,
   onClick,
 }: {
   title: string;
@@ -20,6 +27,7 @@ export function StudySetCard({
   tag?: string;
   known?: number;
   learning?: number;
+  index?: number;
   onClick?: () => void;
 }) {
   const { tn, t } = useT();
@@ -27,7 +35,11 @@ export function StudySetCard({
     <button
       type="button"
       onClick={onClick}
-      className="group flex w-full flex-col gap-3 rounded-ui-xl border border-line-soft bg-surface p-5 text-left transition-all hover:-translate-y-0.5 hover:border-line hover:shadow-raised"
+      className={cx(
+        "group flex w-full flex-col gap-3 rounded-ui-xl border border-line-soft bg-surface p-5 text-left transition-all hover:-translate-y-0.5 hover:border-line hover:shadow-raised",
+        index !== undefined && "animate-rise",
+      )}
+      style={index !== undefined ? { animationDelay: `${Math.min(index, STAGGER_MAX) * 70}ms` } : undefined}
     >
       <div className="flex items-start justify-between gap-3">
         <h3 className="text-[17px] leading-snug font-semibold text-ink">{title}</h3>

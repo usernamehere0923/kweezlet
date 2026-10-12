@@ -16,6 +16,7 @@ import {
   ProgressBar,
   SegmentedControl,
   PageLoading,
+  SlideSwap,
   StreakBadge,
 } from "../ui";
 
@@ -36,6 +37,8 @@ export function FlashcardsPage() {
   const [order, setOrder] = useState<number[]>([]);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
+  /** The last move went to an earlier card: slide the other way. */
+  const [back, setBack] = useState(false);
   const [started, setStarted] = useState(false);
   const streak = useStudyDay(started);
 
@@ -72,6 +75,7 @@ export function FlashcardsPage() {
   }
 
   function goTo(next: number) {
+    setBack(next < at);
     setIndex(next);
     setFlipped(false);
   }
@@ -164,17 +168,20 @@ export function FlashcardsPage() {
 
       {current ? (
         <>
-          <FlipCard
-            front={side === "term" ? current.term : current.definition}
-            back={side === "term" ? current.definition : current.term}
-            frontLabel={t(side === "term" ? "study.term" : "study.definition")}
-            backLabel={t(side === "term" ? "study.definition" : "study.term")}
-            flipped={flipped}
-            onFlip={(next) => {
-              setFlipped(next);
-              setStarted(true);
-            }}
-          />
+          {/* The old card slides away as it was, flipped or not: its answer never shows on the next one. */}
+          <SlideSwap id={current.id} back={back}>
+            <FlipCard
+              front={side === "term" ? current.term : current.definition}
+              back={side === "term" ? current.definition : current.term}
+              frontLabel={t(side === "term" ? "study.term" : "study.definition")}
+              backLabel={t(side === "term" ? "study.definition" : "study.term")}
+              flipped={flipped}
+              onFlip={(next) => {
+                setFlipped(next);
+                setStarted(true);
+              }}
+            />
+          </SlideSwap>
 
           <div className="mt-4">
             <CardNav

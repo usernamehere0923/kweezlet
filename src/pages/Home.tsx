@@ -131,9 +131,10 @@ export function HomePage() {
             <EmptyState icon="search" title={t("sets.noResults")} text={t("sets.noResultsText")} />
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
-              {sets.map((set) => (
+              {sets.map((set, i) => (
                 <StudySetCard
                   key={set.id}
+                  index={i}
                   title={set.title}
                   termCount={set.termCount}
                   known={set.knownCount}

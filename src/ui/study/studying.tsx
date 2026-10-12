@@ -220,6 +220,7 @@ export function AnswerOption({
       className={cx(
         "flex min-h-14 w-full items-center gap-3 rounded-ui-lg border-2 px-4 py-3 text-left text-base text-ink transition-colors disabled:cursor-default",
         answerStyles[state],
+        state === "correct" && "animate-pop-sm",
         state === "wrong" && "animate-shake",
       )}
     >
@@ -234,7 +235,7 @@ export function AnswerOption({
         </span>
       )}
       <span className="flex-1">{label}</span>
-      {state === "correct" && <Icon name="checkCircle" className="text-correct" />}
+      {state === "correct" && <Icon name="checkCircle" className="animate-pop-in text-correct" />}
       {state === "wrong" && <Icon name="closeCircle" className="text-wrong" />}
     </button>
   );
@@ -274,7 +275,7 @@ export function AnswerInput({
           // flex-1 only side by side: in the phone column it would squash the height.
           "h-13 rounded-ui-lg sm:flex-1 border-2 bg-surface px-4 text-base text-ink outline-none transition-colors",
           state === "idle" && "border-line focus:border-accent",
-          state === "correct" && "border-correct bg-correct-wash",
+          state === "correct" && "animate-pop-sm border-correct bg-correct-wash",
           state === "wrong" && "animate-shake border-wrong bg-wrong-wash",
         )}
       />

@@ -18,7 +18,8 @@ type Common = {
 
 const base =
   "inline-flex items-center justify-center gap-2 rounded-ui font-medium whitespace-nowrap select-none " +
-  "transition-colors duration-150 disabled:pointer-events-none disabled:opacity-50";
+  "transition-[color,background-color,border-color,scale] duration-150 active:scale-[0.97] " +
+  "disabled:pointer-events-none disabled:opacity-50";
 
 const sizes = {
   sm: "h-9 px-3.5 text-sm",
@@ -126,7 +127,7 @@ export function IconButton({
       aria-label={label}
       title={label}
       className={cx(
-        "inline-flex shrink-0 items-center justify-center rounded-ui transition-colors disabled:pointer-events-none disabled:opacity-40",
+        "inline-flex shrink-0 items-center justify-center rounded-ui transition-[color,background-color,border-color,scale] active:scale-[0.92] disabled:pointer-events-none disabled:opacity-40",
         size === "sm" ? "size-9" : "size-11",
         variant === "ghost"
           ? "text-muted hover:bg-sunken hover:text-ink"
