@@ -116,7 +116,6 @@ describe("GET /api/sets/:id", () => {
           status: "unseen",
           starred: false,
           streak: 0,
-          due: true,
         },
         {
           id: expect.any(Number),
@@ -126,7 +125,6 @@ describe("GET /api/sets/:id", () => {
           status: "unseen",
           starred: false,
           streak: 0,
-          due: true,
         },
       ],
     });
@@ -193,7 +191,6 @@ describe("POST /api/sets", () => {
           status: "unseen",
           starred: false,
           streak: 0,
-          due: true,
         },
         {
           id: expect.any(Number),
@@ -203,7 +200,6 @@ describe("POST /api/sets", () => {
           status: "unseen",
           starred: false,
           streak: 0,
-          due: true,
         },
       ],
     });
@@ -332,7 +328,6 @@ describe("PATCH /api/sets/:id", () => {
         status: "unseen",
         starred: false,
         streak: 0,
-        due: true,
       },
       {
         id: expect.any(Number),
@@ -342,7 +337,6 @@ describe("PATCH /api/sets/:id", () => {
         status: "unseen",
         starred: false,
         streak: 0,
-        due: true,
       },
     ]);
     expect(after.terms.map((t) => t.id)).not.toContain(gato.id);

@@ -5,7 +5,6 @@ export const en = {
   "app.tagline": "Learn anything, card by card.",
 
   "nav.home": "Home",
-  "nav.design": "Design",
   "nav.settings": "Settings",
   "nav.main": "Main navigation",
 

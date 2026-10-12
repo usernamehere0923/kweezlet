@@ -7,7 +7,6 @@ export const deCH: Record<keyof typeof en, string> = {
   "app.tagline": "Lerne alles, Karte für Karte.",
 
   "nav.home": "Start",
-  "nav.design": "Design",
   "nav.settings": "Einstellungen",
   "nav.main": "Hauptnavigation",
 

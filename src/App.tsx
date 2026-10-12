@@ -79,7 +79,6 @@ function LoggedInApp() {
   // Add your pages here, and to `nav` if they belong in the menu (max 4-5 for the phone tab bar).
   const nav: NavItem[] = [
     { to: "/", label: t("nav.home"), icon: "learn" },
-    { to: "/design", label: t("nav.design"), icon: "feather" },
     { to: "/settings", label: t("nav.settings"), icon: "settings" },
   ];
   return (
