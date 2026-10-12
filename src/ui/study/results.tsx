@@ -1,9 +1,17 @@
 import { useT } from "../../i18n";
 import { Button } from "../Button";
+import { cx } from "../cx";
 import { Icon } from "../Icon";
+import { Confetti, useCountUp } from "../motion";
 import { Tag } from "../surfaces";
 
-/** End-of-round screen: score ring, counts, "study again". */
+/** Confetti from this score on: a celebration, not a consolation. */
+const CELEBRATE_FROM = 0.8;
+
+/**
+ * End-of-round screen: score ring, counts, "study again". The ring fills
+ * and the percentage counts up; a good score pops and throws confetti.
+ */
 export function ResultSummary({
   correct,
   total,
@@ -17,10 +25,13 @@ export function ResultSummary({
 }) {
   const { t, formatNumber } = useT();
   const ratio = total ? correct / total : 0;
+  const shown = useCountUp(ratio);
+  const landed = shown === ratio;
   const r = 52;
   const circumference = 2 * Math.PI * r;
   return (
-    <div className="flex flex-col items-center gap-6 rounded-ui-xl border border-line-soft bg-surface p-8 text-center">
+    <div className="relative flex flex-col items-center gap-6 rounded-ui-xl border border-line-soft bg-surface p-8 text-center">
+      {landed && ratio >= CELEBRATE_FROM && <Confetti />}
       <div className="relative size-36">
         <svg viewBox="0 0 120 120" className="size-full -rotate-90">
           <circle cx="60" cy="60" r={r} fill="none" strokeWidth="10" className="stroke-sunken" />
@@ -31,13 +42,18 @@ export function ResultSummary({
             fill="none"
             strokeWidth="10"
             strokeLinecap="round"
-            className="stroke-correct transition-[stroke-dashoffset] duration-700"
+            className="stroke-correct"
             strokeDasharray={circumference}
-            strokeDashoffset={circumference * (1 - ratio)}
+            strokeDashoffset={circumference * (1 - shown)}
           />
         </svg>
-        <span className="absolute inset-0 flex items-center justify-center font-serif text-4xl text-ink">
-          {formatNumber(ratio, { style: "percent" })}
+        <span
+          className={cx(
+            "absolute inset-0 flex items-center justify-center font-serif text-4xl text-ink tabular-nums",
+            landed && ratio > 0 && "animate-pop",
+          )}
+        >
+          {formatNumber(shown, { style: "percent" })}
         </span>
       </div>
       <div>
@@ -58,7 +74,7 @@ export function ResultSummary({
   );
 }
 
-/** The end of a Match round: the time, "new best time!", play again / done. */
+/** The end of a Match round: the time, "new best time!" (with confetti), play again / done. */
 export function MatchResult({
   time,
   isNewBest,
@@ -76,11 +92,17 @@ export function MatchResult({
 }) {
   const { t } = useT();
   return (
-    <div className="flex flex-col items-center gap-6 rounded-ui-xl border border-line-soft bg-surface p-8 text-center">
+    <div className="relative flex flex-col items-center gap-6 rounded-ui-xl border border-line-soft bg-surface p-8 text-center">
       {isNewBest && (
-        <Tag tone="accent" icon="starFilled">
-          {t("match.newBest")}
-        </Tag>
+        <>
+          <Confetti />
+          {/* Lands after the time has been read. */}
+          <span className="animate-pop-in [animation-delay:400ms]">
+            <Tag tone="accent" icon="starFilled">
+              {t("match.newBest")}
+            </Tag>
+          </span>
+        </>
       )}
       <div>
         <p className="text-sm font-medium text-muted">{t("match.yourTime")}</p>

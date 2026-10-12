@@ -7,7 +7,17 @@ import { useLive } from "../lib/live";
 import { useQuestionRound } from "../lib/questionRound";
 import { buildQuestion } from "../lib/quiz";
 import { shuffle, useStudyDay } from "../lib/study";
-import { ButtonLink, EmptyState, Heading, PageLoading, QuestionCard, ResultSummary, StreakBadge, Tag } from "../ui";
+import {
+  ButtonLink,
+  EmptyState,
+  Heading,
+  PageLoading,
+  QuestionCard,
+  ResultSummary,
+  SlideSwap,
+  StreakBadge,
+  Tag,
+} from "../ui";
 
 /** Due cards fetched when another device answers: enough to see which of ours are still due. */
 const REFRESH_LIMIT = 100;
@@ -121,19 +131,21 @@ export function ReviewPage() {
               {t("learn.remaining")} {round.left}
             </Tag>
           </div>
-          <QuestionCard
-            label={t(question.label)}
-            prompt={question.prompt}
-            answer={question.answer}
-            options={question.options}
-            typed={round.typed}
-            onTyped={round.setTyped}
-            picked={round.picked}
-            feedback={round.feedback}
-            onPick={(option) => onAnswer(round.pick(option))}
-            onSubmitTyped={() => onAnswer(round.submitTyped())}
-            onContinue={() => round.next(askFrom(cards))}
-          />
+          <SlideSwap id={question}>
+            <QuestionCard
+              label={t(question.label)}
+              prompt={question.prompt}
+              answer={question.answer}
+              options={question.options}
+              typed={round.typed}
+              onTyped={round.setTyped}
+              picked={round.picked}
+              feedback={round.feedback}
+              onPick={(option) => onAnswer(round.pick(option))}
+              onSubmitTyped={() => onAnswer(round.submitTyped())}
+              onContinue={() => round.next(askFrom(cards))}
+            />
+          </SlideSwap>
         </>
       ) : (
         <EmptyState
