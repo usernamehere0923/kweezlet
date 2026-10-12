@@ -34,28 +34,7 @@ export function HomePage() {
         <div className="flex justify-center py-16 text-muted">
           <Spinner size={28} label={t("common.loading")} />
         </div>
-      ) : sets.length === 0 && q ? (
-        <>
-          <SearchField
-            value={q}
-            onChange={setQ}
-            label={t("sets.searchLabel")}
-            placeholder={t("search.placeholder")}
-            clearLabel={t("common.clear")}
-            className="mb-6"
-          />
-          <EmptyState
-            icon="search"
-            title={t("sets.noResults")}
-            text={t("sets.noResultsText")}
-            action={
-              <ButtonLink to="/sets/new" icon="plus">
-                {t("sets.new")}
-              </ButtonLink>
-            }
-          />
-        </>
-      ) : sets.length === 0 ? (
+      ) : sets.length === 0 && !q ? (
         <EmptyState
           icon="folderPlus"
           title={t("sets.emptyTitle")}
@@ -81,16 +60,21 @@ export function HomePage() {
               {t("sets.new")}
             </ButtonLink>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {sets.map((set) => (
-              <StudySetCard
-                key={set.id}
-                title={set.title}
-                termCount={set.termCount}
-                onClick={() => navigate(`/sets/${set.id}`)}
-              />
-            ))}
-          </div>
+          {/* Same tree position with and without results, so the input keeps focus while typing. */}
+          {sets.length === 0 ? (
+            <EmptyState icon="search" title={t("sets.noResults")} text={t("sets.noResultsText")} />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {sets.map((set) => (
+                <StudySetCard
+                  key={set.id}
+                  title={set.title}
+                  termCount={set.termCount}
+                  onClick={() => navigate(`/sets/${set.id}`)}
+                />
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>

@@ -68,6 +68,8 @@ export const deCH: Record<keyof typeof en, string> = {
   "sets.langHint": "Optional. Wird später für Audio und zum Prüfen verwendet.",
   "sets.termsNeeded": "Füge mindestens einen Begriff hinzu.",
   "sets.termsIncomplete": "Fülle beide Felder eines Begriffs aus, oder lösche die Zeile.",
+  "sets.termsTooMany": "Ein Set kann höchstens 500 Begriffe haben.",
+  "sets.termTooLong": "Ein Begriff oder eine Definition ist zu lang (höchstens 1000 Zeichen).",
   "sets.termsChanged":
     "Diese Begriffe wurden auf einem anderen Gerät geändert. Seite neu laden und nochmals versuchen.",
 
