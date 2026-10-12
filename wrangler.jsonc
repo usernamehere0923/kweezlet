@@ -17,8 +17,7 @@
     {
       "binding": "DB",
       "database_name": "kweezlet",
-      // Placeholder until `wrangler d1 create kweezlet` runs. Local dev accepts any id.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "3dd73d1f-47bd-4f57-a955-f1e72a52ff7a",
       "migrations_dir": "migrations",
     },
   ],
