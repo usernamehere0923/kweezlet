@@ -202,6 +202,43 @@ describe("POST /api/sets", () => {
     expect(await get.json()).toEqual(created);
   });
 
+  it("puts the terms into the new set when other sets exist", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const ben = await addUser("ben", "secret-pw");
+    const cookie = await login("anna", "secret-pw");
+    const older = await addSet(anna, "Older", "", [["a", "b"]]);
+    await addSet(ben, "Ben set", "", [["c", "d"]]);
+
+    const res = await api("/api/sets", {
+      method: "POST",
+      cookie,
+      json: { title: "New", terms: [{ term: "x", definition: "y" }] },
+    });
+    const created = (await res.json()) as { id: number; terms: { term: string }[] };
+    expect(created.terms.map((t) => t.term)).toEqual(["x"]);
+    const old = (await (await api(`/api/sets/${older}`, { cookie })).json()) as { terms: { term: string }[] };
+    expect(old.terms.map((t) => t.term)).toEqual(["a"]);
+  });
+
+  it("leaves no empty set behind when a term cannot be saved", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const cookie = await login("anna", "secret-pw");
+    await env.DB.exec(
+      "CREATE TRIGGER fail_term BEFORE INSERT ON terms WHEN NEW.term = 'boom' BEGIN SELECT RAISE(ABORT, 'boom'); END",
+    );
+
+    const res = await api("/api/sets", {
+      method: "POST",
+      cookie,
+      json: { title: "Broken", terms: [{ term: "boom", definition: "x" }] },
+    });
+    expect(res.status).toBe(500);
+    const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM sets WHERE user_id = ?")
+      .bind(anna)
+      .first<{ n: number }>();
+    expect(count!.n).toBe(0);
+  });
+
   it("rejects bad data with field errors", async () => {
     await addUser("anna", "secret-pw");
     const cookie = await login("anna", "secret-pw");

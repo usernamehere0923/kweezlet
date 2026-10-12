@@ -31,6 +31,16 @@ const LANG_KEY: Record<Language, TKey> = {
 };
 const LANG_OPTIONS: Language[] = ["en", "de", "fr", "it", "es"];
 
+/** The message for the server's errors on the terms, or null when there are none. */
+function termsError(errors: Record<string, string>): TKey | null {
+  // "invalid_value" on the list means a term id went stale (changed on another device).
+  if (errors.terms === "validation.invalid_value") return "sets.termsChanged";
+  if (errors.terms === "validation.too_big") return "sets.termsTooMany";
+  const rowCodes = Object.entries(errors).flatMap(([field, code]) => (field.startsWith("terms.") ? [code] : []));
+  if (rowCodes.includes("validation.too_big")) return "sets.termTooLong";
+  return rowCodes.length > 0 ? "sets.termsIncomplete" : null;
+}
+
 /** Create (no id) or edit (id in the URL) a study set. */
 export function SetFormPage() {
   const { t } = useT();
@@ -87,6 +97,8 @@ export function SetFormPage() {
     e.preventDefault();
     // Rows still completely empty simply disappear; half-filled ones are errors.
     const kept = rows.filter((row) => row.term.trim() || row.definition.trim());
+    setErrors({});
+    setFormError(null);
     if (!title.trim()) {
       setErrors({ title: "validation.too_small" });
       return;
@@ -100,8 +112,6 @@ export function SetFormPage() {
       return;
     }
     setBusy(true);
-    setErrors({});
-    setFormError(null);
     try {
       const json = {
         title: title.trim(),
@@ -121,13 +131,8 @@ export function SetFormPage() {
       } else {
         const serverErrors = await fieldErrors(res);
         setErrors(serverErrors);
-        if (Object.keys(serverErrors).some((field) => field.startsWith("terms"))) {
-          // "invalid_value" means a term id went stale (changed on another
-          // device); the other codes mean the row itself is not filled in.
-          setFormError(
-            t(serverErrors.terms === "validation.invalid_value" ? "sets.termsChanged" : "sets.termsIncomplete"),
-          );
-        }
+        const key = termsError(serverErrors);
+        setFormError(key && t(key));
       }
     } finally {
       setBusy(false);
