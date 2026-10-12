@@ -1,0 +1,44 @@
+import { Hono } from "hono";
+import { z } from "zod";
+import { notify } from "./live";
+import type { AppEnv } from "./types";
+import { validate } from "./validate";
+
+const idParam = z.object({ id: z.coerce.number().int().positive() });
+/** A finished Match round: whole seconds, and an hour is plenty for 12 tiles. */
+const scoreBody = z.object({ seconds: z.number().int().positive().max(3600) });
+
+export const matchRoutes = new Hono<AppEnv>()
+  // Record a finished Match round. Only a faster time replaces the best one;
+  // the answer is computed here, so two devices always agree on who won.
+  .post("/sets/:id/match", validate("param", idParam), validate("json", scoreBody), async (c) => {
+    const user = c.get("user");
+    const { id } = c.req.valid("param");
+    const { seconds } = c.req.valid("json");
+    const db = c.env.DB;
+    const set = await db
+      .prepare("SELECT id FROM sets WHERE id = ? AND user_id = ?")
+      .bind(id, user.id)
+      .first<{ id: number }>();
+    if (!set) return c.json({ error: "not_found" as const }, 404);
+    const current = await db
+      .prepare("SELECT seconds FROM match_best WHERE user_id = ? AND set_id = ?")
+      .bind(user.id, id)
+      .first<{ seconds: number }>();
+    const isNewBest = current === null || seconds < current.seconds;
+    if (isNewBest) {
+      await db
+        .prepare(
+          `INSERT INTO match_best (user_id, set_id, seconds, achieved_at) VALUES (?, ?, ?, unixepoch())
+           ON CONFLICT (user_id, set_id) DO UPDATE SET seconds = excluded.seconds, achieved_at = unixepoch()`,
+        )
+        .bind(user.id, id, seconds)
+        .run();
+      await notify(c.env, user.id, "match");
+    }
+    const result: { best: number; isNewBest: boolean } = {
+      best: isNewBest ? seconds : current!.seconds,
+      isNewBest,
+    };
+    return c.json(result, 200);
+  });

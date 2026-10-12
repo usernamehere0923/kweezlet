@@ -78,7 +78,11 @@ export type SetTerm = {
   /** Correct answers in a row in Learn mode (worker/study.ts). */
   streak: number;
 };
-export type SetDetail = SetSummary & { terms: SetTerm[] };
+export type SetDetail = SetSummary & {
+  terms: SetTerm[];
+  /** The user's best Match time for this set, in seconds (worker/match.ts). */
+  bestSeconds: number | null;
+};
 
 const SET_COLUMNS = "id, title, description, term_lang, def_lang, created_at, updated_at";
 
@@ -101,9 +105,14 @@ async function loadSetDetail(db: D1Database, userId: number, id: number): Promis
     )
     .bind(id, userId)
     .all<TermRow>();
+  const best = await db
+    .prepare("SELECT seconds FROM match_best WHERE user_id = ? AND set_id = ?")
+    .bind(userId, id)
+    .first<{ seconds: number }>();
   return {
     ...toSetJson({ ...set, term_count: terms.length }),
     terms: terms.map((row) => ({ ...row, status: row.status ?? "unseen", starred: !!row.starred })),
+    bestSeconds: best?.seconds ?? null,
   };
 }
 

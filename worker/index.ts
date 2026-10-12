@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { accountRoutes } from "./account";
 import { authRoutes, requireUser } from "./auth";
 import { liveRoutes } from "./live";
+import { matchRoutes } from "./match";
 import { setRoutes } from "./sets";
 import { studyRoutes } from "./study";
 import type { AppEnv } from "./types";
@@ -14,6 +15,7 @@ const app = new Hono<AppEnv>()
   .route("/api/me", accountRoutes)
   .route("/api", liveRoutes)
   .route("/api", setRoutes)
+  .route("/api", matchRoutes)
   .route("/api", studyRoutes)
   .all("/api/*", (c) => c.json({ error: "not_found" as const }, 404));
 
