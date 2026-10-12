@@ -97,42 +97,33 @@ export const studyRoutes = new Hono<AppEnv>()
       .bind(id, user.id)
       .first<{ set_id: number }>();
     if (!term) return c.json({ error: "not_found" as const }, 404);
-    const stats = await db
-      .prepare("SELECT correct, wrong, streak FROM term_stats WHERE user_id = ? AND term_id = ?")
-      .bind(user.id, id)
-      .first<{ correct: number; wrong: number; streak: number }>();
-    const mark = await db
-      .prepare("SELECT status FROM term_state WHERE user_id = ? AND term_id = ?")
-      .bind(user.id, id)
-      .first<{ status: Status | null }>();
-
-    const next = {
-      correct: (stats?.correct ?? 0) + (correct ? 1 : 0),
-      wrong: (stats?.wrong ?? 0) + (correct ? 0 : 1),
-      streak: correct ? (stats?.streak ?? 0) + 1 : 0,
-    };
-    // One correct answer leaves the user's own mark alone.
-    const status: Status | null = !correct ? "still_learning" : next.streak >= 2 ? "know_it" : (mark?.status ?? null);
-    const statements = [
+    // Counted in SQL, not read-then-written: two answers in flight at once
+    // (fast tapping, two devices) must both count.
+    const [counted, , marked] = await db.batch([
       db
         .prepare(
           `INSERT INTO term_stats (user_id, term_id, set_id, correct, wrong, streak, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, unixepoch())
            ON CONFLICT (user_id, term_id) DO UPDATE SET
-             correct = excluded.correct, wrong = excluded.wrong, streak = excluded.streak, last_seen_at = unixepoch()`,
+             correct = correct + excluded.correct, wrong = wrong + excluded.wrong,
+             streak = CASE WHEN excluded.correct = 1 THEN streak + 1 ELSE 0 END, last_seen_at = unixepoch()
+           RETURNING correct, wrong, streak`,
         )
-        .bind(user.id, id, term.set_id, next.correct, next.wrong, next.streak),
-    ];
-    if (status !== (mark?.status ?? null)) {
-      statements.push(
-        db
-          .prepare(
-            `INSERT INTO term_state (user_id, term_id, set_id, status, starred, updated_at) VALUES (?, ?, ?, ?, 0, unixepoch())
-             ON CONFLICT (user_id, term_id) DO UPDATE SET status = excluded.status, updated_at = unixepoch()`,
-          )
-          .bind(user.id, id, term.set_id, status),
-      );
-    }
-    await db.batch(statements);
+        .bind(user.id, id, term.set_id, correct ? 1 : 0, correct ? 0 : 1, correct ? 1 : 0),
+      // Wrong drops the term to "still learning", two correct in a row learn it;
+      // one correct answer leaves the user's own mark alone.
+      db
+        .prepare(
+          `INSERT INTO term_state (user_id, term_id, set_id, status, starred, updated_at)
+             SELECT user_id, term_id, set_id, CASE WHEN streak = 0 THEN 'still_learning' ELSE 'know_it' END, 0, unixepoch()
+               FROM term_stats WHERE user_id = ? AND term_id = ? AND (streak = 0 OR streak >= 2)
+           ON CONFLICT (user_id, term_id) DO UPDATE SET status = excluded.status, updated_at = unixepoch()
+             WHERE term_state.status IS NOT excluded.status`,
+        )
+        .bind(user.id, id),
+      db.prepare("SELECT status FROM term_state WHERE user_id = ? AND term_id = ?").bind(user.id, id),
+    ]);
+    const next = counted!.results[0] as { correct: number; wrong: number; streak: number };
+    const status = (marked!.results[0] as { status: Status | null } | undefined)?.status ?? null;
     await notify(c.env, user.id, "study");
     const result: { termId: number; correct: number; wrong: number; streak: number; status: "unseen" | Status } = {
       termId: id,

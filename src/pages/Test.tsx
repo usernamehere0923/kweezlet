@@ -19,6 +19,7 @@ import {
   ButtonLink,
   Card,
   Checkbox,
+  EmptyState,
   Heading,
   MatchTile,
   ResultSummary,
@@ -80,7 +81,11 @@ export function TestPage() {
   // The clock: when the deadline passes, the paper is over.
   useEffect(() => {
     if (deadline === null || view !== "paper") return;
-    const tick = setInterval(() => setNow(Date.now()), 500);
+    const tick = setInterval(() => {
+      setNow(Date.now());
+      // Time is up: hand in the paper, which also stops this clock.
+      if (Date.now() >= deadline) setView("result");
+    }, 500);
     return () => clearInterval(tick);
   }, [deadline, view]);
 
@@ -153,7 +158,9 @@ export function TestPage() {
         {set.title}
       </Heading>
 
-      {view === "setup" ? (
+      {set.terms.length === 0 ? (
+        <EmptyState icon="checkCircle" title={t("test.emptyTitle")} text={t("test.emptyText")} />
+      ) : view === "setup" ? (
         <div className="flex flex-col gap-5">
           <Card>
             <Heading level={3} className="mb-3">

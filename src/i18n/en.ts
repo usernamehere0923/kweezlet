@@ -66,6 +66,8 @@ export const en = {
   "sets.langHint": "Optional. Used for audio and grading later.",
   "sets.termsNeeded": "Add at least one term.",
   "sets.termsIncomplete": "Fill in both fields of a term, or delete the row.",
+  "sets.termsTooMany": "A set can have at most 500 terms.",
+  "sets.termTooLong": "A term or definition is too long (at most 1000 characters).",
   "sets.termsChanged": "These terms were changed on another device. Reload the page and try again.",
 
   "learn.askDefinition": "Which definition fits?",
@@ -77,6 +79,8 @@ export const en = {
   "learn.allLearnedText": "You answered every term correctly twice.",
   "learn.studyAnyway": "Study anyway",
 
+  "test.emptyTitle": "No terms to test",
+  "test.emptyText": "Add some terms to this set first.",
   "test.statement": "True or false?",
   "test.length": "Number of questions",
   "test.lengthAll": "All",

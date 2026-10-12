@@ -53,27 +53,34 @@ export function normalizeAnswer(text: string): string {
 }
 
 /**
- * Smart grading: a small typo still counts, and a "/" in the definition offers
- * alternatives ("the dog / hund" is answered by either). Numbers and very
- * short answers have to be exact.
+ * Smart grading: a small typo still counts, and a " / " (with spaces) in the
+ * definition offers alternatives ("the dog / hund" is answered by either).
+ * A slash without spaces is part of the answer ("km/h", "1/2"). Numbers and
+ * very short answers have to be exact.
  */
 export function gradeAnswer(given: string, expected: string): boolean {
-  const said = normalizeAnswer(given);
-  return expected
-    .split("/")
-    .map(normalizeAnswer)
-    .filter(Boolean)
-    .some((alternative) => closeEnough(said, alternative));
+  const alternatives = [expected, ...expected.split(/\s\/\s/)];
+  return alternatives.some((alternative) => {
+    const want = normalizeAnswer(alternative);
+    // Only symbols ("=", "%"): nothing is left after normalizing, so compare as typed.
+    if (!want) return alternative.trim() !== "" && given.trim() === alternative.trim();
+    return closeEnough(normalizeAnswer(given), want);
+  });
 }
 
 /** Typos allowed: one for words from four characters, two for long ones. */
 function closeEnough(said: string, expected: string): boolean {
   if (said === expected) return true;
-  // Numbers are answered exactly: 1291 is not 1292.
+  // Numbers are answered exactly, also inside text: "year 1291" is not "year 1292".
+  if (digits(said) !== digits(expected)) return false;
   if (/^\d+$/.test(expected)) return false;
   const tolerance = expected.length < 4 ? 0 : Math.min(2, Math.floor((expected.length - 4) / 5) + 1);
   if (tolerance === 0 || Math.abs(said.length - expected.length) > tolerance) return false;
   return editDistance(said, expected) <= tolerance;
+}
+
+function digits(text: string): string {
+  return text.replace(/\D+/g, " ").trim();
 }
 
 /** Levenshtein distance, with adjacent transpositions ("teh" = one typo). */

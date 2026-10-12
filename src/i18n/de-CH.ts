@@ -68,6 +68,8 @@ export const deCH: Record<keyof typeof en, string> = {
   "sets.langHint": "Optional. Wird später für Audio und zum Prüfen verwendet.",
   "sets.termsNeeded": "Füge mindestens einen Begriff hinzu.",
   "sets.termsIncomplete": "Fülle beide Felder eines Begriffs aus, oder lösche die Zeile.",
+  "sets.termsTooMany": "Ein Set kann höchstens 500 Begriffe haben.",
+  "sets.termTooLong": "Ein Begriff oder eine Definition ist zu lang (höchstens 1000 Zeichen).",
   "sets.termsChanged":
     "Diese Begriffe wurden auf einem anderen Gerät geändert. Seite neu laden und nochmals versuchen.",
 
@@ -80,6 +82,8 @@ export const deCH: Record<keyof typeof en, string> = {
   "learn.allLearnedText": "Du hast jeden Begriff zweimal richtig beantwortet.",
   "learn.studyAnyway": "Trotzdem lernen",
 
+  "test.emptyTitle": "Keine Begriffe zum Testen",
+  "test.emptyText": "Füge diesem Set zuerst Begriffe hinzu.",
   "test.statement": "Richtig oder falsch?",
   "test.length": "Anzahl Fragen",
   "test.lengthAll": "Alle",

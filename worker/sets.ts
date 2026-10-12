@@ -200,16 +200,27 @@ export const setRoutes = new Hono<AppEnv>()
     if (body.terms.some((t) => t.id !== undefined)) {
       return c.json({ error: "validation" as const, fields: { terms: "invalid_value" } }, 400);
     }
-    const created = await db
-      .prepare(
-        "INSERT INTO sets (user_id, title, description, term_lang, def_lang) VALUES (?, ?, ?, ?, ?) RETURNING id",
-      )
-      .bind(user.id, body.title, body.description ?? "", body.termLang ?? null, body.defLang ?? null)
-      .first<{ id: number }>();
-    await db.batch(termStatements(db, user.id, created!.id, body.terms, new Set()));
+    // One batch: a failed term insert must not leave an empty set behind. Inside
+    // the batch the new set is the user's highest id, so the terms find it.
+    const [created] = await db.batch<{ id: number }>([
+      db
+        .prepare(
+          "INSERT INTO sets (user_id, title, description, term_lang, def_lang) VALUES (?, ?, ?, ?, ?) RETURNING id",
+        )
+        .bind(user.id, body.title, body.description ?? "", body.termLang ?? null, body.defLang ?? null),
+      ...body.terms.map((t, position) =>
+        db
+          .prepare(
+            `INSERT INTO terms (user_id, set_id, term, definition, position)
+             VALUES (?, (SELECT MAX(id) FROM sets WHERE user_id = ?), ?, ?, ?)`,
+          )
+          .bind(user.id, user.id, t.term, t.definition, position),
+      ),
+    ]);
+    const setId = created!.results[0]!.id;
     await notify(c.env, user.id, "sets");
     // The set was just written, so the reload cannot miss it.
-    return c.json((await loadSetDetail(db, user.id, created!.id))!, 201);
+    return c.json((await loadSetDetail(db, user.id, setId))!, 201);
   })
 
   // Replace a set's data. Terms with an id are updated in place.
