@@ -170,7 +170,7 @@ export function MatchPage() {
           <Text variant="small" className="mb-3">
             {t("test.matchingHint")}
           </Text>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             {tiles.map((tile) => {
               const state = matched.has(tile.pairId)
                 ? "matched"

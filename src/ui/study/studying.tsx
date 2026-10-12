@@ -325,7 +325,7 @@ export function MatchTile({
       onClick={onClick}
       disabled={state === "matched"}
       className={cx(
-        "flex min-h-24 items-center justify-center rounded-ui-lg border-2 p-3 text-center text-[15px] font-medium text-ink transition-all duration-300",
+        "flex min-h-20 items-center justify-center rounded-ui-lg border-2 p-3 text-center text-[15px] font-medium text-ink transition-all duration-300",
         state === "idle" && "border-line-soft bg-surface hover:border-teal hover:shadow-raised",
         state === "selected" && "border-accent bg-accent-wash",
         state === "matched" && "scale-95 border-correct bg-correct-wash opacity-0",
