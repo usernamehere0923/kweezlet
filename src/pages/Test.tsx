@@ -4,14 +4,8 @@ import type { SetDetail } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
-import {
-  buildMatchRound,
-  buildTest,
-  scoreTest,
-  type MatchTileData,
-  type QuestionKind,
-  type TestPaper,
-} from "../lib/quiz";
+import { useMatchBoard } from "../lib/matchBoard";
+import { buildMatchRound, buildTest, scoreTest, type QuestionKind, type TestPaper } from "../lib/quiz";
 import { formatTime, useStudyDay } from "../lib/study";
 import {
   AnswerOption,
@@ -30,7 +24,6 @@ import {
   Text,
   TextField,
   type AnswerState,
-  type MatchState,
 } from "../ui";
 
 type TimerChoice = "off" | "5" | "10";
@@ -57,9 +50,6 @@ export function TestPage() {
   // The paper and the answers on it
   const [paper, setPaper] = useState<TestPaper | null>(null);
   const [answers, setAnswers] = useState<(string | null)[]>([]);
-  const [matched, setMatched] = useState<Set<number>>(new Set());
-  const [pickedTile, setPickedTile] = useState<string | null>(null);
-  const [mismatch, setMismatch] = useState<string | null>(null);
   const [deadline, setDeadline] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
@@ -90,6 +80,7 @@ export function TestPage() {
   }, [deadline, view]);
 
   const tiles = useMemo(() => (paper ? buildMatchRound(paper.matching, paper.matching.length) : []), [paper]);
+  const board = useMatchBoard(tiles);
 
   function start() {
     if (!set) return;
@@ -101,9 +92,7 @@ export function TestPage() {
     });
     setPaper(next);
     setAnswers(Array<string | null>(next.questions.length).fill(null));
-    setMatched(new Set());
-    setPickedTile(null);
-    setMismatch(null);
+    board.reset();
     setNow(Date.now());
     setDeadline(timer === "off" ? null : Date.now() + Number(timer) * 60_000);
     setView("paper");
@@ -111,25 +100,6 @@ export function TestPage() {
 
   function answer(questionIndex: number, given: string) {
     setAnswers((list) => list.map((value, i) => (i === questionIndex ? given : value)));
-  }
-
-  function tapTile(tile: MatchTileData) {
-    if (matched.has(tile.pairId)) return;
-    if (pickedTile === null || pickedTile === tile.key) {
-      setPickedTile(pickedTile === tile.key ? null : tile.key);
-      return;
-    }
-    const picked = tiles.find((candidate) => candidate.key === pickedTile);
-    if (picked && picked.pairId === tile.pairId && picked.kind !== tile.kind) {
-      setMatched((all) => new Set(all).add(tile.pairId));
-      setPickedTile(null);
-    } else {
-      setMismatch(tile.key);
-      setTimeout(() => {
-        setMismatch(null);
-        setPickedTile(null);
-      }, 450);
-    }
   }
 
   if (!set) {
@@ -143,7 +113,7 @@ export function TestPage() {
   const expired = deadline !== null && now >= deadline;
   const timeLeft = deadline === null ? null : Math.max(0, Math.ceil((deadline - now) / 1000));
   const canStart = withMatching || Object.values(kinds).some(Boolean);
-  const score = paper ? scoreTest(paper, answers, matched.size) : null;
+  const score = paper ? scoreTest(paper, answers, board.matched.size) : null;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -285,16 +255,14 @@ export function TestPage() {
                 {t("test.matchingHint")}
               </Text>
               <div className="grid grid-cols-2 gap-3">
-                {tiles.map((tile) => {
-                  const state: MatchState = matched.has(tile.pairId)
-                    ? "matched"
-                    : pickedTile === tile.key
-                      ? "selected"
-                      : mismatch === tile.key
-                        ? "mismatch"
-                        : "idle";
-                  return <MatchTile key={tile.key} label={tile.label} state={state} onClick={() => tapTile(tile)} />;
-                })}
+                {tiles.map((tile) => (
+                  <MatchTile
+                    key={tile.key}
+                    label={tile.label}
+                    state={board.stateOf(tile)}
+                    onClick={() => void board.tap(tile)}
+                  />
+                ))}
               </div>
             </Card>
           )}

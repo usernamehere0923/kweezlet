@@ -57,7 +57,8 @@ export type TestSettings = {
   matching: boolean;
 };
 
-function makeQuestion(term: SetTerm, pool: SetTerm[], kind: QuestionKind): TestQuestion {
+/** One question on `term`; the wrong options come from `pool`. Learn uses it too. */
+export function makeQuestion(term: SetTerm, pool: SetTerm[], kind: QuestionKind): TestQuestion {
   // Written and multiple choice questions ask both ways round.
   const askTerm = kind === "truefalse" ? false : Math.random() < 0.5;
   const answer = askTerm ? term.term : term.definition;

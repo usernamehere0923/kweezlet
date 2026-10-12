@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { notify } from "./live";
+import { MASTERY } from "./shared";
 import type { AppEnv } from "./types";
 import { validate } from "./validate";
 
@@ -115,11 +116,11 @@ export const studyRoutes = new Hono<AppEnv>()
         .prepare(
           `INSERT INTO term_state (user_id, term_id, set_id, status, starred, updated_at)
              SELECT user_id, term_id, set_id, CASE WHEN streak = 0 THEN 'still_learning' ELSE 'know_it' END, 0, unixepoch()
-               FROM term_stats WHERE user_id = ? AND term_id = ? AND (streak = 0 OR streak >= 2)
+               FROM term_stats WHERE user_id = ? AND term_id = ? AND (streak = 0 OR streak >= ?)
            ON CONFLICT (user_id, term_id) DO UPDATE SET status = excluded.status, updated_at = unixepoch()
              WHERE term_state.status IS NOT excluded.status`,
         )
-        .bind(user.id, id),
+        .bind(user.id, id, MASTERY),
       db.prepare("SELECT status FROM term_state WHERE user_id = ? AND term_id = ?").bind(user.id, id),
     ]);
     const next = counted!.results[0] as { correct: number; wrong: number; streak: number };
