@@ -81,7 +81,7 @@ Free plan, no credit card. Everything runs with `wrangler`, which `npm install` 
 npm run deploy
 ```
 
-`npm run deploy` and `npm run db:migrate:remote` always ship GitHub's `master`, from whatever branch you are on. They update your local `master` first and build in a temporary folder, so your current branch and unsaved changes stay as they are. Local `master` with commits not on GitHub: they stop.
+`npm run deploy` and `npm run db:migrate:remote` always ship GitHub's `master`, from whatever branch you are on. They fast-forward your local `master` first and build in a temporary folder, so a feature branch and its unsaved changes stay as they are (only a checked-out `master` gets the new commits). Local `master` with commits not on GitHub: they stop.
 
 If the update has new files in `migrations/`, apply them first. There is no staging: this changes your real cards. **Before running it, open the live app and tap Settings → "Download my data".**
 
