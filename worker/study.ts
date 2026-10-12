@@ -3,13 +3,12 @@ import { z } from "zod";
 import { notify } from "./live";
 import { MASTERY } from "./shared";
 import type { AppEnv } from "./types";
-import { validate } from "./validate";
+import { idParam, validate } from "./validate";
 
 /** How a term can be marked. No row yet = "unseen" (see worker/sets.ts). */
 export const STATUSES = ["still_learning", "know_it"] as const;
 export type Status = (typeof STATUSES)[number];
 
-const idParam = z.object({ id: z.coerce.number().int().positive() });
 const stateBody = z.object({
   status: z.enum(STATUSES).nullish(),
   starred: z.boolean().nullish(),
@@ -93,23 +92,20 @@ export const studyRoutes = new Hono<AppEnv>()
     const { id } = c.req.valid("param");
     const { correct } = c.req.valid("json");
     const db = c.env.DB;
-    const term = await db
-      .prepare("SELECT set_id FROM terms WHERE id = ? AND user_id = ?")
-      .bind(id, user.id)
-      .first<{ set_id: number }>();
-    if (!term) return c.json({ error: "not_found" as const }, 404);
     // Counted in SQL, not read-then-written: two answers in flight at once
-    // (fast tapping, two devices) must both count.
+    // (fast tapping, two devices) must both count. The insert reads the term
+    // itself, so a term that isn't the user's writes nothing and returns no row.
     const [counted, , marked] = await db.batch([
       db
         .prepare(
-          `INSERT INTO term_stats (user_id, term_id, set_id, correct, wrong, streak, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, unixepoch())
+          `INSERT INTO term_stats (user_id, term_id, set_id, correct, wrong, streak, last_seen_at)
+             SELECT user_id, id, set_id, ?, ?, ?, unixepoch() FROM terms WHERE id = ? AND user_id = ?
            ON CONFLICT (user_id, term_id) DO UPDATE SET
              correct = correct + excluded.correct, wrong = wrong + excluded.wrong,
              streak = CASE WHEN excluded.correct = 1 THEN streak + 1 ELSE 0 END, last_seen_at = unixepoch()
            RETURNING correct, wrong, streak`,
         )
-        .bind(user.id, id, term.set_id, correct ? 1 : 0, correct ? 0 : 1, correct ? 1 : 0),
+        .bind(correct ? 1 : 0, correct ? 0 : 1, correct ? 1 : 0, id, user.id),
       // Wrong drops the term to "still learning", two correct in a row learn it;
       // one correct answer leaves the user's own mark alone.
       db
@@ -123,7 +119,8 @@ export const studyRoutes = new Hono<AppEnv>()
         .bind(user.id, id, MASTERY),
       db.prepare("SELECT status FROM term_state WHERE user_id = ? AND term_id = ?").bind(user.id, id),
     ]);
-    const next = counted!.results[0] as { correct: number; wrong: number; streak: number };
+    const next = counted!.results[0] as { correct: number; wrong: number; streak: number } | undefined;
+    if (!next) return c.json({ error: "not_found" as const }, 404);
     const status = (marked!.results[0] as { status: Status | null } | undefined)?.status ?? null;
     await notify(c.env, user.id, "study");
     const result: { termId: number; correct: number; wrong: number; streak: number; status: "unseen" | Status } = {

@@ -146,6 +146,8 @@ describe("POST /api/terms/:id/answer", () => {
 
     const res = await api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct: true } });
     expect(res.status).toBe(404);
+    const written = await env.DB.prepare("SELECT COUNT(*) AS n FROM term_stats").first<{ n: number }>();
+    expect(written!.n).toBe(0);
   });
 
   it("correct has to be a yes or a no", async () => {

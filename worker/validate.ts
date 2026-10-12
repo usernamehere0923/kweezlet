@@ -1,6 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
 import type { ValidationTargets } from "hono";
-import type { ZodType } from "zod";
+import { z, type ZodType } from "zod";
 
 /**
  * zValidator with one error shape for the whole app:
@@ -19,3 +19,6 @@ export function validate<T extends ZodType, Target extends keyof ValidationTarge
     }
   });
 }
+
+/** The `:id` in a route path: a positive whole number. */
+export const idParam = z.object({ id: z.coerce.number().int().positive() });

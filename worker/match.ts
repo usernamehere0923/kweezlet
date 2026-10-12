@@ -2,9 +2,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { notify } from "./live";
 import type { AppEnv } from "./types";
-import { validate } from "./validate";
+import { idParam, validate } from "./validate";
 
-const idParam = z.object({ id: z.coerce.number().int().positive() });
 /** A finished Match round: whole seconds, and an hour is plenty for 12 tiles. */
 const scoreBody = z.object({ seconds: z.number().int().positive().max(3600) });
 

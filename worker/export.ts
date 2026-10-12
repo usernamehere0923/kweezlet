@@ -13,12 +13,14 @@ export async function exportUserData(
   userId: number,
   tables: string[] = exportTables,
 ): Promise<Record<string, unknown[]>> {
-  const out: Record<string, unknown[]> = {};
+  // Table names cannot be bound as parameters; the list is ours, but check anyway.
   for (const table of tables) {
-    // Table names cannot be bound as parameters; the list is ours, but check anyway.
     if (!/^[a-z_][a-z0-9_]*$/.test(table)) throw new Error(`bad table name: ${table}`);
-    const { results } = await db.prepare(`SELECT * FROM "${table}" WHERE user_id = ?`).bind(userId).all();
-    out[table] = results;
   }
-  return out;
+  if (tables.length === 0) return {};
+  // One round trip for all tables.
+  const results = await db.batch(
+    tables.map((table) => db.prepare(`SELECT * FROM "${table}" WHERE user_id = ?`).bind(userId)),
+  );
+  return Object.fromEntries(tables.map((table, i) => [table, results[i]!.results]));
 }

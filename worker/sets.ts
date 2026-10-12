@@ -4,12 +4,11 @@ import { notify } from "./live";
 import { LANGUAGES, type Language } from "./shared";
 import type { Status } from "./study";
 import type { AppEnv } from "./types";
-import { validate } from "./validate";
+import { idParam, validate } from "./validate";
 
 export type { Language };
 const languageSchema = z.enum(LANGUAGES);
 
-const idParam = z.object({ id: z.coerce.number().int().positive() });
 const searchQuery = z.object({ q: z.string().trim().max(200).optional() });
 const termShape = z.object({
   /** Present when the term already exists: it is updated, not re-inserted. */
@@ -83,45 +82,51 @@ export type SetDetail = SetSummary & {
   bestSeconds: number | null;
 };
 
-const SET_COLUMNS = "id, title, description, term_lang, def_lang, created_at, updated_at";
-
-/** The set with all its terms, or null when it is not the user's. */
+/** The set with all its terms, or null when it is not the user's. One round trip. */
 async function loadSetDetail(db: D1Database, userId: number, id: number): Promise<SetDetail | null> {
-  const set = await db
-    .prepare(`SELECT ${SET_COLUMNS} FROM sets WHERE id = ? AND user_id = ?`)
-    .bind(id, userId)
-    .first<SetRow>();
+  const [setRows, termRows] = await db.batch([
+    db
+      .prepare(
+        `SELECT s.id, s.title, s.description, s.term_lang, s.def_lang, s.created_at, s.updated_at,
+                mb.seconds AS best_seconds
+           FROM sets s
+           LEFT JOIN match_best mb ON mb.set_id = s.id AND mb.user_id = s.user_id
+          WHERE s.id = ? AND s.user_id = ?`,
+      )
+      .bind(id, userId),
+    db
+      .prepare(
+        `SELECT t.id, t.term, t.definition, t.position, ts.status, COALESCE(ts.starred, 0) AS starred,
+                COALESCE(st.streak, 0) AS streak
+           FROM terms t
+           LEFT JOIN term_state ts ON ts.term_id = t.id AND ts.user_id = t.user_id
+           LEFT JOIN term_stats st ON st.term_id = t.id AND st.user_id = t.user_id
+          WHERE t.set_id = ? AND t.user_id = ?
+          ORDER BY t.position`,
+      )
+      .bind(id, userId),
+  ]);
+  const set = setRows!.results[0] as (SetRow & { best_seconds: number | null }) | undefined;
   if (!set) return null;
-  const { results: terms } = await db
-    .prepare(
-      `SELECT t.id, t.term, t.definition, t.position, ts.status, COALESCE(ts.starred, 0) AS starred,
-              COALESCE(st.streak, 0) AS streak
-         FROM terms t
-         LEFT JOIN term_state ts ON ts.term_id = t.id AND ts.user_id = t.user_id
-         LEFT JOIN term_stats st ON st.term_id = t.id AND st.user_id = t.user_id
-        WHERE t.set_id = ? AND t.user_id = ?
-        ORDER BY t.position`,
-    )
-    .bind(id, userId)
-    .all<TermRow>();
-  const best = await db
-    .prepare("SELECT seconds FROM match_best WHERE user_id = ? AND set_id = ?")
-    .bind(userId, id)
-    .first<{ seconds: number }>();
+  const terms = termRows!.results as TermRow[];
   return {
     ...toSetJson({ ...set, term_count: terms.length }),
     terms: terms.map((row) => ({ ...row, status: row.status ?? "unseen", starred: !!row.starred })),
-    bestSeconds: best?.seconds ?? null,
+    bestSeconds: set.best_seconds,
   };
 }
 
-/** Ids of the terms this user has in this set. */
-async function ownedTermIds(db: D1Database, userId: number, setId: number): Promise<Set<number>> {
+/** The ids of this user's terms in this set, or null when the set is not theirs. One query. */
+async function ownedTermIds(db: D1Database, userId: number, setId: number): Promise<Set<number> | null> {
   const { results } = await db
-    .prepare("SELECT id FROM terms WHERE set_id = ? AND user_id = ?")
+    .prepare(
+      `SELECT t.id FROM sets s LEFT JOIN terms t ON t.set_id = s.id AND t.user_id = s.user_id
+        WHERE s.id = ? AND s.user_id = ?`,
+    )
     .bind(setId, userId)
-    .all<{ id: number }>();
-  return new Set(results.map((row) => row.id));
+    .all<{ id: number | null }>();
+  if (results.length === 0) return null;
+  return new Set(results.flatMap((row) => (row.id === null ? [] : [row.id])));
 }
 
 /**
@@ -168,17 +173,20 @@ export const setRoutes = new Hono<AppEnv>()
     const user = c.get("user");
     const q = c.req.valid("query").q ?? "";
     const like = likePattern(q);
+    // Without a search word every set matches: skip the LIKE scan over all terms.
+    const search = q
+      ? `AND (s.title LIKE ? ESCAPE '\\' OR s.description LIKE ? ESCAPE '\\'
+              OR EXISTS (SELECT 1 FROM terms t WHERE t.set_id = s.id AND t.user_id = s.user_id
+                           AND (t.term LIKE ? ESCAPE '\\' OR t.definition LIKE ? ESCAPE '\\')))`
+      : "";
     const { results } = await c.env.DB.prepare(
       `SELECT s.id, s.title, s.description, s.term_lang, s.def_lang, s.created_at, s.updated_at,
               (SELECT COUNT(*) FROM terms t WHERE t.set_id = s.id AND t.user_id = s.user_id) AS term_count
          FROM sets s
-        WHERE s.user_id = ?
-          AND (s.title LIKE ? ESCAPE '\\' OR s.description LIKE ? ESCAPE '\\'
-               OR EXISTS (SELECT 1 FROM terms t WHERE t.set_id = s.id
-                            AND (t.term LIKE ? ESCAPE '\\' OR t.definition LIKE ? ESCAPE '\\')))
+        WHERE s.user_id = ? ${search}
         ORDER BY s.updated_at DESC, s.id DESC`,
     )
-      .bind(user.id, like, like, like, like)
+      .bind(user.id, ...(q ? [like, like, like, like] : []))
       .all<SetRow & { term_count: number }>();
     return c.json(results.map(toSetJson), 200);
   })
@@ -228,12 +236,8 @@ export const setRoutes = new Hono<AppEnv>()
     const { id } = c.req.valid("param");
     const body = c.req.valid("json");
     const db = c.env.DB;
-    const set = await db
-      .prepare("SELECT id FROM sets WHERE id = ? AND user_id = ?")
-      .bind(id, user.id)
-      .first<{ id: number }>();
-    if (!set) return c.json({ error: "not_found" as const }, 404);
     const known = await ownedTermIds(db, user.id, id);
+    if (!known) return c.json({ error: "not_found" as const }, 404);
     if (!allIdsOwned(body.terms, known)) {
       return c.json({ error: "validation" as const, fields: { terms: "invalid_value" } }, 400);
     }
