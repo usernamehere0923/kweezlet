@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useT } from "../i18n";
 import { useStudySet } from "../lib/studySet";
@@ -27,6 +27,25 @@ import {
 type TimerChoice = "off" | "5" | "10";
 type LengthChoice = "5" | "10" | "all";
 
+/** The countdown on the paper. It ticks on its own, so the paper itself does not re-render. */
+function TimeLeft({ deadline, onUp }: { deadline: number; onUp: () => void }) {
+  const { t } = useT();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const tick = setInterval(() => {
+      const at = Date.now();
+      setNow(at);
+      if (at >= deadline) onUp();
+    }, 500);
+    return () => clearInterval(tick);
+  }, [deadline, onUp]);
+  return (
+    <Tag tone="accent" icon="clock">
+      {t("test.timeLeft")} {formatTime(Math.max(0, Math.ceil((deadline - now) / 1000)))}
+    </Tag>
+  );
+}
+
 export function TestPage() {
   const { t, tn } = useT();
   const { id = "" } = useParams();
@@ -48,20 +67,10 @@ export function TestPage() {
   const [paper, setPaper] = useState<TestPaper | null>(null);
   const [answers, setAnswers] = useState<(string | null)[]>([]);
   const [deadline, setDeadline] = useState<number | null>(null);
-  const [now, setNow] = useState(() => Date.now());
 
   const [set] = useStudySet(id, ["sets"]);
-
-  // The clock: when the deadline passes, the paper is over.
-  useEffect(() => {
-    if (deadline === null || view !== "paper") return;
-    const tick = setInterval(() => {
-      setNow(Date.now());
-      // Time is up: hand in the paper, which also stops this clock.
-      if (Date.now() >= deadline) setView("result");
-    }, 500);
-    return () => clearInterval(tick);
-  }, [deadline, view]);
+  // Time is up: hand in the paper.
+  const timeUp = useCallback(() => setView("result"), []);
 
   const tiles = useMemo(() => (paper ? buildMatchRound(paper.matching, paper.matching.length) : []), [paper]);
   const board = useMatchBoard(tiles);
@@ -77,7 +86,6 @@ export function TestPage() {
     setPaper(next);
     setAnswers(Array<string | null>(next.questions.length).fill(null));
     board.reset();
-    setNow(Date.now());
     setDeadline(timer === "off" ? null : Date.now() + Number(timer) * 60_000);
     setView("paper");
   }
@@ -94,8 +102,6 @@ export function TestPage() {
     );
   }
 
-  const expired = deadline !== null && now >= deadline;
-  const timeLeft = deadline === null ? null : Math.max(0, Math.ceil((deadline - now) / 1000));
   const canStart = withMatching || Object.values(kinds).some(Boolean);
   const score = paper ? scoreTest(paper, answers, board.matched.size) : null;
 
@@ -178,15 +184,13 @@ export function TestPage() {
             </Button>
           </div>
         </div>
-      ) : view === "paper" && !expired && paper ? (
+      ) : view === "paper" && paper ? (
         <>
           <div className="mb-5 flex items-center justify-between gap-3">
-            {timeLeft === null ? (
+            {deadline === null ? (
               <Text variant="small">{tn("study.terms", paper.questions.length + paper.matching.length)}</Text>
             ) : (
-              <Tag tone="accent" icon="clock">
-                {t("test.timeLeft")} {formatTime(timeLeft)}
-              </Tag>
+              <TimeLeft deadline={deadline} onUp={timeUp} />
             )}
             <Button icon="check" onClick={() => setView("result")}>
               {t("test.finish")}
