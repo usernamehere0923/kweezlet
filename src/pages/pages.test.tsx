@@ -204,6 +204,10 @@ describe("study sets", () => {
     expect(screen.getByText("Known 1")).toBeTruthy();
     expect(screen.getByText("Learning 0")).toBeTruthy();
     expect(screen.getByText("New 1")).toBeTruthy();
+    // Each term says where it stands (a dot, named for screen readers).
+    const [perro, gato] = screen.getAllByRole("listitem");
+    expect(perro.textContent).toContain("Newel perro");
+    expect(gato.textContent).toContain("Knownel gato");
     expect(screen.getByRole("button", { name: "Flashcards" })).toBeTruthy();
   });
 

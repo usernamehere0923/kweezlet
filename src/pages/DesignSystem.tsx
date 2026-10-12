@@ -586,7 +586,8 @@ function StudyKit() {
   onChange={(term, definition) => update(i, term, definition)}
   onNext={() => focusOrAddRow(i + 1)}   // Enter in "definition"
   onDelete={() => remove(i)} />
-<TermList terms={terms} />`}
+<TermList terms={terms} />   // progress: "known" | "learning" | "new" adds a TermProgressDot
+<TermProgressDot progress="learning" />`}
       >
         <div className="flex flex-col gap-3">
           {rows.map((row, i) => (
@@ -615,6 +616,12 @@ function StudyKit() {
         </div>
         <div className="mt-6">
           <TermList terms={ANIMALS} />
+          <TermList
+            terms={ANIMALS.slice(0, 3).map((item, i) => ({
+              ...item,
+              progress: (["known", "learning", "new"] as const)[i],
+            }))}
+          />
         </div>
       </Section>
 

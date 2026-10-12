@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { termProgress } from "../../worker/shared";
 import type { SetDetail as SetDetailData } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
@@ -122,7 +123,7 @@ export function SetDetailPage() {
         <Text variant="small" className="mb-3">
           {tn("study.terms", set.termCount)}
         </Text>
-        <TermList terms={set.terms} />
+        <TermList terms={set.terms.map((term) => ({ ...term, progress: termProgress(term) }))} />
       </section>
 
       <Modal
