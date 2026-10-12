@@ -67,17 +67,24 @@ function makeQuestion(term: SetTerm, pool: SetTerm[], kind: QuestionKind): TestQ
 
 /** A fresh paper: shuffled terms, question types in turn, one matching round. */
 export function buildTest(terms: SetTerm[], settings: TestSettings): TestPaper {
-  const pick = shuffle(terms).slice(0, Math.min(settings.count, terms.length));
-  // No question types chosen means a matching-only paper.
+  const mixed = shuffle(terms);
   const kinds = settings.types;
+  // No question types chosen means a matching-only paper.
+  if (kinds.length === 0) return { questions: [], matching: settings.matching ? mixed.slice(0, 5).map(toPair) : [] };
+  // Matching gets its own terms, or its tiles would give the questions' answers
+  // away: the ones left over, but at least half the set (up to 5 pairs).
+  const pairs = settings.matching
+    ? Math.min(5, Math.max(terms.length - settings.count, Math.floor(terms.length / 2)))
+    : 0;
+  const pick = mixed.slice(pairs, pairs + settings.count);
   return {
-    questions: kinds.length === 0 ? [] : pick.map((term, i) => makeQuestion(term, pick, kinds[i % kinds.length])),
-    matching: settings.matching
-      ? shuffle(terms)
-          .slice(0, Math.min(5, terms.length))
-          .map((term) => ({ id: term.id, term: term.term, definition: term.definition }))
-      : [],
+    questions: pick.map((term, i) => makeQuestion(term, terms, kinds[i % kinds.length])),
+    matching: mixed.slice(0, pairs).map(toPair),
   };
+}
+
+function toPair(term: SetTerm): MatchPair {
+  return { id: term.id, term: term.term, definition: term.definition };
 }
 
 /** One question, one given answer. Written answers use the smart grader. */

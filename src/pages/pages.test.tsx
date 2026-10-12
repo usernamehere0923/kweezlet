@@ -679,9 +679,19 @@ describe("test mode", () => {
     await userEvent.click(screen.getByRole("button", { name: "Start test" }));
 
     expect(await screen.findByText(/Time left 5:00/)).toBeTruthy();
+    const stopped = vi.spyOn(window, "clearInterval");
     nowMs += 6 * 60_000;
     expect(await screen.findByText("Nice work!", undefined, { timeout: 3000 })).toBeTruthy();
     expect(screen.getByText(/0 of \d+ correct/)).toBeTruthy();
+    // The clock stops once the paper is handed in.
+    expect(stopped).toHaveBeenCalled();
+  });
+
+  test("a set without terms has nothing to test", async () => {
+    mockApi(testApi({ ...LEARN_DETAIL, termCount: 0, terms: [] }));
+    renderApp("/sets/7/test");
+    expect(await screen.findByText("No terms to test")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Start test" })).toBeNull();
   });
 
   test("a test needs at least one question type", async () => {

@@ -80,6 +80,8 @@ export const deCH: Record<keyof typeof en, string> = {
   "learn.allLearnedText": "Du hast jeden Begriff zweimal richtig beantwortet.",
   "learn.studyAnyway": "Trotzdem lernen",
 
+  "test.emptyTitle": "Keine Begriffe zum Testen",
+  "test.emptyText": "Füge diesem Set zuerst Begriffe hinzu.",
   "test.statement": "Richtig oder falsch?",
   "test.length": "Anzahl Fragen",
   "test.lengthAll": "Alle",

@@ -77,6 +77,8 @@ export const en = {
   "learn.allLearnedText": "You answered every term correctly twice.",
   "learn.studyAnyway": "Study anyway",
 
+  "test.emptyTitle": "No terms to test",
+  "test.emptyText": "Add some terms to this set first.",
   "test.statement": "True or false?",
   "test.length": "Number of questions",
   "test.lengthAll": "All",

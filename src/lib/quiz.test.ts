@@ -21,11 +21,24 @@ describe("buildTest", () => {
     }
   });
 
-  test("clamps to the set and adds the matching round when asked", () => {
-    const paper = buildTest(TERMS, { count: 50, types: ["written"], matching: true });
+  test("clamps to the set", () => {
+    const paper = buildTest(TERMS, { count: 50, types: ["written"], matching: false });
     expect(paper.questions).toHaveLength(4);
     for (const question of paper.questions) expect(question.options).toEqual([]);
-    expect(paper.matching.map((pair) => pair.term).sort()).toEqual(["el caballo", "el gato", "el perro", "el pez"]);
+  });
+
+  test("the matching round never shows a pair the questions ask", () => {
+    const paper = buildTest(TERMS, { count: 50, types: ["written"], matching: true });
+    expect(paper.questions).toHaveLength(2);
+    expect(paper.matching).toHaveLength(2);
+    const asked = paper.questions.map((question) => question.termId);
+    for (const pair of paper.matching) expect(asked).not.toContain(pair.id);
+  });
+
+  test("matching takes the terms left over when there are enough", () => {
+    const paper = buildTest(TERMS, { count: 1, types: ["written"], matching: true });
+    expect(paper.questions).toHaveLength(1);
+    expect(paper.matching).toHaveLength(3);
   });
 
   test("the question types come in turn", () => {
