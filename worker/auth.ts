@@ -3,7 +3,7 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 import { constantTimeEqual, hashPassword, randomHex, sha256Hex } from "./crypto";
-import type { AppEnv, User } from "./types";
+import { publicUser, type AppEnv, type User } from "./types";
 import { validate } from "./validate";
 
 const COOKIE = "kz_session";
@@ -88,7 +88,7 @@ export const authRoutes = new Hono<AppEnv>()
       path: "/",
       maxAge: SESSION_DAYS * 86400,
     });
-    return c.json({ username: user.username, locale: user.locale, level: user.level }, 200);
+    return c.json(publicUser(user), 200);
   })
   .post("/logout", async (c) => {
     await c.env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(c.get("sessionTokenHash")).run();

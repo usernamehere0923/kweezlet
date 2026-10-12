@@ -28,6 +28,12 @@ describe("account levels", () => {
     expect([await levelOf(ben), await levelOf(cleo)]).toEqual(["standard", "standard"]);
   });
 
+  it("a user created into an emptied table is the first user again: admin", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    await env.DB.prepare("DELETE FROM users WHERE id = ?").bind(anna).run();
+    expect(await levelOf(await addUser("ben", "secret-pw"))).toBe("admin");
+  });
+
   it("pro can be stored, anything else cannot", async () => {
     await addUser("anna", "secret-pw");
     const ben = await addUser("ben", "secret-pw");
