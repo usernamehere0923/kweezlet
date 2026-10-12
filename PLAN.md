@@ -19,6 +19,13 @@ Migration numbers below are placeholders: use the next free `migrations/000N_` a
 - **User complaints**: paywall, and AI cards that oversimplify or misread abbreviations.
 - **Where we beat it**: every card carries a source quote, you can steer it with your own instruction, cost is visible, there's no paywall, and it's tied into our review schedule.
 
+### What others do (researched 2026-10-12)
+
+- **Taken into this phase**: page picker with all pages unselected at first (Noji); source quote checked against the document, non-matching cards "unverified" (Quanta, RemNote's link to the source sentence); "More cards" from chosen pages without repeats (Noji "Auto-generate again", RemNote "Bulk Create More").
+- **Prompt rules taken from open-source tools**: self-contained cards with no pronouns, facts not "the text covers…", don't give the answer away, tables and lists rules (Ankreator `prompts.py`); the noise list (Ankreator LIBRARIAN, pickq: answer keys, exam instructions, cover and ad pages).
+- **Ahead of everyone we found**: cost shown per action (others use quotas or credits), the quote visible on every card during review, automatic choice of card type, saving straight into an existing set.
+- **Parked**: cloze cards (RemNote, Noji, AnkiDecks, AnkiBrain: needs a new card type and study UI), a second "critique" pass per card (ankigen: about 2× cost, the quote check already catches invented cards), difficulty and "fewer / standard / more" presets (NotebookLM), review list grouped by page, image occlusion (needs image storage: ask first).
+
 ### z.ai facts that shape the build
 
 - **Endpoint**: `POST https://api.z.ai/api/paas/v4/chat/completions`, `Authorization: Bearer $ZAI_API_KEY`.
@@ -114,6 +121,14 @@ The material comes as <page n="…"> blocks. <existing> lists cards that
 already exist: never make a card that repeats one of them.
 
 Rules for every card:
+- Every card makes sense on its own, without the material next to it:
+  no "it", "they", "this", "the text", "the author"; name the subject.
+- Turn content into facts. Never ask what the material "covers", "talks
+  about" or "includes".
+- The question never gives the answer away.
+- Tables: one card per row (or column) that holds a fact.
+- Lists: a short simple list is one card with the whole list as the answer;
+  a list with explanations becomes one card per item.
 - No duplicates, no two cards with the same answer.
 - The answer must be unambiguous from the question alone.
 - source = a quote copied character for character (max 200 chars) from ONE
@@ -123,6 +138,10 @@ Rules for every card:
 - Language: write in the material's language unless instructed otherwise.
   German is Swiss German spelling: "ss", never the sharp s.
 - At most <max_cards> cards. Fewer is fine; quality beats count.
+- Never make cards from noise: headers, footers, page numbers, tables of
+  contents, navigation text, reference lists, emails, URLs, phone numbers,
+  author or teacher names, dates of the lecture itself, logos, QR codes,
+  course ads, exam instructions, answer keys ("1. B").
 - If the material has nothing learnable, return no cards and say why in notes.
 
 Answer with JSON only, no prose, no code fences:
@@ -145,7 +164,12 @@ User message: `<kind>`, `<max_cards>`, `<user_language>` (from the account local
    - `POST /api/ai/drafts/:id/save` (new set or existing set, in one batch, then delete the draft)
    - `GET /api/ai/usage`
    - `notifyLater(c, "ai")` after every write.
-4. **UI.**
+4. **UI.** Built only from the existing design system (AGENTS.md "Look"):
+   - Every screen from `src/ui` (`Button`, `Card`, `Select`, `TextField`, `Checkbox`, `Tag`, `TermEditorRow`, `EmptyState`, `PageLoading`…). A missing piece (cost line, page thumbnail tile, draft card) is added to `src/ui` or `src/ui/study`, exported from `index.ts` and shown on `/design`, never built inside a page.
+   - Styling only via the `@theme` tokens in `src/index.css`: no `#hex`, no new colours, no dark mode.
+   - One orange (primary) button per screen: "Create cards" on the source screen, "Save" on the draft. Teal for secondary actions ("More cards", "Regenerate"). Green/red only for correct/wrong, so "unverified" uses `Tag tone="accent"` (orange wash), not red.
+   - Mobile first at 390px; text inputs stay `text-base` (16px) so iOS doesn't zoom.
+   - Every string through `t()` / `tn()`, keys in `en.ts` and `de-CH.ts`.
    - Home "Create a set" gets a second way in, "From material".
    - Source screen with the page picker (pdf.js lazy-loaded), draft review screen, "More cards", cost line, Settings "AI usage".
    - New `src/ui` pieces shown on `/design`: a cost line, a page thumbnail tile, and a draft card with source quote, page badge and "unverified" state.
