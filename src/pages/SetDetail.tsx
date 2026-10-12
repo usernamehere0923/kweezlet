@@ -95,6 +95,7 @@ export function SetDetailPage() {
         <div className="grid gap-3 sm:grid-cols-2">
           <StudyModeTile mode="flashcards" onClick={() => navigate(`/sets/${id}/flashcards`)} />
           <StudyModeTile mode="learn" onClick={() => navigate(`/sets/${id}/learn`)} />
+          <StudyModeTile mode="test" onClick={() => navigate(`/sets/${id}/test`)} />
         </div>
       </section>
 
