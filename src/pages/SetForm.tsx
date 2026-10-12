@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router";
-import type { Language } from "../../worker/sets";
+import { LANGUAGES, type Language } from "../../worker/shared";
 import { isTKey, useT, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
 import {
@@ -11,7 +11,7 @@ import {
   Heading,
   PageTitle,
   Select,
-  Spinner,
+  PageLoading,
   TermEditorRow,
   Text,
   TextField,
@@ -29,7 +29,6 @@ const LANG_KEY: Record<Language, TKey> = {
   it: "lang.it",
   es: "lang.es",
 };
-const LANG_OPTIONS: Language[] = ["en", "de", "fr", "it", "es"];
 
 /** The message for the server's errors on the terms, or null when there are none. */
 function termsError(errors: Record<string, string>): TKey | null {
@@ -145,16 +144,12 @@ export function SetFormPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex justify-center py-16 text-muted">
-        <Spinner size={28} label={t("common.loading")} />
-      </div>
-    );
+    return <PageLoading label={t("common.loading")} />;
   }
 
   const languageOptions = (placeholder: string): Option<Language | "">[] => [
     { value: "", label: placeholder },
-    ...LANG_OPTIONS.map((lang) => ({ value: lang, label: t(LANG_KEY[lang]) })),
+    ...LANGUAGES.map((lang) => ({ value: lang, label: t(LANG_KEY[lang]) })),
   ];
 
   return (

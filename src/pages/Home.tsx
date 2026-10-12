@@ -5,23 +5,33 @@ import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
 import { useUser } from "../lib/session";
-import { ButtonLink, EmptyState, PageTitle, SearchField, Spinner, StudySetCard } from "../ui";
+import { ButtonLink, EmptyState, PageTitle, SearchField, PageLoading, StudySetCard } from "../ui";
+
+/** How long typing has to pause before the search goes out. */
+const SEARCH_PAUSE_MS = 250;
 
 export function HomePage() {
   const { t } = useT();
   const user = useUser();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
+  // What was searched: follows q once typing pauses, so not every key is a request.
+  const [query, setQuery] = useState("");
   const [sets, setSets] = useState<SetSummary[] | null>(null);
   const request = useRef(0);
 
+  useEffect(() => {
+    const pause = setTimeout(() => setQuery(q), q ? SEARCH_PAUSE_MS : 0);
+    return () => clearTimeout(pause);
+  }, [q]);
+
   const reload = useCallback(() => {
     const mine = ++request.current;
-    return api.sets.$get({ query: q ? { q } : {} }).then(async (res) => {
-      // An older answer must not overwrite a newer one (fast typing).
+    return api.sets.$get({ query: query ? { q: query } : {} }).then(async (res) => {
+      // An older answer must not overwrite a newer one.
       if (res.ok && mine === request.current) setSets(await res.json());
     });
-  }, [q]);
+  }, [query]);
 
   useEffect(() => void reload(), [reload]);
   useLive("sets", () => void reload());
@@ -31,10 +41,8 @@ export function HomePage() {
       <PageTitle subtitle={t("app.tagline")}>{t("home.greeting", { name: user.username })}</PageTitle>
 
       {sets === null ? (
-        <div className="flex justify-center py-16 text-muted">
-          <Spinner size={28} label={t("common.loading")} />
-        </div>
-      ) : sets.length === 0 && !q ? (
+        <PageLoading label={t("common.loading")} />
+      ) : sets.length === 0 && !query && !q ? (
         <EmptyState
           icon="folderPlus"
           title={t("sets.emptyTitle")}

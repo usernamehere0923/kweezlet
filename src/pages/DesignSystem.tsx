@@ -27,6 +27,7 @@ import {
   SearchField,
   SegmentedControl,
   Select,
+  PageLoading,
   Spinner,
   StreakBadge,
   StudyModeTile,
@@ -354,7 +355,7 @@ function Controls() {
 
       <Chapter title={t("design.feedback")}>
         <Section
-          title="useToast · Modal · Spinner"
+          title="useToast · Modal · Spinner · PageLoading"
           code={`const toast = useToast();
 toast(t("common.saved"), "success");        // "info" | "success" | "error"
 
@@ -362,7 +363,8 @@ toast(t("common.saved"), "success");        // "info" | "success" | "error"
   actions={<><Button variant="ghost" onClick={close}>Cancel</Button><Button variant="danger">Delete</Button></>}>
   This cannot be undone.
 </Modal>
-<Spinner />`}
+<Spinner />
+if (!data) return <PageLoading label={t("common.loading")} />;   // whole page loading`}
         >
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="secondary" onClick={() => toast(t("design.toastText"), "info")}>
@@ -379,6 +381,7 @@ toast(t("common.saved"), "success");        // "info" | "success" | "error"
             </Button>
             <Spinner className="text-accent" />
           </div>
+          <PageLoading label={t("common.loading")} />
           <Modal
             open={modal}
             onClose={() => setModal(false)}

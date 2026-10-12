@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import type { SetDetail, SetTerm } from "../../worker/sets";
-import { useT, type TKey } from "../i18n";
+import { MASTERY } from "../../worker/shared";
+import type { SetTerm } from "../../worker/sets";
+import { useT } from "../i18n";
 import { api } from "../lib/api";
-import { useLive } from "../lib/live";
+import { useStudySet } from "../lib/studySet";
+import { makeQuestion, type TestQuestion } from "../lib/quiz";
 import { gradeAnswer, shuffle, useStudyDay } from "../lib/study";
 import {
   AnswerInput,
@@ -15,44 +17,17 @@ import {
   FeedbackBanner,
   Heading,
   ResultSummary,
-  Spinner,
+  PageLoading,
   StreakBadge,
   Tag,
   Text,
   type AnswerState,
 } from "../ui";
 
-/** Two correct answers in a row learn a term. */
-const MASTERY = 2;
-
-type Question = {
-  termId: number;
-  /** What the user sees; `answer` is what they must give. */
-  prompt: string;
-  answer: string;
-  label: TKey;
-  options: string[];
-  written: boolean;
-};
-
-function buildQuestion(terms: SetTerm[], term: SetTerm): Question {
-  // Half the time the user names the term for a definition, half the time the
-  // other way round.
-  const askTerm = Math.random() < 0.5;
-  const answer = askTerm ? term.term : term.definition;
-  const distractors = shuffle(terms.filter((other) => other.id !== term.id))
-    .slice(0, 3)
-    .map((other) => (askTerm ? other.term : other.definition));
-  return {
-    termId: term.id,
-    prompt: askTerm ? term.definition : term.term,
-    answer,
-    label: askTerm ? "learn.askTerm" : "learn.askDefinition",
-    options: shuffle([...new Set([answer, ...distractors])]),
-    // Written from the first correct answer on. Without other terms there is
-    // nothing to choose from, so those are written from the start.
-    written: term.streak >= 1 || terms.length < 2,
-  };
+/** Multiple choice until the first correct answer, then written. Without other
+ * terms there is nothing to choose from, so those are written from the start. */
+function buildQuestion(terms: SetTerm[], term: SetTerm): TestQuestion {
+  return makeQuestion(term, terms, term.streak >= 1 || terms.length < 2 ? "written" : "choice");
 }
 
 export function LearnPage() {
@@ -60,8 +35,7 @@ export function LearnPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const streak = useStudyDay();
-  const [set, setSet] = useState<SetDetail | null>(null);
-  const [question, setQuestion] = useState<Question | null>(null);
+  const [question, setQuestion] = useState<TestQuestion | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [typed, setTyped] = useState("");
@@ -117,24 +91,10 @@ export function LearnPage() {
     [startRound],
   );
 
-  const load = useCallback(
-    (start: boolean) =>
-      api.sets[":id"].$get({ param: { id } }).then(async (res) => {
-        if (!res.ok) {
-          navigate(`/sets/${id}`);
-          return;
-        }
-        const data = await res.json();
-        setSet(data);
-        if (start) begin(data.terms);
-      }),
-    [id, navigate, begin],
-  );
-
-  useEffect(() => void load(true), [load]);
   // Another device answered or renamed something: catch up, keep the question.
-  useLive("study", () => void load(false));
-  useLive("sets", () => void load(false));
+  const [set, setSet] = useStudySet(id, ["sets", "study"], (data, first) => {
+    if (first) begin(data.terms);
+  });
 
   async function postAnswer(termId: number, correct: boolean) {
     const res = await api.terms[":id"].answer.$post({ param: { id: String(termId) }, json: { correct } });
@@ -167,11 +127,7 @@ export function LearnPage() {
   }
 
   if (!set) {
-    return (
-      <div className="flex justify-center py-16 text-muted">
-        <Spinner size={28} label={t("common.loading")} />
-      </div>
-    );
+    return <PageLoading label={t("common.loading")} />;
   }
 
   const remaining = set.terms.filter((term) => term.streak < 1).length;
@@ -227,7 +183,7 @@ export function LearnPage() {
               <Heading className="mt-1">{question.prompt}</Heading>
             </Card>
 
-            {question.written ? (
+            {question.kind === "written" ? (
               <AnswerInput
                 value={typed}
                 onChange={setTyped}

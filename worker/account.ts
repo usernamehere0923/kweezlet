@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { constantTimeEqual, hashPassword, randomHex } from "./crypto";
 import { exportUserData } from "./export";
-import { notify } from "./live";
+import { notifyLater } from "./live";
 import { localeSchema, type AppEnv } from "./types";
 import { validate } from "./validate";
 
@@ -16,7 +16,7 @@ export const accountRoutes = new Hono<AppEnv>()
     const user = c.get("user");
     const { locale } = c.req.valid("json");
     await c.env.DB.prepare("UPDATE users SET locale = ? WHERE id = ?").bind(locale, user.id).run();
-    await notify(c.env, user.id, "settings");
+    notifyLater(c, "settings");
     return c.json({ locale }, 200);
   })
 

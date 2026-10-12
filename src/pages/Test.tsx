@@ -1,17 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import type { SetDetail } from "../../worker/sets";
 import { useT } from "../i18n";
-import { api } from "../lib/api";
-import { useLive } from "../lib/live";
-import {
-  buildMatchRound,
-  buildTest,
-  scoreTest,
-  type MatchTileData,
-  type QuestionKind,
-  type TestPaper,
-} from "../lib/quiz";
+import { useStudySet } from "../lib/studySet";
+import { useMatchBoard } from "../lib/matchBoard";
+import { buildMatchRound, buildTest, scoreTest, type QuestionKind, type TestPaper } from "../lib/quiz";
 import { formatTime, useStudyDay } from "../lib/study";
 import {
   AnswerOption,
@@ -24,24 +16,41 @@ import {
   MatchTile,
   ResultSummary,
   SegmentedControl,
-  Spinner,
+  PageLoading,
   StreakBadge,
   Tag,
   Text,
   TextField,
   type AnswerState,
-  type MatchState,
 } from "../ui";
 
 type TimerChoice = "off" | "5" | "10";
 type LengthChoice = "5" | "10" | "all";
+
+/** The countdown on the paper. It ticks on its own, so the paper itself does not re-render. */
+function TimeLeft({ deadline, onUp }: { deadline: number; onUp: () => void }) {
+  const { t } = useT();
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const tick = setInterval(() => {
+      const at = Date.now();
+      setNow(at);
+      if (at >= deadline) onUp();
+    }, 500);
+    return () => clearInterval(tick);
+  }, [deadline, onUp]);
+  return (
+    <Tag tone="accent" icon="clock">
+      {t("test.timeLeft")} {formatTime(Math.max(0, Math.ceil((deadline - now) / 1000)))}
+    </Tag>
+  );
+}
 
 export function TestPage() {
   const { t, tn } = useT();
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const streak = useStudyDay();
-  const [set, setSet] = useState<SetDetail | null>(null);
   const [view, setView] = useState<"setup" | "paper" | "result">("setup");
 
   // Setup choices
@@ -57,39 +66,14 @@ export function TestPage() {
   // The paper and the answers on it
   const [paper, setPaper] = useState<TestPaper | null>(null);
   const [answers, setAnswers] = useState<(string | null)[]>([]);
-  const [matched, setMatched] = useState<Set<number>>(new Set());
-  const [pickedTile, setPickedTile] = useState<string | null>(null);
-  const [mismatch, setMismatch] = useState<string | null>(null);
   const [deadline, setDeadline] = useState<number | null>(null);
-  const [now, setNow] = useState(() => Date.now());
 
-  const load = useCallback(
-    () =>
-      api.sets[":id"].$get({ param: { id } }).then(async (res) => {
-        if (!res.ok) {
-          navigate(`/sets/${id}`);
-          return;
-        }
-        setSet(await res.json());
-      }),
-    [id, navigate],
-  );
-
-  useEffect(() => void load(), [load]);
-  useLive("sets", () => void load());
-
-  // The clock: when the deadline passes, the paper is over.
-  useEffect(() => {
-    if (deadline === null || view !== "paper") return;
-    const tick = setInterval(() => {
-      setNow(Date.now());
-      // Time is up: hand in the paper, which also stops this clock.
-      if (Date.now() >= deadline) setView("result");
-    }, 500);
-    return () => clearInterval(tick);
-  }, [deadline, view]);
+  const [set] = useStudySet(id, ["sets"]);
+  // Time is up: hand in the paper.
+  const timeUp = useCallback(() => setView("result"), []);
 
   const tiles = useMemo(() => (paper ? buildMatchRound(paper.matching, paper.matching.length) : []), [paper]);
+  const board = useMatchBoard(tiles);
 
   function start() {
     if (!set) return;
@@ -101,10 +85,7 @@ export function TestPage() {
     });
     setPaper(next);
     setAnswers(Array<string | null>(next.questions.length).fill(null));
-    setMatched(new Set());
-    setPickedTile(null);
-    setMismatch(null);
-    setNow(Date.now());
+    board.reset();
     setDeadline(timer === "off" ? null : Date.now() + Number(timer) * 60_000);
     setView("paper");
   }
@@ -113,37 +94,12 @@ export function TestPage() {
     setAnswers((list) => list.map((value, i) => (i === questionIndex ? given : value)));
   }
 
-  function tapTile(tile: MatchTileData) {
-    if (matched.has(tile.pairId)) return;
-    if (pickedTile === null || pickedTile === tile.key) {
-      setPickedTile(pickedTile === tile.key ? null : tile.key);
-      return;
-    }
-    const picked = tiles.find((candidate) => candidate.key === pickedTile);
-    if (picked && picked.pairId === tile.pairId && picked.kind !== tile.kind) {
-      setMatched((all) => new Set(all).add(tile.pairId));
-      setPickedTile(null);
-    } else {
-      setMismatch(tile.key);
-      setTimeout(() => {
-        setMismatch(null);
-        setPickedTile(null);
-      }, 450);
-    }
-  }
-
   if (!set) {
-    return (
-      <div className="flex justify-center py-16 text-muted">
-        <Spinner size={28} label={t("common.loading")} />
-      </div>
-    );
+    return <PageLoading label={t("common.loading")} />;
   }
 
-  const expired = deadline !== null && now >= deadline;
-  const timeLeft = deadline === null ? null : Math.max(0, Math.ceil((deadline - now) / 1000));
   const canStart = withMatching || Object.values(kinds).some(Boolean);
-  const score = paper ? scoreTest(paper, answers, matched.size) : null;
+  const score = paper ? scoreTest(paper, answers, board.matched.size) : null;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -224,15 +180,13 @@ export function TestPage() {
             </Button>
           </div>
         </div>
-      ) : view === "paper" && !expired && paper ? (
+      ) : view === "paper" && paper ? (
         <>
           <div className="mb-5 flex items-center justify-between gap-3">
-            {timeLeft === null ? (
+            {deadline === null ? (
               <Text variant="small">{tn("study.terms", paper.questions.length + paper.matching.length)}</Text>
             ) : (
-              <Tag tone="accent" icon="clock">
-                {t("test.timeLeft")} {formatTime(timeLeft)}
-              </Tag>
+              <TimeLeft deadline={deadline} onUp={timeUp} />
             )}
             <Button icon="check" onClick={() => setView("result")}>
               {t("test.finish")}
@@ -285,16 +239,14 @@ export function TestPage() {
                 {t("test.matchingHint")}
               </Text>
               <div className="grid grid-cols-2 gap-3">
-                {tiles.map((tile) => {
-                  const state: MatchState = matched.has(tile.pairId)
-                    ? "matched"
-                    : pickedTile === tile.key
-                      ? "selected"
-                      : mismatch === tile.key
-                        ? "mismatch"
-                        : "idle";
-                  return <MatchTile key={tile.key} label={tile.label} state={state} onClick={() => tapTile(tile)} />;
-                })}
+                {tiles.map((tile) => (
+                  <MatchTile
+                    key={tile.key}
+                    label={tile.label}
+                    state={board.stateOf(tile)}
+                    onClick={() => void board.tap(tile)}
+                  />
+                ))}
               </div>
             </Card>
           )}

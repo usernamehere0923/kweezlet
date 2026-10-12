@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "./types";
 import { validate } from "./validate";
@@ -45,12 +45,20 @@ export class UserChannel extends DurableObject<Env> {
 /**
  * Tell every open tab/device of this user that something changed.
  * The UI listens with useLive(topic, callback) and usually just refetches.
- *
- *   await notify(c.env, c.get("user").id, "sets");
+ * Routes use notifyLater() so the response does not wait for the broadcast.
  */
 export async function notify(env: Env, userId: number, topic: string, data?: unknown): Promise<void> {
   const stub = env.USER_CHANNEL.get(env.USER_CHANNEL.idFromName(String(userId)));
   await stub.broadcast(JSON.stringify({ topic, data }));
+}
+
+/**
+ * notify() for the logged-in user, sent after the response goes out:
+ *
+ *   notifyLater(c, "sets");
+ */
+export function notifyLater(c: Context<AppEnv>, topic: string, data?: unknown): void {
+  c.executionCtx.waitUntil(notify(c.env, c.get("user").id, topic, data));
 }
 
 export const liveRoutes = new Hono<AppEnv>()

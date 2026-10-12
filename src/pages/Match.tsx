@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import type { SetDetail } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
-import { useLive } from "../lib/live";
+import { useStudySet } from "../lib/studySet";
+import { useMatchBoard } from "../lib/matchBoard";
 import { buildMatchRound, MATCH_PAIRS, MIN_MATCH_TERMS, type MatchTileData } from "../lib/quiz";
 import { formatTime, useStudyDay } from "../lib/study";
-import { ButtonLink, EmptyState, Heading, MatchResult, MatchTile, Spinner, StreakBadge, Tag, Text } from "../ui";
+import { ButtonLink, EmptyState, Heading, MatchResult, MatchTile, PageLoading, StreakBadge, Tag, Text } from "../ui";
 
 type RoundResult = { seconds: number; best: number; isNewBest: boolean };
 
@@ -20,39 +20,22 @@ export function MatchPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const streak = useStudyDay();
-  const [set, setSet] = useState<SetDetail | null>(null);
   const [tiles, setTiles] = useState<MatchTileData[]>([]);
-  const [matched, setMatched] = useState<Set<number>>(new Set());
-  const [picked, setPicked] = useState<string | null>(null);
-  const [mismatch, setMismatch] = useState<string[]>([]);
+  const board = useMatchBoard(tiles);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [result, setResult] = useState<RoundResult | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
-  const load = useCallback(
-    () =>
-      api.sets[":id"].$get({ param: { id } }).then(async (res) => {
-        if (!res.ok) {
-          navigate(`/sets/${id}`);
-          return;
-        }
-        const detail = await res.json();
-        setSet(detail);
-        // The first round starts here; later reloads leave a running one alone.
-        setTiles((current) =>
-          current.length > 0 || detail.terms.length < MIN_MATCH_TERMS
-            ? current
-            : buildMatchRound(detail.terms, MATCH_PAIRS),
-        );
-      }),
-    [id, navigate],
-  );
-
-  useEffect(() => void load(), [load]);
-  useLive("sets", () => void load());
-  // A new best time, from this device or another one.
-  useLive("match", () => void load());
+  // A new best time comes in on "match", from this device or another one.
+  const [set, setSet] = useStudySet(id, ["sets", "match"], (detail) => {
+    // The first round starts here; later reloads leave a running one alone.
+    setTiles((current) =>
+      current.length > 0 || detail.terms.length < MIN_MATCH_TERMS
+        ? current
+        : buildMatchRound(detail.terms, MATCH_PAIRS),
+    );
+  });
 
   // The clock: only ticks while a round is running.
   useEffect(() => {
@@ -64,9 +47,7 @@ export function MatchPage() {
   function startRound() {
     if (!set) return;
     setTiles(buildMatchRound(set.terms, MATCH_PAIRS));
-    setMatched(new Set());
-    setPicked(null);
-    setMismatch([]);
+    board.reset();
     setStartedAt(null);
     setFinishedAt(null);
     setResult(null);
@@ -94,38 +75,18 @@ export function MatchPage() {
 
   /** `at` is the tap's timestamp, read in the click handler (react purity). */
   function tapTile(tile: MatchTileData, at: number) {
-    if (matched.has(tile.pairId) || mismatch.length > 0) return;
+    const pairs = board.tap(tile);
+    if (pairs === null) return;
     const started = startedAt ?? at;
     if (startedAt === null) {
       setStartedAt(at);
       setNow(at);
     }
-    if (picked === null || picked === tile.key) {
-      setPicked(picked === tile.key ? null : tile.key);
-      return;
-    }
-    const chosen = tiles.find((candidate) => candidate.key === picked);
-    if (chosen && chosen.pairId === tile.pairId && chosen.kind !== tile.kind) {
-      const next = new Set(matched).add(tile.pairId);
-      setMatched(next);
-      setPicked(null);
-      if (next.size === tiles.length / 2) finish(started, at);
-    } else {
-      // Both wrong tiles shake, then the game is open again.
-      setMismatch([picked, tile.key]);
-      setTimeout(() => {
-        setMismatch([]);
-        setPicked(null);
-      }, 450);
-    }
+    if (pairs === tiles.length / 2) finish(started, at);
   }
 
   if (!set) {
-    return (
-      <div className="flex justify-center py-16 text-muted">
-        <Spinner size={28} label={t("common.loading")} />
-      </div>
-    );
+    return <PageLoading label={t("common.loading")} />;
   }
 
   const elapsed = startedAt === null ? 0 : Math.floor(((finishedAt ?? now) - startedAt) / 1000);
@@ -176,15 +137,13 @@ export function MatchPage() {
           </Text>
           <div className="grid grid-cols-2 gap-2">
             {tiles.map((tile) => {
-              const state = matched.has(tile.pairId)
-                ? "matched"
-                : mismatch.includes(tile.key)
-                  ? "mismatch"
-                  : picked === tile.key
-                    ? "selected"
-                    : "idle";
               return (
-                <MatchTile key={tile.key} label={tile.label} state={state} onClick={() => tapTile(tile, Date.now())} />
+                <MatchTile
+                  key={tile.key}
+                  label={tile.label}
+                  state={board.stateOf(tile)}
+                  onClick={() => tapTile(tile, Date.now())}
+                />
               );
             })}
           </div>

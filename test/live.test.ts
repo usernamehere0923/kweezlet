@@ -24,6 +24,26 @@ describe("live sync", () => {
     ws.close();
   });
 
+  it("a write reaches the other sockets after its response", async () => {
+    await addUser("anna", "secret-pw");
+    const phone = await login("anna", "secret-pw");
+    const mac = await login("anna", "secret-pw");
+
+    const res = await api("/api/live", { cookie: mac, headers: { Upgrade: "websocket" } });
+    const ws = res.webSocket!;
+    ws.accept();
+    const received = nextMessage(ws);
+
+    const created = await api("/api/sets", {
+      method: "POST",
+      cookie: phone,
+      json: { title: "Live", terms: [{ term: "a", definition: "b" }] },
+    });
+    expect(created.status).toBe(201);
+    expect(await received).toEqual({ topic: "sets" });
+    ws.close();
+  });
+
   it("the socket needs a session", async () => {
     const res = await api("/api/live", { headers: { Upgrade: "websocket" } });
     expect(res.status).toBe(401);
