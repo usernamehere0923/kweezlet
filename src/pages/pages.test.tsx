@@ -150,6 +150,21 @@ describe("study sets", () => {
     expect(await screen.findByText("Spanish animals")).toBeTruthy();
   });
 
+  test("the search box keeps focus when the hits run out", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": (_body, query) => ({
+        json: [SPANISH, SWISS].filter((s) => !query.q || s.title.toLowerCase().includes(query.q.toLowerCase())),
+      }),
+    });
+    renderApp("/");
+    const box = await screen.findByRole("searchbox", { name: "Search your sets" });
+    await userEvent.type(box, "sx");
+    expect(await screen.findByText("Nothing matches your search")).toBeTruthy();
+    expect(document.activeElement).toBe(box);
+    expect((box as HTMLInputElement).value).toBe("sx");
+  });
+
   test("set detail shows the terms and starts flashcards", async () => {
     mockApi({ "GET /api/me": () => ({ json: ME }), "GET /api/sets/7": () => ({ json: SPANISH_DETAIL }) });
     renderApp("/sets/7");
@@ -262,6 +277,38 @@ describe("set form", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByText("Too long")).toBeTruthy();
+  });
+
+  test("a fixed title error goes away on the next try", async () => {
+    mockApi({ "GET /api/me": () => ({ json: ME }) });
+    renderApp("/sets/new");
+    await userEvent.type(await screen.findByLabelText("Title"), "   ");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Too short")).toBeTruthy();
+
+    await userEvent.type(screen.getByLabelText("Title"), "Spanish animals");
+    await userEvent.type(screen.getByLabelText("Term"), "el perro");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Fill in both fields of a term, or delete the row.")).toBeTruthy();
+    expect(screen.queryByText("Too short")).toBeNull();
+  });
+
+  test.each([
+    [{ "terms.0.definition": "too_big" }, "A term or definition is too long (at most 1000 characters)."],
+    [{ terms: "too_big" }, "A set can have at most 500 terms."],
+    [{ "terms.0.term": "too_small" }, "Fill in both fields of a term, or delete the row."],
+  ])("server term errors %o say what is wrong", async (fields, message) => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "POST /api/sets": () => ({ status: 400, json: { error: "validation", fields } }),
+    });
+    renderApp("/sets/new");
+    await userEvent.type(await screen.findByLabelText("Title"), "Spanish animals");
+    await userEvent.type(screen.getByLabelText("Term"), "a");
+    await userEvent.type(screen.getByLabelText("Definition"), "b");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(await screen.findByText(message)).toBeTruthy();
   });
 
   test("a stale term id tells the user to reload", async () => {
