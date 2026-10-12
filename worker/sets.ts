@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { notify } from "./live";
+import { notifyLater } from "./live";
 import { LANGUAGES, type Language } from "./shared";
 import type { Status } from "./study";
 import type { AppEnv } from "./types";
@@ -225,7 +225,7 @@ export const setRoutes = new Hono<AppEnv>()
       ),
     ]);
     const setId = created!.results[0]!.id;
-    await notify(c.env, user.id, "sets");
+    notifyLater(c, "sets");
     // The set was just written, so the reload cannot miss it.
     return c.json((await loadSetDetail(db, user.id, setId))!, 201);
   })
@@ -250,7 +250,7 @@ export const setRoutes = new Hono<AppEnv>()
         .bind(body.title, body.description ?? "", body.termLang ?? null, body.defLang ?? null, id, user.id),
       ...termStatements(db, user.id, id, body.terms, known),
     ]);
-    await notify(c.env, user.id, "sets");
+    notifyLater(c, "sets");
     // The set exists (checked above), so the reload cannot miss it.
     return c.json((await loadSetDetail(db, user.id, id))!, 200);
   })
@@ -261,6 +261,6 @@ export const setRoutes = new Hono<AppEnv>()
     const { id } = c.req.valid("param");
     const deleted = await c.env.DB.prepare("DELETE FROM sets WHERE id = ? AND user_id = ?").bind(id, user.id).run();
     if (!deleted.meta.changes) return c.json({ error: "not_found" as const }, 404);
-    await notify(c.env, user.id, "sets");
+    notifyLater(c, "sets");
     return c.json({ ok: true as const }, 200);
   });

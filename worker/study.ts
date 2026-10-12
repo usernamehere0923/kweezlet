@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { notify } from "./live";
+import { notifyLater } from "./live";
 import { MASTERY } from "./shared";
 import type { AppEnv } from "./types";
 import { idParam, validate } from "./validate";
@@ -74,7 +74,7 @@ export const studyRoutes = new Hono<AppEnv>()
       )
       .bind(user.id, id, term.set_id, status, starred ? 1 : 0)
       .run();
-    await notify(c.env, user.id, "study");
+    notifyLater(c, "study");
     // Annotated so the status keeps its literal type for the UI's typed client.
     const result: { termId: number; status: "unseen" | Status; starred: boolean } = {
       termId: id,
@@ -122,7 +122,7 @@ export const studyRoutes = new Hono<AppEnv>()
     const next = counted!.results[0] as { correct: number; wrong: number; streak: number } | undefined;
     if (!next) return c.json({ error: "not_found" as const }, 404);
     const status = (marked!.results[0] as { status: Status | null } | undefined)?.status ?? null;
-    await notify(c.env, user.id, "study");
+    notifyLater(c, "study");
     const result: { termId: number; correct: number; wrong: number; streak: number; status: "unseen" | Status } = {
       termId: id,
       ...next,

@@ -47,7 +47,7 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 - Everything under `/api/*` needs a login automatically (`requireUser`); only paths in `PUBLIC_PATHS` (`worker/auth.ts`) don't.
 - Validate every body/query with `validate("json", zodSchema)` from `worker/validate.ts`. Errors come back as `{ error: "validation", fields: { name: "too_small" } }`; show them with `fieldErrors(res)` + `t()`.
 - The UI calls the API only through `api` from `src/lib/api.ts` (typed). 401 and server errors are handled there.
-- After a write the user's other devices should see: `await notify(c.env, user.id, "topic")` in the worker, `useLive("topic", reload)` in the page.
+- After a write the user's other devices should see: `notifyLater(c, "topic")` in the worker (sent after the response), `useLive("topic", reload)` in the page.
 - Example of the full pattern (table, scoped route, export): `test/ownership.test.ts`.
 
 ### Git

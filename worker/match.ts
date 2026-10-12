@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { notify } from "./live";
+import { notifyLater } from "./live";
 import type { AppEnv } from "./types";
 import { idParam, validate } from "./validate";
 
@@ -33,7 +33,7 @@ export const matchRoutes = new Hono<AppEnv>()
       db.prepare("SELECT seconds FROM match_best WHERE user_id = ? AND set_id = ?").bind(user.id, id),
     ]);
     const isNewBest = saved!.meta.changes > 0;
-    if (isNewBest) await notify(c.env, user.id, "match");
+    if (isNewBest) notifyLater(c, "match");
     const result: { best: number; isNewBest: boolean } = {
       best: (best!.results[0] as { seconds: number }).seconds,
       isNewBest,
