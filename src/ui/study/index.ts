@@ -12,6 +12,7 @@ export {
   KnowItButtons,
   MatchTile,
   ProgressBar,
+  QuestionCard,
   type AnswerState,
   type MatchState,
 } from "./studying";

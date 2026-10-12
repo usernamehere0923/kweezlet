@@ -5,19 +5,20 @@ import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
 import { useUser } from "../lib/session";
-import { ButtonLink, EmptyState, PageTitle, SearchField, PageLoading, StudySetCard } from "../ui";
+import { ButtonLink, Card, EmptyState, Heading, PageTitle, SearchField, PageLoading, StudySetCard } from "../ui";
 
 /** How long typing has to pause before the search goes out. */
 const SEARCH_PAUSE_MS = 250;
 
 export function HomePage() {
-  const { t } = useT();
+  const { t, tn } = useT();
   const user = useUser();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   // What was searched: follows q once typing pauses, so not every key is a request.
   const [query, setQuery] = useState("");
   const [sets, setSets] = useState<SetSummary[] | null>(null);
+  const [dueCount, setDueCount] = useState(0);
   const request = useRef(0);
 
   useEffect(() => {
@@ -36,9 +37,29 @@ export function HomePage() {
   useEffect(() => void reload(), [reload]);
   useLive("sets", () => void reload());
 
+  // How many terms are due for a review today (worker/review.ts). Only the
+  // count is needed, so one card. Deleting a set elsewhere changes it too.
+  const loadDue = useCallback(
+    () =>
+      api.review.$get({ query: { limit: "1" } }).then(async (res) => {
+        if (res.ok) setDueCount((await res.json()).dueCount);
+      }),
+    [],
+  );
+  useEffect(() => void loadDue(), [loadDue]);
+  useLive("study", () => void loadDue());
+  useLive("sets", () => void loadDue());
+
   return (
     <div className="mx-auto max-w-2xl">
       <PageTitle subtitle={t("app.tagline")}>{t("home.greeting", { name: user.username })}</PageTitle>
+
+      {dueCount > 0 && (
+        <Card className="mb-6 flex items-center justify-between gap-3">
+          <Heading level={3}>{tn("review.due", dueCount)}</Heading>
+          <ButtonLink to="/review">{t("review.start")}</ButtonLink>
+        </Card>
+      )}
 
       {sets === null ? (
         <PageLoading label={t("common.loading")} />
@@ -64,7 +85,7 @@ export function HomePage() {
               clearLabel={t("common.clear")}
               className="flex-1"
             />
-            <ButtonLink to="/sets/new" icon="plus">
+            <ButtonLink to="/sets/new" icon="plus" variant={dueCount > 0 ? "secondary" : "primary"}>
               {t("sets.new")}
             </ButtonLink>
           </div>

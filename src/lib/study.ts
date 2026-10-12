@@ -10,14 +10,16 @@ function localDay(): string {
 /**
  * "I studied today": remembers the day and answers the new day streak.
  * Every study screen calls this on mount, so the streak counts a day once.
+ * `active` false waits until there is something studied (Review with nothing due).
  */
-export function useStudyDay(): number {
+export function useStudyDay(active = true): number {
   const [streak, setStreak] = useState(0);
   useEffect(() => {
+    if (!active) return;
     void api.study.day.$post({ json: { day: localDay() } }).then(async (res) => {
       if (res.ok) setStreak((await res.json()).streak);
     });
-  }, []);
+  }, [active]);
   return streak;
 }
 

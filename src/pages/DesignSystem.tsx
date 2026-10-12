@@ -24,6 +24,7 @@ import {
   Modal,
   PageTitle,
   ProgressBar,
+  QuestionCard,
   ResultSummary,
   SearchField,
   SegmentedControl,
@@ -559,6 +560,18 @@ function StudyKit() {
       </Section>
 
       <Section
+        title="QuestionCard"
+        code={`// One Learn / Review question; useQuestionRound() (src/lib/questionRound.ts) drives it.
+<QuestionCard label={t(question.label)} prompt={question.prompt} answer={question.answer}
+  options={question.options}   // [] = type the answer
+  typed={round.typed} onTyped={round.setTyped} picked={round.picked} feedback={round.feedback}
+  onPick={(o) => onAnswer(round.pick(o))} onSubmitTyped={() => onAnswer(round.submitTyped())}
+  onContinue={() => round.next(ask)} />`}
+      >
+        <QuestionDemo />
+      </Section>
+
+      <Section
         title="MatchTile"
         code={`<MatchTile label="el gato" state={state} onClick={() => pick(tile)} />   // idle | selected | matched | mismatch`}
       >
@@ -714,5 +727,27 @@ useLive("sets", () => void loadSets());`}
         </Card>
       </Section>
     </Chapter>
+  );
+}
+
+function QuestionDemo() {
+  const [picked, setPicked] = useState<string | null>(null);
+  const [typed, setTyped] = useState("");
+  return (
+    <div className="mx-auto max-w-2xl">
+      <QuestionCard
+        label="Choose the definition"
+        prompt="el gato"
+        answer="the cat"
+        options={["the dog", "the cat", "the horse"]}
+        typed={typed}
+        onTyped={setTyped}
+        picked={picked}
+        feedback={picked === null ? null : picked === "the cat" ? "correct" : "wrong"}
+        onPick={setPicked}
+        onSubmitTyped={() => {}}
+        onContinue={() => setPicked(null)}
+      />
+    </div>
   );
 }

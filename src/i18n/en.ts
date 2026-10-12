@@ -5,7 +5,6 @@ export const en = {
   "app.tagline": "Learn anything, card by card.",
 
   "nav.home": "Home",
-  "nav.design": "Design",
   "nav.settings": "Settings",
   "nav.main": "Main navigation",
 
@@ -108,6 +107,13 @@ export const en = {
   "match.timerLabel": "Time",
   "match.tooFewTitle": "Match needs at least 3 terms",
   "match.tooFewText": "Add more terms to this set, then come back and play.",
+
+  "review.title": "Review",
+  "review.start": "Review now",
+  "review.due_one": "{count} card due",
+  "review.due_other": "{count} cards due",
+  "review.caughtUpTitle": "All caught up!",
+  "review.caughtUpText": "Nothing is due right now. Come back later.",
 
   "notFound.title": "Page not found",
   "notFound.text": "This page does not exist (yet).",

@@ -37,12 +37,13 @@ const statements: string[] = [
      (${demo}, ${term("Spanish animals", "el perro")}, ${set("Spanish animals")}, 'know_it', 0),
      (${demo}, ${term("Spanish animals", "el gato")}, ${set("Spanish animals")}, 'know_it', 1),
      (${demo}, ${term("Swiss history", "1291")}, ${set("Swiss history")}, 'still_learning', 1)`,
-  // The Learn numbers behind those marks: two in a row = learned.
-  `INSERT INTO term_stats (user_id, term_id, set_id, correct, wrong, streak) VALUES
-     (${demo}, ${term("Spanish animals", "el perro")}, ${set("Spanish animals")}, 2, 0, 2),
-     (${demo}, ${term("Spanish animals", "el gato")}, ${set("Spanish animals")}, 2, 0, 2),
-     (${demo}, ${term("Spanish animals", "el caballo")}, ${set("Spanish animals")}, 1, 0, 1),
-     (${demo}, ${term("Swiss history", "1291")}, ${set("Swiss history")}, 1, 1, 0)`,
+  // The Learn numbers behind those marks: two in a row = learned. Two terms
+  // are due for a review now (the Home banner), two come back later.
+  `INSERT INTO term_stats (user_id, term_id, set_id, correct, wrong, streak, review_step, due_at) VALUES
+     (${demo}, ${term("Spanish animals", "el perro")}, ${set("Spanish animals")}, 2, 0, 2, 2, unixepoch() + 2 * 86400),
+     (${demo}, ${term("Spanish animals", "el gato")}, ${set("Spanish animals")}, 2, 0, 2, 1, unixepoch() + 86400),
+     (${demo}, ${term("Spanish animals", "el caballo")}, ${set("Spanish animals")}, 1, 0, 1, 1, unixepoch() - 3600),
+     (${demo}, ${term("Swiss history", "1291")}, ${set("Swiss history")}, 1, 1, 0, 0, unixepoch() - 3600)`,
   // Best Match times: one fast round on the animals, an older one on history.
   `INSERT INTO match_best (user_id, set_id, seconds, achieved_at) VALUES
      (${demo}, ${set("Spanish animals")}, 12, unixepoch() - 86400),

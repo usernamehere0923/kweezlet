@@ -3,6 +3,8 @@ import { useT } from "../../i18n";
 import { Button, IconButton } from "../Button";
 import { cx } from "../cx";
 import { Icon } from "../Icon";
+import { Card } from "../surfaces";
+import { Heading, Text } from "../Text";
 import { useHotkey } from "../useHotkey";
 
 /**
@@ -304,6 +306,74 @@ export function FeedbackBanner({
         {t("study.continue")}
       </Button>
     </div>
+  );
+}
+
+/**
+ * One Learn-style question with its answer area and, once answered, the
+ * feedback strip. `options` empty = type the answer. Pair it with
+ * useQuestionRound() (src/lib/questionRound.ts), which grades the answer.
+ */
+export function QuestionCard({
+  label,
+  prompt,
+  answer,
+  options,
+  typed,
+  onTyped,
+  picked,
+  feedback,
+  onPick,
+  onSubmitTyped,
+  onContinue,
+}: {
+  /** Already translated, e.g. "Give the definition". */
+  label: ReactNode;
+  prompt: ReactNode;
+  /** The right option or the expected text, shown when the answer was wrong. */
+  answer: string;
+  options: string[];
+  typed: string;
+  onTyped: (value: string) => void;
+  /** The option or text the user gave, null before answering. */
+  picked: string | null;
+  feedback: "correct" | "wrong" | null;
+  onPick: (option: string) => void;
+  onSubmitTyped: () => void;
+  onContinue: () => void;
+}) {
+  const optionState = (option: string): AnswerState =>
+    !feedback ? "idle" : option === answer ? "correct" : option === picked ? "wrong" : "idle";
+  return (
+    <>
+      <Card className="mb-5">
+        <Text variant="small">{label}</Text>
+        <Heading className="mt-1">{prompt}</Heading>
+      </Card>
+
+      {options.length === 0 ? (
+        <AnswerInput value={typed} onChange={onTyped} state={feedback ?? "idle"} onSubmit={onSubmitTyped} />
+      ) : (
+        <div className="flex flex-col gap-3">
+          {options.map((option, i) => (
+            <AnswerOption
+              key={option}
+              label={option}
+              shortcut={i + 1}
+              state={optionState(option)}
+              disabled={feedback !== null}
+              onSelect={() => onPick(option)}
+            />
+          ))}
+        </div>
+      )}
+
+      {feedback && (
+        <div className="mt-5">
+          <FeedbackBanner state={feedback} correctAnswer={answer} onContinue={onContinue} />
+        </div>
+      )}
+    </>
   );
 }
 

@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { notifyLater } from "./live";
-import { MASTERY } from "./shared";
+import { INTERVAL_DAYS, intervalSql, MASTERY } from "./shared";
 import type { AppEnv } from "./types";
 import { idParam, validate } from "./validate";
 
@@ -84,7 +84,7 @@ export const studyRoutes = new Hono<AppEnv>()
     return c.json(result, 200);
   })
 
-  // An answer in Learn mode: counts it and moves the streak. Two correct in a
+  // An answer in Learn or Review: counts it and moves the streak. Two correct in a
   // row learn the term ("know it"), a wrong answer drops it to "still
   // learning" — the flashcards marks follow along.
   .post("/terms/:id/answer", validate("param", idParam), validate("json", answerBody), async (c) => {
@@ -95,17 +95,28 @@ export const studyRoutes = new Hono<AppEnv>()
     // Counted in SQL, not read-then-written: two answers in flight at once
     // (fast tapping, two devices) must both count. The insert reads the term
     // itself, so a term that isn't the user's writes nothing and returns no row.
+    // The review schedule (worker/shared.ts) only moves when the term is due:
+    // correct goes one step up and waits that step's interval, wrong starts
+    // over. A first answer, right or wrong, brings the term back tomorrow.
+    // SQLite evaluates every SET expression on the old row.
+    const firstWait = INTERVAL_DAYS[0] * 86_400;
     const [counted, , marked] = await db.batch([
       db
         .prepare(
-          `INSERT INTO term_stats (user_id, term_id, set_id, correct, wrong, streak, last_seen_at)
-             SELECT user_id, id, set_id, ?, ?, ?, unixepoch() FROM terms WHERE id = ? AND user_id = ?
+          `INSERT INTO term_stats (user_id, term_id, set_id, correct, wrong, streak, last_seen_at, review_step, due_at)
+             SELECT user_id, id, set_id, ?1, ?2, ?1, unixepoch(), ?1, unixepoch() + ?3
+               FROM terms WHERE id = ?4 AND user_id = ?5
            ON CONFLICT (user_id, term_id) DO UPDATE SET
              correct = correct + excluded.correct, wrong = wrong + excluded.wrong,
-             streak = CASE WHEN excluded.correct = 1 THEN streak + 1 ELSE 0 END, last_seen_at = unixepoch()
+             streak = CASE WHEN excluded.correct = 1 THEN streak + 1 ELSE 0 END, last_seen_at = unixepoch(),
+             review_step = CASE WHEN excluded.correct = 0 THEN 0
+                                WHEN due_at <= unixepoch() THEN review_step + 1 ELSE review_step END,
+             due_at = CASE WHEN excluded.correct = 0 THEN unixepoch() + ?3
+                           WHEN due_at <= unixepoch() THEN unixepoch() + ${intervalSql("review_step")} * 86400
+                           ELSE due_at END
            RETURNING correct, wrong, streak`,
         )
-        .bind(correct ? 1 : 0, correct ? 0 : 1, correct ? 1 : 0, id, user.id),
+        .bind(correct ? 1 : 0, correct ? 0 : 1, firstWait, id, user.id),
       // Wrong drops the term to "still learning", two correct in a row learn it;
       // one correct answer leaves the user's own mark alone.
       db
