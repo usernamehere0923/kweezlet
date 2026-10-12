@@ -63,6 +63,14 @@ describe("settings", () => {
 });
 
 describe("design page", () => {
+  test("is reachable by URL only, not from the menu", async () => {
+    mockApi({ "GET /api/me": () => ({ json: ME }) });
+    renderApp("/design");
+    expect(await screen.findByRole("main")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: "Design" })).toBeNull();
+    expect(screen.getAllByRole("link", { name: "Settings" }).length).toBeGreaterThan(0);
+  });
+
   test("every demo control can be used without crashing", async () => {
     const { calls } = mockApi({ "GET /api/me": () => ({ json: ME }), "POST /api/live/ping": () => ({ json: {} }) });
     renderApp("/design");
@@ -671,16 +679,6 @@ describe("learn", () => {
     await userEvent.click(screen.getByRole("button", { name: "Check" }));
     expect(await screen.findByText("Correct!")).toBeTruthy();
   });
-
-  test("terms due for a review come first", async () => {
-    vi.spyOn(Math, "random").mockReturnValue(0);
-    const dueFirst = { ...LEARN_DETAIL, terms: LEARN_DETAIL.terms.map((term, i) => ({ ...term, due: i === 0 })) };
-    mockApi(learnApi(dueFirst));
-    renderApp("/sets/7/learn");
-
-    // el perro is due and is asked before the other open term (el gato).
-    expect(await screen.findByRole("heading", { name: "the dog" })).toBeTruthy();
-  });
 });
 
 function testApi(detail = LEARN_DETAIL) {
@@ -981,10 +979,86 @@ describe("review", () => {
     expect(screen.getByRole("link", { name: "Back home" })).toBeTruthy();
   });
 
-  test("home keeps quiet when nothing is due", async () => {
-    mockApi(reviewApi({ cards: [], dueCount: 0 }));
+  test("home keeps quiet when nothing is due, and only asks for the count", async () => {
+    const { calls } = mockApi(reviewApi({ cards: [], dueCount: 0 }));
     renderApp("/");
     await screen.findByText("Spanish animals");
     expect(screen.queryByRole("heading", { name: /cards? due/ })).toBeNull();
+    expect(calls.find((c) => c.path === "/api/review")?.query).toEqual({ limit: "1" });
+  });
+
+  test("nothing due does not count as a study day", async () => {
+    const { calls } = mockApi(reviewApi({ cards: [], dueCount: 0 }));
+    renderApp("/review");
+    await screen.findByText("All caught up!");
+    expect(calls.some((c) => c.path === "/api/study/day")).toBe(false);
+  });
+
+  test("study again brings the next cards due, not the same ones", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const next = {
+      id: 72,
+      term: "el caballo",
+      definition: "the horse",
+      streak: 1,
+      setId: 7,
+      setTitle: "Spanish animals",
+    };
+    const overviews = [
+      { cards: [REVIEW_CARDS[0]], dueCount: 2 },
+      { cards: [next], dueCount: 1 },
+    ];
+    mockApi({ ...reviewApi(overviews[0]), "GET /api/review": () => ({ json: overviews.shift() }) });
+    renderApp("/review");
+
+    await userEvent.type(await screen.findByLabelText("Your answer"), "el perro{Enter}");
+    await userEvent.click(await screen.findByRole("button", { name: "Continue" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Study again" }));
+    expect(await screen.findByRole("heading", { name: "the horse" })).toBeTruthy();
+  });
+
+  test("a card answered on another device is skipped", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    let due = REVIEW_CARDS;
+    mockApi({
+      ...reviewApi({ cards: REVIEW_CARDS, dueCount: 2 }),
+      "GET /api/review": () => ({ json: { cards: due, dueCount: due.length } }),
+    });
+    renderApp("/review");
+
+    expect(await screen.findByRole("heading", { name: "the cat" })).toBeTruthy();
+    // The other device answers el perro.
+    due = [REVIEW_CARDS[1]];
+    await waitFor(() => expect(FakeSocket.instances.length).toBeGreaterThan(0));
+    await act(async () => {
+      FakeSocket.last.receive(JSON.stringify({ topic: "study", data: null }));
+    });
+    await userEvent.click(screen.getByText("el gato"));
+    await userEvent.click(await screen.findByRole("button", { name: "Continue" }));
+    expect(await screen.findByText("1 of 1 correct")).toBeTruthy();
+  });
+
+  test("an answer that was not saved asks the card again", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    mockApi({
+      ...reviewApi({ cards: [REVIEW_CARDS[0]], dueCount: 1 }),
+      "POST /api/terms/70/answer": () => ({ status: 500 }),
+    });
+    renderApp("/review");
+
+    await userEvent.type(await screen.findByLabelText("Your answer"), "el perro{Enter}");
+    await userEvent.click(await screen.findByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("heading", { name: "the dog" })).toBeTruthy();
+  });
+
+  test("wrong options come from the card's own set", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    const history = { id: 72, term: "1291", definition: "Bundesbrief", streak: 0, setId: 8, setTitle: "Swiss history" };
+    mockApi(reviewApi({ cards: [...REVIEW_CARDS, history], dueCount: 3 }));
+    renderApp("/review");
+
+    expect(await screen.findByRole("heading", { name: "the cat" })).toBeTruthy();
+    expect(screen.getByText("el perro")).toBeTruthy();
+    expect(screen.queryByText("1291")).toBeNull();
   });
 });

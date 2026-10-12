@@ -1,26 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import type { ReviewCard, ReviewOverview } from "../../worker/review";
+import type { ReviewCard } from "../../worker/review";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
-import { buildQuestion, type TestQuestion } from "../lib/quiz";
-import { gradeAnswer, shuffle, useStudyDay } from "../lib/study";
-import {
-  AnswerInput,
-  AnswerOption,
-  ButtonLink,
-  Card,
-  EmptyState,
-  FeedbackBanner,
-  Heading,
-  PageLoading,
-  ResultSummary,
-  StreakBadge,
-  Tag,
-  Text,
-  type AnswerState,
-} from "../ui";
+import { useQuestionRound } from "../lib/questionRound";
+import { buildQuestion } from "../lib/quiz";
+import { shuffle, useStudyDay } from "../lib/study";
+import { ButtonLink, EmptyState, Heading, PageLoading, QuestionCard, ResultSummary, StreakBadge, Tag } from "../ui";
+
+/** Due cards fetched when another device answers: enough to see which of ours are still due. */
+const REFRESH_LIMIT = 100;
 
 /**
  * The review session: every term whose interval has elapsed, across all sets,
@@ -31,87 +21,77 @@ import {
 export function ReviewPage() {
   const { t } = useT();
   const navigate = useNavigate();
-  const streak = useStudyDay();
-  const [overview, setOverview] = useState<ReviewOverview | null>(null);
-  const [cards, setCards] = useState<ReviewCard[]>([]);
-  const [question, setQuestion] = useState<TestQuestion | null>(null);
-  const [picked, setPicked] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
-  const [typed, setTyped] = useState("");
-  const [score, setScore] = useState({ correct: 0, total: 0 });
-  const [left, setLeft] = useState(0);
-  const [view, setView] = useState<"questions" | "summary">("questions");
-  // The round lives outside the render: the ids still to ask.
-  const queue = useRef<number[]>([]);
+  const round = useQuestionRound();
+  const { start } = round;
+  // The day only counts once something was answered, not for "all caught up".
+  const streak = useStudyDay(round.score.total > 0);
+  const [cards, setCards] = useState<ReviewCard[] | null>(null);
+  // Answered on this device in this round, and answered on another one.
+  const answeredHere = useRef(new Set<number>());
+  const gone = useRef(new Set<number>());
 
-  const draw = useCallback((pool: ReviewCard[]) => {
-    // One pass per queued id: cards answered elsewhere are skipped.
-    for (;;) {
-      const next = queue.current.shift();
-      if (next === undefined) {
-        setQuestion(null);
-        setLeft(0);
-        setView("summary");
-        return;
-      }
-      const card = pool.find((candidate) => candidate.id === next);
-      if (card) {
-        setQuestion(buildQuestion(pool, card));
-        setLeft(queue.current.length + 1);
-        setPicked(null);
-        setFeedback(null);
-        setTyped("");
-        return;
-      }
-    }
-  }, []);
-
-  const startRound = useCallback(
-    (pool: ReviewCard[]) => {
-      queue.current = shuffle(pool.map((card) => card.id));
-      setScore({ correct: 0, total: 0 });
-      setView("questions");
-      draw(pool);
+  const askFrom = useCallback(
+    (pool: ReviewCard[]) => (termId: number) => {
+      const card = pool.find((candidate) => candidate.id === termId);
+      if (!card || gone.current.has(termId)) return null;
+      // Wrong options from the card's own set, not from unrelated ones.
+      return buildQuestion(
+        pool.filter((candidate) => candidate.setId === card.setId),
+        card,
+      );
     },
-    [draw],
+    [],
   );
 
+  /** A new round on whatever is due now. */
   const load = useCallback(
-    (first: boolean) =>
+    () =>
       api.review.$get({ query: {} }).then(async (res) => {
         if (!res.ok) return;
-        const data = await res.json();
-        setOverview(data);
-        // Only the first load opens a round; later updates keep it running.
-        if (first && data.cards.length > 0) {
-          setCards(data.cards);
-          startRound(data.cards);
-        }
+        const { cards: due } = await res.json();
+        answeredHere.current = new Set();
+        gone.current = new Set();
+        setCards(due);
+        start(shuffle(due.map((card) => card.id)), askFrom(due));
       }),
-    [startRound],
+    [askFrom, start],
   );
 
-  useEffect(() => void load(true), [load]);
-  // Another device reviewed or answered something: refresh the counts.
-  useLive("study", () => void load(false));
+  useEffect(() => void load(), [load]);
 
-  function submitAnswer(correct: boolean, given: string) {
-    // Enter in the read-only answer box must not count the answer twice.
-    if (!question || feedback) return;
-    // A mistake comes back later in this round.
-    if (!correct) queue.current.push(question.termId);
-    setPicked(given);
-    setFeedback(correct ? "correct" : "wrong");
-    setScore((s) => ({ correct: s.correct + (correct ? 1 : 0), total: s.total + 1 }));
-    void api.terms[":id"].answer.$post({ param: { id: String(question.termId) }, json: { correct } });
+  // Another device answered: cards it took care of are skipped here.
+  useLive("study", () => {
+    void api.review.$get({ query: { limit: String(REFRESH_LIMIT) } }).then(async (res) => {
+      if (!res.ok) return;
+      const stillDue = new Set((await res.json()).cards.map((card) => card.id));
+      for (const card of cards ?? []) {
+        if (!stillDue.has(card.id) && !answeredHere.current.has(card.id)) gone.current.add(card.id);
+      }
+    });
+  });
+
+  async function save(termId: number, correct: boolean) {
+    const res = await api.terms[":id"].answer
+      .$post({ param: { id: String(termId) }, json: { correct } })
+      .catch(() => null);
+    // Not saved (offline, server error; api.ts shows the toast): ask it again
+    // so the answer gets another try. A 404 means the term is gone.
+    if (!res || res.status >= 500) round.askAgain(termId);
   }
 
-  if (!overview) {
+  function onAnswer(answered: { termId: number; correct: boolean } | null) {
+    if (!answered) return;
+    answeredHere.current.add(answered.termId);
+    // A mistake comes back later in this round.
+    if (!answered.correct) round.askAgain(answered.termId);
+    void save(answered.termId, answered.correct);
+  }
+
+  if (!cards) {
     return <PageLoading label={t("common.loading")} />;
   }
 
-  const optionState = (option: string): AnswerState =>
-    !feedback ? "idle" : option === question?.answer ? "correct" : option === picked ? "wrong" : "idle";
+  const question = round.question;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -126,53 +106,34 @@ export function ReviewPage() {
         {t("review.title")}
       </Heading>
 
-      {view === "summary" ? (
+      {round.done && round.score.total > 0 ? (
         <ResultSummary
-          correct={score.correct}
-          total={score.total}
-          onStudyAgain={() => startRound(cards)}
+          correct={round.score.correct}
+          total={round.score.total}
+          // Not the same cards again: the next ones due, if there are any.
+          onStudyAgain={() => void load()}
           onDone={() => navigate("/")}
         />
       ) : question ? (
         <>
           <div className="mb-5">
             <Tag tone="neutral">
-              {t("learn.remaining")} {left}
+              {t("learn.remaining")} {round.left}
             </Tag>
           </div>
-
-          <Card className="mb-5">
-            <Text variant="small">{t(question.label)}</Text>
-            <Heading className="mt-1">{question.prompt}</Heading>
-          </Card>
-
-          {question.kind === "written" ? (
-            <AnswerInput
-              value={typed}
-              onChange={setTyped}
-              state={feedback ?? "idle"}
-              onSubmit={() => submitAnswer(gradeAnswer(typed, question.answer), typed)}
-            />
-          ) : (
-            <div className="flex flex-col gap-3">
-              {question.options.map((option, i) => (
-                <AnswerOption
-                  key={option}
-                  label={option}
-                  shortcut={i + 1}
-                  state={optionState(option)}
-                  disabled={feedback !== null}
-                  onSelect={() => submitAnswer(option === question.answer, option)}
-                />
-              ))}
-            </div>
-          )}
-
-          {feedback && (
-            <div className="mt-5">
-              <FeedbackBanner state={feedback} correctAnswer={question.answer} onContinue={() => draw(cards)} />
-            </div>
-          )}
+          <QuestionCard
+            label={t(question.label)}
+            prompt={question.prompt}
+            answer={question.answer}
+            options={question.options}
+            typed={round.typed}
+            onTyped={round.setTyped}
+            picked={round.picked}
+            feedback={round.feedback}
+            onPick={(option) => onAnswer(round.pick(option))}
+            onSubmitTyped={() => onAnswer(round.submitTyped())}
+            onContinue={() => round.next(askFrom(cards))}
+          />
         </>
       ) : (
         <EmptyState

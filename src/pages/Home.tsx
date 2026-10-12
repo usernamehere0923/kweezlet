@@ -37,16 +37,18 @@ export function HomePage() {
   useEffect(() => void reload(), [reload]);
   useLive("sets", () => void reload());
 
-  // How many terms are due for a review today (worker/review.ts).
+  // How many terms are due for a review today (worker/review.ts). Only the
+  // count is needed, so one card. Deleting a set elsewhere changes it too.
   const loadDue = useCallback(
     () =>
-      api.review.$get({ query: {} }).then(async (res) => {
+      api.review.$get({ query: { limit: "1" } }).then(async (res) => {
         if (res.ok) setDueCount((await res.json()).dueCount);
       }),
     [],
   );
   useEffect(() => void loadDue(), [loadDue]);
   useLive("study", () => void loadDue());
+  useLive("sets", () => void loadDue());
 
   return (
     <div className="mx-auto max-w-2xl">

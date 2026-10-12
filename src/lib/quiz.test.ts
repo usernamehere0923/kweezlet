@@ -11,7 +11,6 @@ const TERMS: SetTerm[] = [
     status: "unseen",
     starred: false,
     streak: 0,
-    due: true,
   },
   {
     id: 2,
@@ -21,7 +20,6 @@ const TERMS: SetTerm[] = [
     status: "unseen",
     starred: false,
     streak: 0,
-    due: true,
   },
   {
     id: 3,
@@ -31,7 +29,6 @@ const TERMS: SetTerm[] = [
     status: "unseen",
     starred: false,
     streak: 0,
-    due: true,
   },
   {
     id: 4,
@@ -41,7 +38,6 @@ const TERMS: SetTerm[] = [
     status: "unseen",
     starred: false,
     streak: 0,
-    due: true,
   },
 ];
 
