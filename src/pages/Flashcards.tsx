@@ -74,15 +74,16 @@ export function FlashcardsPage() {
     );
   }
 
-  function goTo(next: number) {
-    setBack(next < at);
+  /** `back`: slide as if going to an earlier card. A new order or filter goes forward. */
+  function goTo(next: number, back = next < at) {
+    setBack(back);
     setIndex(next);
     setFlipped(false);
   }
 
   function reshuffle() {
     setOrder((cards) => shuffle(cards));
-    goTo(0);
+    goTo(0, false);
   }
 
   async function saveState(termId: number, state: { status?: "still_learning" | "know_it"; starred?: boolean }) {
@@ -154,7 +155,7 @@ export function FlashcardsPage() {
           value={filter}
           onChange={(f) => {
             setFilter(f);
-            goTo(0);
+            goTo(0, false);
           }}
           size="sm"
           options={[

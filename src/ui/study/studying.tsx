@@ -204,9 +204,12 @@ export function AnswerOption({
   shortcut,
   onSelect,
   disabled,
+  chosen = true,
 }: {
   label: ReactNode;
   state?: AnswerState;
+  /** The user picked this one. A correct pick pops; the right answer shown after a wrong pick doesn't. */
+  chosen?: boolean;
   shortcut?: number;
   onSelect: () => void;
   disabled?: boolean;
@@ -220,7 +223,7 @@ export function AnswerOption({
       className={cx(
         "flex min-h-14 w-full items-center gap-3 rounded-ui-lg border-2 px-4 py-3 text-left text-base text-ink transition-colors disabled:cursor-default",
         answerStyles[state],
-        state === "correct" && "animate-pop-sm",
+        state === "correct" && chosen && "animate-pop-sm",
         state === "wrong" && "animate-shake",
       )}
     >
@@ -235,7 +238,7 @@ export function AnswerOption({
         </span>
       )}
       <span className="flex-1">{label}</span>
-      {state === "correct" && <Icon name="checkCircle" className="animate-pop-in text-correct" />}
+      {state === "correct" && <Icon name="checkCircle" className={cx("text-correct", chosen && "animate-pop-in")} />}
       {state === "wrong" && <Icon name="closeCircle" className="text-wrong" />}
     </button>
   );
@@ -379,6 +382,7 @@ export function QuestionCard({
               label={option}
               shortcut={i + 1}
               state={optionState(option)}
+              chosen={option === picked}
               disabled={feedback !== null}
               onSelect={() => onPick(option)}
             />

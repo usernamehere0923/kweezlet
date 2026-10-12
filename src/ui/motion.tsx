@@ -1,5 +1,6 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type AnimationEvent, type CSSProperties, type ReactNode } from "react";
 import { cx } from "./cx";
+import { HotkeysAsleep } from "./useHotkey";
 
 /**
  * True when the device asks for less motion. Without matchMedia (tests) it
@@ -66,35 +67,61 @@ export function Confetti({ count = 36 }: { count?: number }) {
   );
 }
 
+/** Longest slide-out (0.25 s) plus slack: the swap happens even if animationend never comes. */
+const SLIDE_OUT_MAX_MS = 400;
+
 /**
  * Slides content out and the next in whenever `id` changes: the old one
  * leaves left, the new one comes in from the right (`back`: the other way).
- * The old one keeps what it showed, e.g. a flipped card, until it is gone.
- * Reduced motion: swaps at once.
+ * The old one keeps what it showed, e.g. a flipped card, until it is gone;
+ * its hotkeys are off meanwhile. Reduced motion: swaps at once.
  */
 export function SlideSwap({ id, back, children }: { id: unknown; back?: boolean; children: ReactNode }) {
   // `gen` counts swaps: as the key it mounts the next item fresh instead of
-  // handing it the old one's state.
-  const [shown, setShown] = useState({ id, node: children, gen: 0, entering: false, back: false });
+  // handing it the old one's state. `outBack` is the direction the current
+  // slide-out started with, so a later `back` can't turn it around midway.
+  const [shown, setShown] = useState({
+    id,
+    node: children,
+    gen: 0,
+    entering: false,
+    back: false,
+    outBack: null as boolean | null,
+  });
   const leaving = shown.id !== id;
-  const next = (entering: boolean) => setShown({ id, node: children, gen: shown.gen + 1, entering, back: !!back });
+  const next = (entering: boolean) =>
+    setShown({ id, node: children, gen: shown.gen + 1, entering, back: !!back, outBack: null });
   if (!leaving && shown.node !== children) setShown({ ...shown, node: children });
   else if (leaving && prefersReducedMotion()) next(false);
+  else if (leaving && shown.outBack === null) setShown({ ...shown, outBack: !!back });
 
+  // Hidden, or the animation got cancelled: no animationend (React has no
+  // onAnimationCancel). Swap anyway.
+  const latestNext = useRef(next);
+  useEffect(() => {
+    latestNext.current = next;
+  });
+  useEffect(() => {
+    if (!leaving) return;
+    const timer = setTimeout(() => latestNext.current(true), SLIDE_OUT_MAX_MS);
+    return () => clearTimeout(timer);
+  }, [leaving, shown.gen]);
+
+  const finish = (e: AnimationEvent<HTMLDivElement>) => {
+    if (leaving && e.target === e.currentTarget) next(true);
+  };
   return (
     <div className="overflow-x-clip">
       <div
         key={shown.gen}
         inert={leaving}
         className={cx(
-          leaving && (back ? "animate-slide-out-right" : "animate-slide-out-left"),
+          leaving && (shown.outBack ? "animate-slide-out-right" : "animate-slide-out-left"),
           !leaving && shown.entering && (shown.back ? "animate-slide-in-left" : "animate-slide-in-right"),
         )}
-        onAnimationEnd={(e) => {
-          if (leaving && e.target === e.currentTarget) next(true);
-        }}
+        onAnimationEnd={finish}
       >
-        {shown.node}
+        <HotkeysAsleep value={leaving}>{shown.node}</HotkeysAsleep>
       </div>
     </div>
   );

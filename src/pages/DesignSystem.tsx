@@ -623,6 +623,7 @@ function StudyKit() {
                 label={c}
                 shortcut={i + 1}
                 state={choiceState(i)}
+                chosen={i === picked}
                 disabled={picked !== null}
                 onSelect={() => setPicked(i)}
               />

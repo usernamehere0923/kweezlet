@@ -267,7 +267,8 @@ export function SegmentedControl<T extends string>({
   useLayoutEffect(() => {
     const place = () => {
       const active = group.current?.querySelector<HTMLElement>('[aria-checked="true"]');
-      if (!active || !pill.current) return;
+      // Hidden (width 0): wait for the resize when it shows.
+      if (!active?.offsetWidth || !pill.current) return;
       pill.current.style.translate = `${active.offsetLeft}px 0`;
       pill.current.style.width = `${active.offsetWidth}px`;
       // Only after the first placement: on mount it sits there, it doesn't fly in.
@@ -278,7 +279,7 @@ export function SegmentedControl<T extends string>({
     const observer = new ResizeObserver(place);
     observer.observe(group.current);
     return () => observer.disconnect();
-  }, [value]);
+  }, [value, options]);
 
   return (
     <div

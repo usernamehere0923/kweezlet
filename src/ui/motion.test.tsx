@@ -65,6 +65,11 @@ describe("ResultSummary motion", () => {
 });
 
 describe("correct answers pop", () => {
+  test("not the right answer shown after a wrong pick", () => {
+    renderUi(<AnswerOption label="the cat" state="correct" chosen={false} onSelect={() => {}} />);
+    expect(screen.getByRole("button", { name: /the cat/ }).className).not.toContain("animate-pop");
+  });
+
   test("AnswerOption and AnswerInput", () => {
     renderUi(
       <>
@@ -137,6 +142,45 @@ describe("SlideSwap", () => {
     expect(slot("el gato").className).toContain("animate-slide-in-left");
   });
 
+  test("Space does nothing while the old card leaves: the next one arrives front side up", async () => {
+    allowMotion();
+    renderUi(<Deck />);
+    await userEvent.click(screen.getByRole("button", { name: "go" }));
+    fireEvent.keyDown(document.body, { key: " " });
+    animationEnd(slot("el gato"));
+    expect(screen.getByText("the dog").closest("[aria-hidden]")!.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  test("no animationend (hidden, cancelled): swaps after the longest slide anyway", async () => {
+    allowMotion();
+    renderUi(<Deck />);
+    vi.useFakeTimers();
+    fireEvent.click(screen.getByRole("button", { name: "go" }));
+    expect(screen.queryByText("el perro")).toBeNull();
+    act(() => vi.advanceTimersByTime(400));
+    expect(screen.getByText("el perro")).toBeTruthy();
+  });
+
+  test("the direction is fixed when the slide starts", () => {
+    allowMotion();
+    const { rerender } = renderUi(
+      <SlideSwap id={1}>
+        <p>one</p>
+      </SlideSwap>,
+    );
+    rerender(
+      <SlideSwap id={2}>
+        <p>two</p>
+      </SlideSwap>,
+    );
+    rerender(
+      <SlideSwap id={2} back>
+        <p>two</p>
+      </SlideSwap>,
+    );
+    expect(slot("one").className).toContain("animate-slide-out-left");
+  });
+
   test("reduced motion: swaps at once, the next card front side up", async () => {
     renderUi(<Deck />);
     await userEvent.click(screen.getByRole("button", { name: /flip/ }));
@@ -148,6 +192,21 @@ describe("SlideSwap", () => {
 });
 
 describe("SegmentedControl pill", () => {
+  function Choice() {
+    const [v, setV] = useState("a");
+    return (
+      <SegmentedControl
+        label="Pick"
+        value={v}
+        onChange={setV}
+        options={[
+          { value: "a", label: "Apple" },
+          { value: "b", label: "Banana" },
+        ]}
+      />
+    );
+  }
+
   test("sits under the active option and follows the choice", async () => {
     const observed: Element[] = [];
     vi.stubGlobal(
@@ -157,20 +216,8 @@ describe("SegmentedControl pill", () => {
         disconnect = () => {};
       },
     );
-    function Choice() {
-      const [v, setV] = useState("a");
-      return (
-        <SegmentedControl
-          label="Pick"
-          value={v}
-          onChange={setV}
-          options={[
-            { value: "a", label: "Apple" },
-            { value: "b", label: "Banana" },
-          ]}
-        />
-      );
-    }
+    // jsdom lays nothing out: every option is 50px wide.
+    vi.spyOn(HTMLElement.prototype, "offsetWidth", "get").mockReturnValue(50);
     renderUi(<Choice />);
     const pill = screen.getByTestId("segment-pill");
     expect(pill.hasAttribute("data-placed")).toBe(true);
@@ -181,6 +228,11 @@ describe("SegmentedControl pill", () => {
     await userEvent.click(banana);
     expect(pill.style.translate).toBe("70px 0");
     expect(pill.style.width).toBe("80px");
+  });
+
+  test("hidden (no width): waits, so it doesn't fly in when shown", () => {
+    renderUi(<Choice />);
+    expect(screen.getByTestId("segment-pill").hasAttribute("data-placed")).toBe(false);
   });
 });
 
