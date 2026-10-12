@@ -583,14 +583,14 @@ describe("learn", () => {
     renderApp("/sets/7/learn");
 
     // The round covers the two terms that are not learned yet.
-    expect(await screen.findByText("Remaining 2")).toBeTruthy();
-    expect(screen.getByText("Learned 1")).toBeTruthy();
+    expect(await screen.findByText("New 2")).toBeTruthy();
+    expect(screen.getByText("Known 1")).toBeTruthy();
 
     // Question 1: the definition is shown, pick the term.
     expect(screen.getByText("the cat")).toBeTruthy();
     await userEvent.click(screen.getByText("el gato"));
     expect(await screen.findByText("Correct!")).toBeTruthy();
-    expect(await screen.findByText("Familiar 1")).toBeTruthy();
+    expect(await screen.findByText("Learning 1")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     // Question 2: the other term.
@@ -674,7 +674,7 @@ describe("learn", () => {
     renderApp("/sets/7/learn");
 
     // Written questions from the start: both terms have one correct answer.
-    expect(await screen.findByText("Familiar 2")).toBeTruthy();
+    expect(await screen.findByText("Learning 2")).toBeTruthy();
     await userEvent.type(screen.getByLabelText("Your answer"), "el gat");
     await userEvent.click(screen.getByRole("button", { name: "Check" }));
     expect(await screen.findByText("Correct!")).toBeTruthy();

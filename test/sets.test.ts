@@ -3,6 +3,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { exportUserData } from "../worker/export";
+import { termProgress } from "../worker/shared";
 import { addUser, api, login } from "./helpers";
 
 async function addSet(userId: number, title: string, description = "", terms: [string, string][] = []) {
@@ -28,6 +29,16 @@ describe("sets and terms", () => {
     const data = await exportUserData(env.DB, anna);
     expect(data.sets).toEqual([expect.objectContaining({ title: "Anna set", description: "for the exam" })]);
     expect(data.terms).toEqual([expect.objectContaining({ term: "hola", definition: "hello" })]);
+  });
+});
+
+describe("termProgress", () => {
+  it("is known, learning or new", () => {
+    expect(termProgress({ status: "know_it", streak: 0 })).toBe("known");
+    expect(termProgress({ status: "still_learning", streak: 0 })).toBe("learning");
+    expect(termProgress({ status: null, streak: 1 })).toBe("learning");
+    expect(termProgress({ status: "unseen", streak: 0 })).toBe("new");
+    expect(termProgress({ status: null, streak: 0 })).toBe("new");
   });
 });
 
