@@ -147,6 +147,30 @@ describe("study sets", () => {
     expect(screen.queryByText("Spanish animals")).toBeNull();
   });
 
+  test("home shows the streak, with a nudge until today is studied", async () => {
+    const studied = { streak: 4, studiedToday: false };
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [SPANISH] }),
+      "GET /api/study/streak": () => ({ json: studied }),
+    });
+    renderApp("/");
+    expect(await screen.findByText("4 day streak")).toBeTruthy();
+    expect(screen.getByText("Study today to keep it")).toBeTruthy();
+    expect(calls.find((c) => c.path === "/api/study/streak")?.query.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  test("home hides the nudge once today is studied", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [SPANISH] }),
+      "GET /api/study/streak": () => ({ json: { streak: 5, studiedToday: true } }),
+    });
+    renderApp("/");
+    expect(await screen.findByText("5 day streak")).toBeTruthy();
+    expect(screen.queryByText("Study today to keep it")).toBeNull();
+  });
+
   test("home offers to create the first set when there are none", async () => {
     mockApi({ "GET /api/me": () => ({ json: ME }), "GET /api/sets": () => ({ json: [] }) });
     renderApp("/");
@@ -439,21 +463,29 @@ const THREE_DETAIL = {
   ],
 };
 
+const FLIP = "Tap or press Space to flip";
+
 describe("flashcards", () => {
   test("shows the first card with progress and the streak", async () => {
     mockApi(flashcardsApi());
     renderApp("/sets/7/flashcards");
     expect(await screen.findByText("el perro")).toBeTruthy();
     expect(screen.getByText("1 / 2")).toBeTruthy();
-    expect(screen.getByText("3 day streak")).toBeTruthy();
     expect(screen.getByText("Known 1")).toBeTruthy();
+    // The streak shows once a card is flipped.
+    await userEvent.click(screen.getByRole("button", { name: FLIP }));
+    expect(await screen.findByText("3 day streak")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to the set" })).toBeTruthy();
   });
 
-  test("records the study day with the local date", async () => {
+  test("records the study day with the local date, but only after a flip", async () => {
     const { calls } = mockApi(flashcardsApi());
     renderApp("/sets/7/flashcards");
     await screen.findByText("el perro");
+    // Opening the deck alone does not count as studying.
+    expect(calls.some((c) => c.path === "/api/study/day")).toBe(false);
+    await userEvent.click(screen.getByRole("button", { name: FLIP }));
+    await waitFor(() => expect(calls.some((c) => c.path === "/api/study/day")).toBe(true));
     const body = calls.find((c) => c.path === "/api/study/day")?.body as { day: string };
     expect(body.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });

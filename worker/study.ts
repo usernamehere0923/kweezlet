@@ -142,15 +142,32 @@ export const studyRoutes = new Hono<AppEnv>()
     return c.json(result, 200);
   })
 
+  // The streak for Home, before studying. Today not studied yet still shows
+  // the run up to yesterday: it only breaks when today ends without study.
+  .get("/study/streak", validate("query", dayBody), async (c) => {
+    const user = c.get("user");
+    const { day } = c.req.valid("query");
+    const { results } = await c.env.DB.prepare(
+      "SELECT day FROM study_days WHERE user_id = ? AND day <= ? ORDER BY day DESC",
+    )
+      .bind(user.id, day)
+      .all<{ day: string }>();
+    const days = results.map((row) => row.day);
+    const studiedToday = days[0] === day;
+    return c.json({ streak: streakOf(days, studiedToday ? day : previousDay(day)), studiedToday }, 200);
+  })
+
   // "I studied today": remember the day and answer the new streak length.
   .post("/study/day", validate("json", dayBody), async (c) => {
     const user = c.get("user");
     const { day } = c.req.valid("json");
     const db = c.env.DB;
-    await db
+    const { meta } = await db
       .prepare("INSERT INTO study_days (user_id, day) VALUES (?, ?) ON CONFLICT DO NOTHING")
       .bind(user.id, day)
       .run();
+    // A new day changes the streak on Home, on every device.
+    if (meta.changes > 0) notifyLater(c, "study");
     const { results } = await db
       .prepare("SELECT day FROM study_days WHERE user_id = ? ORDER BY day DESC")
       .bind(user.id)

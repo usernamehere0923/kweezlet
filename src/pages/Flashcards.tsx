@@ -36,7 +36,8 @@ export function FlashcardsPage() {
   const [order, setOrder] = useState<number[]>([]);
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const streak = useStudyDay();
+  const [started, setStarted] = useState(false);
+  const streak = useStudyDay(started);
 
   // Another device marked or renamed something: catch up, keep the position.
   const [set, setSet] = useStudySet(id, ["sets", "study"], (data) => {
@@ -90,6 +91,7 @@ export function FlashcardsPage() {
   }
 
   async function mark(status: "still_learning" | "know_it") {
+    setStarted(true);
     if (!current) return;
     // A card that no longer matches the filter leaves the deck and the next
     // one slides into its place: stay put instead of jumping over it.
@@ -168,7 +170,10 @@ export function FlashcardsPage() {
             frontLabel={t(side === "term" ? "study.term" : "study.definition")}
             backLabel={t(side === "term" ? "study.definition" : "study.term")}
             flipped={flipped}
-            onFlip={setFlipped}
+            onFlip={(next) => {
+              setFlipped(next);
+              setStarted(true);
+            }}
           />
 
           <div className="mt-4">

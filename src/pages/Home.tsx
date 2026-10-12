@@ -5,7 +5,18 @@ import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
 import { useUser } from "../lib/session";
-import { ButtonLink, Card, EmptyState, Heading, PageTitle, SearchField, PageLoading, StudySetCard } from "../ui";
+import { localDay } from "../lib/study";
+import {
+  ButtonLink,
+  Card,
+  EmptyState,
+  Heading,
+  PageTitle,
+  SearchField,
+  PageLoading,
+  StreakBadge,
+  StudySetCard,
+} from "../ui";
 
 /** How long typing has to pause before the search goes out. */
 const SEARCH_PAUSE_MS = 250;
@@ -19,6 +30,7 @@ export function HomePage() {
   const [query, setQuery] = useState("");
   const [sets, setSets] = useState<SetSummary[] | null>(null);
   const [dueCount, setDueCount] = useState(0);
+  const [streak, setStreak] = useState({ streak: 0, studiedToday: false });
   const request = useRef(0);
 
   useEffect(() => {
@@ -48,11 +60,28 @@ export function HomePage() {
   );
   useEffect(() => void loadDue(), [loadDue]);
   useLive("study", () => void loadDue());
+
+  // Days studied in a row, shown before studying (worker/study.ts).
+  const loadStreak = useCallback(
+    () =>
+      api.study.streak.$get({ query: { day: localDay() } }).then(async (res) => {
+        if (res.ok) setStreak(await res.json());
+      }),
+    [],
+  );
+  useEffect(() => void loadStreak(), [loadStreak]);
+  useLive("study", () => void loadStreak());
   useLive("sets", () => void loadDue());
 
   return (
     <div className="mx-auto max-w-2xl">
       <PageTitle subtitle={t("app.tagline")}>{t("home.greeting", { name: user.username })}</PageTitle>
+
+      {streak.streak > 0 && (
+        <div className="mb-6">
+          <StreakBadge days={streak.streak} notYetToday={!streak.studiedToday} />
+        </div>
+      )}
 
       {dueCount > 0 && (
         <Card className="mb-6 flex items-center justify-between gap-3">

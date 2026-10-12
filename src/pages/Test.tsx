@@ -50,7 +50,6 @@ export function TestPage() {
   const { t, tn } = useT();
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const streak = useStudyDay();
   const [view, setView] = useState<"setup" | "paper" | "result">("setup");
 
   // Setup choices
@@ -66,6 +65,8 @@ export function TestPage() {
   // The paper and the answers on it
   const [paper, setPaper] = useState<TestPaper | null>(null);
   const [answers, setAnswers] = useState<(string | null)[]>([]);
+  // A matching-only paper has no answers to give: handing it in counts too.
+  const streak = useStudyDay(view === "result" || answers.some((answer) => answer !== null));
   const [deadline, setDeadline] = useState<number | null>(null);
 
   const [set] = useStudySet(id, ["sets"]);

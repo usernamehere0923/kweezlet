@@ -217,4 +217,5 @@ export const deCH: Record<keyof typeof en, string> = {
   "study.emptyDeckText": "Wechsle den Filter oder markiere zuerst einige Karten.",
   "study.streak_one": "{count} Tag in Folge",
   "study.streak_other": "{count} Tage in Folge",
+  "study.streakKeep": "Lerne heute, damit sie weitergeht",
 };

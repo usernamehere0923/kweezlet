@@ -213,4 +213,5 @@ export const en = {
   "study.emptyDeckText": "Change the filter, or mark some cards first.",
   "study.streak_one": "{count} day streak",
   "study.streak_other": "{count} day streak",
+  "study.streakKeep": "Study today to keep it",
 };

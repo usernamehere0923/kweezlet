@@ -446,10 +446,12 @@ function StudyKit() {
         title="StudySetCard · StreakBadge"
         code={`<StudySetCard title="Spanish animals" termCount={6} owner="anna" tag="Spanish" onClick={open} />
 <StudySetCard title="Photosynthesis" termCount={24} known={9} learning={5} />   // known + learning: thin progress bar
-<StreakBadge days={5} />`}
+<StreakBadge days={5} />
+<StreakBadge days={5} notYetToday />   // Home, before today's study`}
       >
-        <div className="mb-4">
+        <div className="mb-4 flex flex-col items-start gap-3">
           <StreakBadge days={5} />
+          <StreakBadge days={5} notYetToday />
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StudySetCard title="Spanish animals" termCount={6} owner="anna" tag="Spanish" />

@@ -24,8 +24,8 @@ export function LearnPage() {
   const { t } = useT();
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const streak = useStudyDay();
   const round = useQuestionRound();
+  const streak = useStudyDay(round.score.total > 0);
   const [allLearned, setAllLearned] = useState(false);
   // How many of this round's two correct answers each term has.
   const inRound = useRef(new Map<number, number>());
