@@ -7,7 +7,11 @@ describe("account", () => {
     const cookie = await login("anna", "secret-pw");
     const res = await api("/api/me/settings", { method: "PATCH", cookie, json: { locale: "de-CH" } });
     expect(res.status).toBe(200);
-    expect(await (await api("/api/me", { cookie })).json()).toEqual({ username: "anna", locale: "de-CH" });
+    expect(await (await api("/api/me", { cookie })).json()).toEqual({
+      username: "anna",
+      locale: "de-CH",
+      level: "admin",
+    });
   });
 
   it("rejects an unknown language", async () => {

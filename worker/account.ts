@@ -8,8 +8,8 @@ import { validate } from "./validate";
 
 export const accountRoutes = new Hono<AppEnv>()
   .get("/", (c) => {
-    const { username, locale } = c.get("user");
-    return c.json({ username, locale }, 200);
+    const { username, locale, level } = c.get("user");
+    return c.json({ username, locale, level }, 200);
   })
 
   .patch("/settings", validate("json", z.object({ locale: localeSchema })), async (c) => {
