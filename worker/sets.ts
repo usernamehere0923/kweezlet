@@ -42,6 +42,7 @@ type TermRow = {
   position: number;
   status: Status | null;
   starred: number;
+  streak: number;
 };
 
 function toSetJson(row: SetRow & { term_count?: number }) {
@@ -74,6 +75,8 @@ export type SetTerm = {
   position: number;
   status: TermStatus;
   starred: boolean;
+  /** Correct answers in a row in Learn mode (worker/study.ts). */
+  streak: number;
 };
 export type SetDetail = SetSummary & { terms: SetTerm[] };
 
@@ -88,9 +91,11 @@ async function loadSetDetail(db: D1Database, userId: number, id: number): Promis
   if (!set) return null;
   const { results: terms } = await db
     .prepare(
-      `SELECT t.id, t.term, t.definition, t.position, ts.status, COALESCE(ts.starred, 0) AS starred
+      `SELECT t.id, t.term, t.definition, t.position, ts.status, COALESCE(ts.starred, 0) AS starred,
+              COALESCE(st.streak, 0) AS streak
          FROM terms t
          LEFT JOIN term_state ts ON ts.term_id = t.id AND ts.user_id = t.user_id
+         LEFT JOIN term_stats st ON st.term_id = t.id AND st.user_id = t.user_id
         WHERE t.set_id = ? AND t.user_id = ?
         ORDER BY t.position`,
     )
