@@ -203,17 +203,13 @@ Estimate: 11–14 hours of build time (page picker and quote check add about 3�
 4. **Better wrong options**: plausible AI-written distractors stored per card, used in Learn and Test instead of random other terms.
 5. **Weak-spot drill**: from `term_stats`, new questions (cloze, reversed) on the terms you miss most.
 
-### Spending cap + account level (decided)
+### Spending cap (decided)
 
-- **Account level**: migration `000N_ai.sql` adds `users.level TEXT NOT NULL DEFAULT 'user' CHECK (level IN ('user', 'admin'))`. That is the whole user accounting system: one level per account.
-- **First user = admin**, hardcoded: on login, `worker/auth.ts` runs `UPDATE users SET level = 'admin' WHERE id = ? AND id = (SELECT MIN(id) FROM users) AND NOT EXISTS (SELECT 1 FROM users WHERE level = 'admin')`. So the first account becomes admin on its first login after the deploy, and nobody else ever does, not even if that account is deleted later (then there is simply no admin). There is no UI or CLI to change a level.
 - Local data: `db:reset` creates `demo` first, so demo is admin and would never see the cap. The seed adds a second, normal user (`student` / `student`, local only) to try the cap screens with.
-- Test: the first user's login makes it admin, a second user's login doesn't, and deleting the admin promotes nobody.
 - **Cap**: `AI_MONTHLY_CAP_USD` in `wrangler.jsonc` vars (default 2). Checked before every AI call: this calendar month's (UTC) `SUM(cost_nanos)` plus nothing else, since the run's own cost isn't known in advance.
   - Over the cap → 402 `{ error: "ai_cap" }` → "Monthly AI budget used up ($2.00). Resets on the 1st."
   - Level `admin` skips the check.
 - **Settings → "AI usage"**: shows "$0.37 of $2.00 this month"; admins see "no limit".
-- `/api/me` returns `level`. Nothing else in the app changes for admins.
 - Tests: the cap blocks a non-admin, lets an admin through, and resets at the month boundary.
 
 ### Open points
