@@ -150,6 +150,17 @@ describe("study sets", () => {
     expect(await screen.findByText("Spanish animals")).toBeTruthy();
   });
 
+  test("a typed word is one search, not one per letter", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [SPANISH, SWISS] }),
+    });
+    renderApp("/");
+    await userEvent.type(await screen.findByRole("searchbox", { name: "Search your sets" }), "swiss");
+    await waitFor(() => expect(calls.filter((c) => c.path === "/api/sets").at(-1)?.query.q).toBe("swiss"));
+    expect(calls.filter((c) => c.path === "/api/sets" && c.query.q)).toHaveLength(1);
+  });
+
   test("the search box keeps focus when the hits run out", async () => {
     mockApi({
       "GET /api/me": () => ({ json: ME }),
