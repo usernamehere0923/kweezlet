@@ -47,6 +47,8 @@ export function SetDetailPage() {
   useEffect(() => void reload(), [reload]);
   useLive("sets", () => void reload());
   useLive("match", () => void reload());
+  // Marks and answers on another device move the progress bar and the dots.
+  useLive("study", () => void reload());
 
   async function remove() {
     const res = await api.sets[":id"].$delete({ param: { id } });

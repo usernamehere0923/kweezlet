@@ -162,12 +162,12 @@ export const studyRoutes = new Hono<AppEnv>()
     const user = c.get("user");
     const { day } = c.req.valid("json");
     const db = c.env.DB;
-    const { meta } = await db
+    // No notifyLater here: it would reload the study page that sent this in
+    // the middle of the first flip. The mark or answer that follows notifies.
+    await db
       .prepare("INSERT INTO study_days (user_id, day) VALUES (?, ?) ON CONFLICT DO NOTHING")
       .bind(user.id, day)
       .run();
-    // A new day changes the streak on Home, on every device.
-    if (meta.changes > 0) notifyLater(c, "study");
     const { results } = await db
       .prepare("SELECT day FROM study_days WHERE user_id = ? ORDER BY day DESC")
       .bind(user.id)

@@ -66,7 +66,9 @@ export function TestPage() {
   const [paper, setPaper] = useState<TestPaper | null>(null);
   const [answers, setAnswers] = useState<(string | null)[]>([]);
   // A matching-only paper has no answers to give: handing it in counts too.
-  const streak = useStudyDay(view === "result" || answers.some((answer) => answer !== null));
+  // The timer running out on an empty paper does not.
+  const [handedIn, setHandedIn] = useState(false);
+  const streak = useStudyDay(handedIn || answers.some((answer) => answer !== null));
   const [deadline, setDeadline] = useState<number | null>(null);
 
   const [set] = useStudySet(id, ["sets"]);
@@ -189,7 +191,13 @@ export function TestPage() {
             ) : (
               <TimeLeft deadline={deadline} onUp={timeUp} />
             )}
-            <Button icon="check" onClick={() => setView("result")}>
+            <Button
+              icon="check"
+              onClick={() => {
+                setHandedIn(true);
+                setView("result");
+              }}
+            >
               {t("test.finish")}
             </Button>
           </div>

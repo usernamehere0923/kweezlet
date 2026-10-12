@@ -820,7 +820,7 @@ describe("test mode", () => {
   test("when the time runs out the test is over", async () => {
     let nowMs = 10_000_000;
     vi.spyOn(Date, "now").mockImplementation(() => nowMs);
-    mockApi(testApi());
+    const { calls } = mockApi(testApi());
     renderApp("/sets/7/test");
     await screen.findByText("Number of questions");
     await userEvent.click(screen.getByLabelText("Matching"));
@@ -834,6 +834,8 @@ describe("test mode", () => {
     expect(screen.getByText(/0 of \d+ correct/)).toBeTruthy();
     // The clock stops once the paper is handed in.
     expect(stopped).toHaveBeenCalled();
+    // An empty paper that ran out of time is not a study day.
+    expect(calls.some((c) => c.path === "/api/study/day")).toBe(false);
   });
 
   test("a set without terms has nothing to test", async () => {

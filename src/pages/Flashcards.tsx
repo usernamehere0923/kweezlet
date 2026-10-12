@@ -91,8 +91,8 @@ export function FlashcardsPage() {
   }
 
   async function mark(status: "still_learning" | "know_it") {
-    setStarted(true);
     if (!current) return;
+    setStarted(true);
     // A card that no longer matches the filter leaves the deck and the next
     // one slides into its place: stay put instead of jumping over it.
     const keeps = matches(filter, { ...current, status });

@@ -47,7 +47,6 @@ export function HomePage() {
   }, [query]);
 
   useEffect(() => void reload(), [reload]);
-  useLive("sets", () => void reload());
 
   // How many terms are due for a review today (worker/review.ts). Only the
   // count is needed, so one card. Deleting a set elsewhere changes it too.
@@ -59,7 +58,6 @@ export function HomePage() {
     [],
   );
   useEffect(() => void loadDue(), [loadDue]);
-  useLive("study", () => void loadDue());
 
   // Days studied in a row, shown before studying (worker/study.ts).
   const loadStreak = useCallback(
@@ -70,8 +68,18 @@ export function HomePage() {
     [],
   );
   useEffect(() => void loadStreak(), [loadStreak]);
-  useLive("study", () => void loadStreak());
-  useLive("sets", () => void loadDue());
+
+  // Marks and answers elsewhere move the bars, the due count and the streak;
+  // editing or deleting a set moves the bars and the due count.
+  useLive("study", () => {
+    void reload();
+    void loadDue();
+    void loadStreak();
+  });
+  useLive("sets", () => {
+    void reload();
+    void loadDue();
+  });
 
   return (
     <div className="mx-auto max-w-2xl">
