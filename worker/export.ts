@@ -3,7 +3,7 @@
  * holds the user's own data MUST be listed here, or it is silently missing
  * from their backup. test/export.test.ts fails when one is forgotten.
  */
-export const exportTables: string[] = ["sets", "terms", "term_state", "study_days", "term_stats"];
+export const exportTables: string[] = ["sets", "terms", "term_state", "study_days", "term_stats", "match_best"];
 
 /** Tables that have a user_id but must never be exported (secrets, plumbing). */
 export const privateTables = ["sessions"];
