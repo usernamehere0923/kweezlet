@@ -8,6 +8,8 @@ import { useHotkey } from "../useHotkey";
 /**
  * The big flashcard. Tap it (or press Space) to flip.
  * Controlled: pass `flipped` + `onFlip`. Uncontrolled: leave both out.
+ * `frontLabel` / `backLabel` override the "Term" / "Definition" corner labels,
+ * e.g. when the definition is shown first.
  */
 export function FlipCard({
   front,
@@ -15,6 +17,8 @@ export function FlipCard({
   flipped: flippedProp,
   onFlip,
   hotkey = true,
+  frontLabel,
+  backLabel,
 }: {
   front: ReactNode;
   back: ReactNode;
@@ -22,6 +26,8 @@ export function FlipCard({
   onFlip?: (flipped: boolean) => void;
   /** Space flips the card. Turn off when two cards are on one screen. */
   hotkey?: boolean;
+  frontLabel?: ReactNode;
+  backLabel?: ReactNode;
 }) {
   const { t } = useT();
   const [own, setOwn] = useState(false);
@@ -49,14 +55,14 @@ export function FlipCard({
       >
         <div className={face} aria-hidden={flipped}>
           <span className="absolute top-4 left-5 text-xs font-semibold tracking-wide text-faint uppercase">
-            {t("study.term")}
+            {frontLabel ?? t("study.term")}
           </span>
           <span className="text-center font-serif text-3xl text-ink md:text-4xl">{front}</span>
           <span className="absolute bottom-4 text-xs text-faint">{t("study.tapToFlip")}</span>
         </div>
         <div className={cx(face, "[transform:rotateY(180deg)]")} aria-hidden={!flipped}>
           <span className="absolute top-4 left-5 text-xs font-semibold tracking-wide text-faint uppercase">
-            {t("study.definition")}
+            {backLabel ?? t("study.definition")}
           </span>
           <span className="text-center text-2xl text-ink-soft md:text-3xl">{back}</span>
         </div>

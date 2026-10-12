@@ -1,17 +1,18 @@
 import { vi } from "vitest";
 
-type Handler = (body: unknown) => { status?: number; json?: unknown } | undefined;
+type Handler = (body: unknown, query: Record<string, string>) => { status?: number; json?: unknown } | undefined;
 
 /** A fake API: routes keyed "METHOD /path". Unrouted calls answer 404. */
 export function mockApi(routes: Record<string, Handler>) {
-  const calls: { method: string; path: string; body: unknown }[] = [];
+  const calls: { method: string; path: string; query: Record<string, string>; body: unknown }[] = [];
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const req = input instanceof Request ? input : new Request(new URL(String(input), location.href), init);
-    const path = new URL(req.url).pathname;
+    const url = new URL(req.url);
     const text = await req.text();
     const body: unknown = text ? JSON.parse(text) : undefined;
-    calls.push({ method: req.method, path, body });
-    const res = routes[`${req.method} ${path}`]?.(body) ?? { status: 404 };
+    const query = Object.fromEntries(url.searchParams);
+    calls.push({ method: req.method, path: url.pathname, query, body });
+    const res = routes[`${req.method} ${url.pathname}`]?.(body, query) ?? { status: 404 };
     return new Response(res.json === undefined ? null : JSON.stringify(res.json), {
       status: res.status ?? 200,
       headers: { "Content-Type": "application/json" },

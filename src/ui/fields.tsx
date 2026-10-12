@@ -142,6 +142,16 @@ export function SearchField({
   );
 }
 
+/** Form-level error for the things no single field owns ("fill every row"). */
+export function FormError({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <p role="alert" className={cx("flex items-center gap-1.5 text-sm text-wrong", className)}>
+      <Icon name="alertCircle" size="0.95rem" />
+      {children}
+    </p>
+  );
+}
+
 export type Option<T extends string> = { value: T; label: ReactNode };
 
 /** A dropdown. Native on purpose: on the iPhone it opens the system picker. */

@@ -12,6 +12,7 @@ import {
   EmptyState,
   FeedbackBanner,
   FlipCard,
+  FormError,
   Heading,
   Icon,
   ICON_NAMES,
@@ -241,11 +242,12 @@ function Controls() {
 
       <Chapter title={t("design.fields")}>
         <Section
-          title="TextField · SearchField"
+          title="TextField · SearchField · FormError"
           code={`<TextField label="Set title" value={title} onChange={setTitle} hint="Shown in your library" />
 <TextField label="Description" multiline value={d} onChange={setD} />
 <TextField label="Title" value={v} onChange={setV} error="Too short" />
-<SearchField label="Search" clearLabel="Clear" value={q} onChange={setQ} />`}
+<SearchField label="Search" clearLabel="Clear" value={q} onChange={setQ} />
+<FormError>Fill in both fields of a term, or delete the row.</FormError>`}
         >
           <div className="grid gap-5 md:grid-cols-2">
             <TextField
@@ -273,6 +275,7 @@ function Controls() {
               <TextField label="Disabled" value="Can't touch this" onChange={() => {}} disabled />
             </div>
           </div>
+          <FormError className="mt-5">Fill in both fields of a term, or delete the row.</FormError>
         </Section>
       </Chapter>
 
