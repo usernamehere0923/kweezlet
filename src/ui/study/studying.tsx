@@ -125,6 +125,7 @@ export function CardNav({
 /**
  * Progress through a set. Plain: value/max. Segmented: known + learning out of
  * max, the rest is new. `compact`: a thin bar without the counts, for lists.
+ * It wipes in from the left when it mounts; later changes slide.
  */
 export function ProgressBar({
   value,
@@ -164,15 +165,24 @@ export function ProgressBar({
         aria-valuemin={0}
         aria-valuemax={max}
         aria-valuenow={value}
-        className={cx("flex w-full overflow-hidden rounded-full bg-sunken", compact ? "h-1.5" : "h-2")}
-      >
-        <div
-          className={cx("h-full transition-[width] duration-300", segmented ? "bg-correct" : "bg-accent")}
-          style={{ width: pct(value) }}
-        />
-        {segmented && (
-          <div className="h-full bg-accent transition-[width] duration-300" style={{ width: pct(learning) }} />
+        // isolate: Safari otherwise leaks the square fill past the rounded track mid-wipe.
+        className={cx(
+          "isolate w-full animate-track-in overflow-hidden rounded-full bg-sunken",
+          compact ? "h-1.5" : "h-2",
         )}
+      >
+        <div className="flex size-full origin-left animate-wipe-in">
+          <div
+            className={cx("h-full transition-[width] duration-500 ease-out", segmented ? "bg-correct" : "bg-accent")}
+            style={{ width: pct(value) }}
+          />
+          {segmented && (
+            <div
+              className="h-full bg-accent transition-[width] duration-500 ease-out"
+              style={{ width: pct(learning) }}
+            />
+          )}
+        </div>
       </div>
     </div>
   );

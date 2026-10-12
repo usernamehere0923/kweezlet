@@ -168,6 +168,10 @@ export const deCH: Record<keyof typeof en, string> = {
   "design.modalText": "Das kann nicht rückgängig gemacht werden.",
   "design.openModal": "Modal öffnen",
   "design.showToast": "Toast zeigen",
+  "design.progressMotion": "Fortschritt in Bewegung",
+  "design.progressMotionText":
+    "So erscheint jeder Fortschrittsbalken, und nur so: die Spur blendet ein, die Füllung wischt von links herein. Änderungen gleiten.",
+  "design.replay": "Nochmals abspielen",
   "design.toastText": "Das ist ein Toast",
 
   "search.placeholder": "Suchen",

@@ -428,6 +428,7 @@ function StudyKit() {
   const [typed, setTyped] = useState("");
   const [typedState, setTypedState] = useState<"idle" | "correct" | "wrong">("idle");
   const [rows, setRows] = useState(ANIMALS.slice(0, 2));
+  const [replays, setReplays] = useState(0);
   const rowRefs = useRef<(TermEditorHandle | null)[]>([]);
 
   const go = (i: number) => {
@@ -501,6 +502,28 @@ function StudyKit() {
           />
           <ProgressBar value={card + 1} max={ANIMALS.length} />
           <ProgressBar compact value={known} learning={learning} max={ANIMALS.length} />
+        </div>
+      </Section>
+
+      <Section
+        title={t("design.progressMotion")}
+        code={`// THE way progress animates. Only through ProgressBar, never hand-made:
+// appears → track fades in (animate-track-in), fill wipes in from the left (animate-wipe-in, 0.7 s)
+// changes → segments slide (0.5 s ease-out) · reduced motion → none (global rule in index.css)
+<ProgressBar value={known} learning={learning} max={total} />`}
+      >
+        <div className="mx-auto flex max-w-2xl flex-col gap-5">
+          <Text variant="small">{t("design.progressMotionText")}</Text>
+          {/* A new key remounts the bars, so the entrance plays again. */}
+          <div key={replays} className="flex flex-col gap-5">
+            <ProgressBar value={5} learning={3} max={12} />
+            <ProgressBar compact value={5} learning={3} max={12} />
+          </div>
+          <div>
+            <Button variant="secondary" icon="retry" onClick={() => setReplays((n) => n + 1)}>
+              {t("design.replay")}
+            </Button>
+          </div>
         </div>
       </Section>
 
