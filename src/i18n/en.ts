@@ -114,7 +114,7 @@ export const en = {
   "review.due_one": "{count} card due",
   "review.due_other": "{count} cards due",
   "review.caughtUpTitle": "All caught up!",
-  "review.caughtUpText": "Nothing is due right now. Come back tomorrow.",
+  "review.caughtUpText": "Nothing is due right now. Come back later.",
 
   "notFound.title": "Page not found",
   "notFound.text": "This page does not exist (yet).",
