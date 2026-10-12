@@ -255,7 +255,8 @@ export function AnswerInput({
         autoCapitalize="off"
         spellCheck={false}
         className={cx(
-          "h-13 flex-1 rounded-ui-lg border-2 bg-surface px-4 text-base text-ink outline-none transition-colors",
+          // flex-1 only side by side: in the phone column it would squash the height.
+          "h-13 rounded-ui-lg sm:flex-1 border-2 bg-surface px-4 text-base text-ink outline-none transition-colors",
           state === "idle" && "border-line focus:border-accent",
           state === "correct" && "border-correct bg-correct-wash",
           state === "wrong" && "animate-shake border-wrong bg-wrong-wash",
