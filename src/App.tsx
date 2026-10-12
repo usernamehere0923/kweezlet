@@ -15,7 +15,7 @@ import { FlashcardsPage } from "./pages/Flashcards";
 import { LearnPage } from "./pages/Learn";
 import { MatchPage } from "./pages/Match";
 import { TestPage } from "./pages/Test";
-import { AppShell, ErrorBoundary, Spinner, ToastProvider, useToast, type NavItem } from "./ui";
+import { AppShell, DevRibbon, ErrorBoundary, Spinner, ToastProvider, useToast, type NavItem } from "./ui";
 
 export function App() {
   return (
@@ -25,6 +25,8 @@ export function App() {
           <Root />
         </SessionProvider>
       </ToastProvider>
+      {/* Only on `npm run dev`; the live app never shows it. */}
+      {import.meta.env.DEV && <DevRibbon />}
     </I18nProvider>
   );
 }

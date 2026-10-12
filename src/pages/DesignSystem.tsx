@@ -7,6 +7,7 @@ import {
   AnswerOption,
   Button,
   Card,
+  DevRibbon,
   CardNav,
   Checkbox,
   EmptyState,
@@ -350,6 +351,16 @@ function Controls() {
               action={<Button icon="plus">Create</Button>}
             />
           </div>
+        </Section>
+        <Section
+          title="DevRibbon"
+          code={`{import.meta.env.DEV && <DevRibbon />}   // App.tsx: top-right corner, local dev server only
+<DevRibbon contained />                    // inside a "relative" box, like here`}
+        >
+          <Card className="relative h-28 overflow-hidden">
+            <Text variant="muted">The local dev server shows this in the top-right corner.</Text>
+            <DevRibbon contained />
+          </Card>
         </Section>
       </Chapter>
 
