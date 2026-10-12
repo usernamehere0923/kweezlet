@@ -753,7 +753,8 @@ describe("match", () => {
     expect(await screen.findByText("New best time!")).toBeTruthy();
     expect(screen.getByText("Your time")).toBeTruthy();
     expect(screen.getByText("0:06")).toBeTruthy();
-    expect(screen.getByText("Best time 0:06")).toBeTruthy();
+    // The result card and the header both show the new best time.
+    expect(await screen.findAllByText("Best time 0:06")).toHaveLength(2);
     expect(calls.find((c) => c.path === "/api/sets/7/match")?.body).toEqual({ seconds: 6 });
 
     await userEvent.click(screen.getByRole("button", { name: "Done" }));

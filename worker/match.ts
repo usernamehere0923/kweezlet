@@ -21,23 +21,22 @@ export const matchRoutes = new Hono<AppEnv>()
       .bind(id, user.id)
       .first<{ id: number }>();
     if (!set) return c.json({ error: "not_found" as const }, 404);
-    const current = await db
-      .prepare("SELECT seconds FROM match_best WHERE user_id = ? AND set_id = ?")
-      .bind(user.id, id)
-      .first<{ seconds: number }>();
-    const isNewBest = current === null || seconds < current.seconds;
-    if (isNewBest) {
-      await db
+    // One conditional upsert: two rounds finishing at once cannot let the
+    // slower one overwrite the faster.
+    const [saved, best] = await db.batch([
+      db
         .prepare(
           `INSERT INTO match_best (user_id, set_id, seconds, achieved_at) VALUES (?, ?, ?, unixepoch())
-           ON CONFLICT (user_id, set_id) DO UPDATE SET seconds = excluded.seconds, achieved_at = unixepoch()`,
+           ON CONFLICT (user_id, set_id) DO UPDATE SET seconds = excluded.seconds, achieved_at = unixepoch()
+             WHERE excluded.seconds < match_best.seconds`,
         )
-        .bind(user.id, id, seconds)
-        .run();
-      await notify(c.env, user.id, "match");
-    }
+        .bind(user.id, id, seconds),
+      db.prepare("SELECT seconds FROM match_best WHERE user_id = ? AND set_id = ?").bind(user.id, id),
+    ]);
+    const isNewBest = saved!.meta.changes > 0;
+    if (isNewBest) await notify(c.env, user.id, "match");
     const result: { best: number; isNewBest: boolean } = {
-      best: isNewBest ? seconds : current!.seconds,
+      best: (best!.results[0] as { seconds: number }).seconds,
       isNewBest,
     };
     return c.json(result, 200);

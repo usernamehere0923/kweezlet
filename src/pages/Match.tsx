@@ -51,6 +51,8 @@ export function MatchPage() {
 
   useEffect(() => void load(), [load]);
   useLive("sets", () => void load());
+  // A new best time, from this device or another one.
+  useLive("match", () => void load());
 
   // The clock: only ticks while a round is running.
   useEffect(() => {
@@ -75,12 +77,14 @@ export function MatchPage() {
   function finish(started: number, end: number) {
     setFinishedAt(end);
     setNow(end);
-    const seconds = Math.max(1, Math.round((end - started) / 1000));
+    // Floored like the clock, so the result shows the time the clock stopped at.
+    const seconds = Math.max(1, Math.floor((end - started) / 1000));
     void api.sets[":id"].match
       .$post({ param: { id }, json: { seconds } })
       .then(async (res) => {
         const { best, isNewBest } = res.ok ? await res.json() : { best: set?.bestSeconds ?? seconds, isNewBest: false };
         setResult({ seconds, best, isNewBest });
+        if (res.ok) setSet((s) => (s ? { ...s, bestSeconds: best } : s));
       })
       .catch(() => {
         // The api layer reports the failure; show the time, claim no record.

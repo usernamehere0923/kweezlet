@@ -87,6 +87,19 @@ describe("POST /api/sets/:id/match", () => {
     expect(await bestOf(anna, set)).toBe(17);
   });
 
+  it("two rounds finishing at once keep the faster time", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const set = await addSet(anna, "Spanish animals");
+    const cookie = await login("anna", "secret-pw");
+    await api(`/api/sets/${set}/match`, { method: "POST", json: { seconds: 20 }, cookie });
+
+    await Promise.all([
+      api(`/api/sets/${set}/match`, { method: "POST", json: { seconds: 12 }, cookie }),
+      api(`/api/sets/${set}/match`, { method: "POST", json: { seconds: 15 }, cookie }),
+    ]);
+    expect(await bestOf(anna, set)).toBe(12);
+  });
+
   it("another user's set is a 404 and stays untouched", async () => {
     const anna = await addUser("anna", "secret-pw");
     const ben = await addUser("ben", "secret-pw");
