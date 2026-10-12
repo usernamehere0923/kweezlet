@@ -23,6 +23,7 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 - Styling only via the tokens in `src/index.css` `@theme` (`bg-surface`, `text-muted`, `border-line`...). No `#hex`, no new colours, no dark mode.
 - One orange (primary) button per screen. Teal = secondary/links. Green/red only for correct/wrong.
 - Missing a component? Add it to `src/ui` (or `src/ui/study`), export it from `index.ts`, show it on `/design`.
+- Progress animates ONLY through `ProgressBar` (wipe-in on mount, slide on change; `/design` → "Progress motion"). No other progress animation.
 - Mobile first, 390px wide. Inputs stay `text-base` (16px) or iOS zooms in.
 - Visible change → drive the running app with Playwright (chromium, 390px), look at a screenshot. Green tests alone are not "done".
 

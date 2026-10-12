@@ -164,6 +164,10 @@ export const en = {
   "design.modalText": "This cannot be undone.",
   "design.openModal": "Open modal",
   "design.showToast": "Show toast",
+  "design.progressMotion": "Progress motion",
+  "design.progressMotionText":
+    "Every progress bar enters this way and nowhere else: the track fades in, the fill wipes in from the left. Changes slide.",
+  "design.replay": "Replay",
   "design.toastText": "This is a toast",
 
   "search.placeholder": "Search",
