@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import type { SetDetail } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
-import { useLive } from "../lib/live";
+import { useStudySet } from "../lib/studySet";
 import { useMatchBoard } from "../lib/matchBoard";
 import { buildMatchRound, MATCH_PAIRS, MIN_MATCH_TERMS, type MatchTileData } from "../lib/quiz";
 import { formatTime, useStudyDay } from "../lib/study";
@@ -21,7 +20,6 @@ export function MatchPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const streak = useStudyDay();
-  const [set, setSet] = useState<SetDetail | null>(null);
   const [tiles, setTiles] = useState<MatchTileData[]>([]);
   const board = useMatchBoard(tiles);
   const [startedAt, setStartedAt] = useState<number | null>(null);
@@ -29,29 +27,15 @@ export function MatchPage() {
   const [result, setResult] = useState<RoundResult | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
-  const load = useCallback(
-    () =>
-      api.sets[":id"].$get({ param: { id } }).then(async (res) => {
-        if (!res.ok) {
-          navigate(`/sets/${id}`);
-          return;
-        }
-        const detail = await res.json();
-        setSet(detail);
-        // The first round starts here; later reloads leave a running one alone.
-        setTiles((current) =>
-          current.length > 0 || detail.terms.length < MIN_MATCH_TERMS
-            ? current
-            : buildMatchRound(detail.terms, MATCH_PAIRS),
-        );
-      }),
-    [id, navigate],
-  );
-
-  useEffect(() => void load(), [load]);
-  useLive("sets", () => void load());
-  // A new best time, from this device or another one.
-  useLive("match", () => void load());
+  // A new best time comes in on "match", from this device or another one.
+  const [set, setSet] = useStudySet(id, ["sets", "match"], (detail) => {
+    // The first round starts here; later reloads leave a running one alone.
+    setTiles((current) =>
+      current.length > 0 || detail.terms.length < MIN_MATCH_TERMS
+        ? current
+        : buildMatchRound(detail.terms, MATCH_PAIRS),
+    );
+  });
 
   // The clock: only ticks while a round is running.
   useEffect(() => {

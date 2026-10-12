@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router";
-import type { SetDetail, SetTerm } from "../../worker/sets";
+import { useMemo, useState } from "react";
+import { useParams } from "react-router";
+import type { SetTerm } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
-import { useLive } from "../lib/live";
+import { useStudySet } from "../lib/studySet";
 import { shuffle, useStudyDay } from "../lib/study";
 import {
   ButtonLink,
@@ -31,8 +31,6 @@ function matches(filter: Filter, term: SetTerm): boolean {
 export function FlashcardsPage() {
   const { t } = useT();
   const { id = "" } = useParams();
-  const navigate = useNavigate();
-  const [set, setSet] = useState<SetDetail | null>(null);
   const [side, setSide] = useState<Side>("term");
   const [filter, setFilter] = useState<Filter>("all");
   const [order, setOrder] = useState<number[]>([]);
@@ -40,32 +38,18 @@ export function FlashcardsPage() {
   const [flipped, setFlipped] = useState(false);
   const streak = useStudyDay();
 
-  const reload = useCallback(
-    () =>
-      api.sets[":id"].$get({ param: { id } }).then(async (res) => {
-        if (!res.ok) {
-          navigate(`/sets/${id}`);
-          return;
-        }
-        const data = await res.json();
-        setSet(data);
-        // Surviving terms keep their shuffled place; new ones go to the end.
-        setOrder((prev) => {
-          const had = new Set(prev);
-          const seen = new Set(data.terms.map((term) => term.id));
-          return [
-            ...prev.filter((termId) => seen.has(termId)),
-            ...data.terms.map((term) => term.id).filter((termId) => !had.has(termId)),
-          ];
-        });
-      }),
-    [id, navigate],
-  );
-
-  useEffect(() => void reload(), [reload]);
   // Another device marked or renamed something: catch up, keep the position.
-  useLive("study", () => void reload());
-  useLive("sets", () => void reload());
+  const [set, setSet] = useStudySet(id, ["sets", "study"], (data) => {
+    // Surviving terms keep their shuffled place; new ones go to the end.
+    setOrder((prev) => {
+      const had = new Set(prev);
+      const seen = new Set(data.terms.map((term) => term.id));
+      return [
+        ...prev.filter((termId) => seen.has(termId)),
+        ...data.terms.map((term) => term.id).filter((termId) => !had.has(termId)),
+      ];
+    });
+  });
 
   // The deck is the shuffled order, cut down to the chosen filter. Marking a
   // card can pull it out of the deck; the index clamps when that happens.

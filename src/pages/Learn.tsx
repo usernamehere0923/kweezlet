@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { MASTERY } from "../../worker/shared";
-import type { SetDetail, SetTerm } from "../../worker/sets";
+import type { SetTerm } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
-import { useLive } from "../lib/live";
+import { useStudySet } from "../lib/studySet";
 import { makeQuestion, type TestQuestion } from "../lib/quiz";
 import { gradeAnswer, shuffle, useStudyDay } from "../lib/study";
 import {
@@ -35,7 +35,6 @@ export function LearnPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const streak = useStudyDay();
-  const [set, setSet] = useState<SetDetail | null>(null);
   const [question, setQuestion] = useState<TestQuestion | null>(null);
   const [picked, setPicked] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
@@ -92,24 +91,10 @@ export function LearnPage() {
     [startRound],
   );
 
-  const load = useCallback(
-    (start: boolean) =>
-      api.sets[":id"].$get({ param: { id } }).then(async (res) => {
-        if (!res.ok) {
-          navigate(`/sets/${id}`);
-          return;
-        }
-        const data = await res.json();
-        setSet(data);
-        if (start) begin(data.terms);
-      }),
-    [id, navigate, begin],
-  );
-
-  useEffect(() => void load(true), [load]);
   // Another device answered or renamed something: catch up, keep the question.
-  useLive("study", () => void load(false));
-  useLive("sets", () => void load(false));
+  const [set, setSet] = useStudySet(id, ["sets", "study"], (data, first) => {
+    if (first) begin(data.terms);
+  });
 
   async function postAnswer(termId: number, correct: boolean) {
     const res = await api.terms[":id"].answer.$post({ param: { id: String(termId) }, json: { correct } });

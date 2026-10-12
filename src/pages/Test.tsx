@@ -1,9 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import type { SetDetail } from "../../worker/sets";
 import { useT } from "../i18n";
-import { api } from "../lib/api";
-import { useLive } from "../lib/live";
+import { useStudySet } from "../lib/studySet";
 import { useMatchBoard } from "../lib/matchBoard";
 import { buildMatchRound, buildTest, scoreTest, type QuestionKind, type TestPaper } from "../lib/quiz";
 import { formatTime, useStudyDay } from "../lib/study";
@@ -34,7 +32,6 @@ export function TestPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const streak = useStudyDay();
-  const [set, setSet] = useState<SetDetail | null>(null);
   const [view, setView] = useState<"setup" | "paper" | "result">("setup");
 
   // Setup choices
@@ -53,20 +50,7 @@ export function TestPage() {
   const [deadline, setDeadline] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
 
-  const load = useCallback(
-    () =>
-      api.sets[":id"].$get({ param: { id } }).then(async (res) => {
-        if (!res.ok) {
-          navigate(`/sets/${id}`);
-          return;
-        }
-        setSet(await res.json());
-      }),
-    [id, navigate],
-  );
-
-  useEffect(() => void load(), [load]);
-  useLive("sets", () => void load());
+  const [set] = useStudySet(id, ["sets"]);
 
   // The clock: when the deadline passes, the paper is over.
   useEffect(() => {
