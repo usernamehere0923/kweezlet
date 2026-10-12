@@ -445,15 +445,18 @@ function StudyKit() {
       <Section
         title="StudySetCard · StreakBadge"
         code={`<StudySetCard title="Spanish animals" termCount={6} owner="anna" tag="Spanish" onClick={open} />
-<StreakBadge days={5} />`}
+<StudySetCard title="Photosynthesis" termCount={24} known={9} learning={5} />   // known + learning: thin progress bar
+<StreakBadge days={5} />
+<StreakBadge days={5} notYetToday />   // Home, before today's study`}
       >
-        <div className="mb-4">
+        <div className="mb-4 flex flex-col items-start gap-3">
           <StreakBadge days={5} />
+          <StreakBadge days={5} notYetToday />
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <StudySetCard title="Spanish animals" termCount={6} owner="anna" tag="Spanish" />
           <StudySetCard title="Capitals of Europe" termCount={1} owner="ben" />
-          <StudySetCard title="Photosynthesis" termCount={24} tag="Biology" />
+          <StudySetCard title="Photosynthesis" termCount={24} tag="Biology" known={9} learning={5} />
         </div>
       </Section>
 
@@ -477,7 +480,7 @@ function StudyKit() {
 
       <Section
         title="FlipCard · CardNav · KnowItButtons · ProgressBar"
-        code={`<ProgressBar value={known} learning={learning} max={terms.length} />
+        code={`<ProgressBar value={known} learning={learning} max={terms.length} />   // compact: thin, no counts
 <FlipCard front={card.term} back={card.definition} flipped={flipped} onFlip={setFlipped} />
 <CardNav index={i} total={terms.length} onPrev={prev} onNext={next} onShuffle={shuffle} />
 <KnowItButtons onKnowIt={...} onStillLearning={...} />`}
@@ -497,6 +500,7 @@ function StudyKit() {
             onKnowIt={() => setKnown((n) => Math.min(ANIMALS.length - learning, n + 1))}
           />
           <ProgressBar value={card + 1} max={ANIMALS.length} />
+          <ProgressBar compact value={known} learning={learning} max={ANIMALS.length} />
         </div>
       </Section>
 
@@ -584,7 +588,8 @@ function StudyKit() {
   onChange={(term, definition) => update(i, term, definition)}
   onNext={() => focusOrAddRow(i + 1)}   // Enter in "definition"
   onDelete={() => remove(i)} />
-<TermList terms={terms} />`}
+<TermList terms={terms} />   // progress: "known" | "learning" | "new" adds a TermProgressDot
+<TermProgressDot progress="learning" />`}
       >
         <div className="flex flex-col gap-3">
           {rows.map((row, i) => (
@@ -613,6 +618,12 @@ function StudyKit() {
         </div>
         <div className="mt-6">
           <TermList terms={ANIMALS} />
+          <TermList
+            terms={ANIMALS.slice(0, 3).map((item, i) => ({
+              ...item,
+              progress: (["known", "learning", "new"] as const)[i],
+            }))}
+          />
         </div>
       </Section>
 

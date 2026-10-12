@@ -3,6 +3,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { exportUserData } from "../worker/export";
+import { termProgress } from "../worker/shared";
 import { addUser, api, login } from "./helpers";
 
 async function addSet(userId: number, title: string, description = "", terms: [string, string][] = []) {
@@ -31,6 +32,16 @@ describe("sets and terms", () => {
   });
 });
 
+describe("termProgress", () => {
+  it("is known, learning or new", () => {
+    expect(termProgress({ status: "know_it", streak: 0 })).toBe("known");
+    expect(termProgress({ status: "still_learning", streak: 0 })).toBe("learning");
+    expect(termProgress({ status: null, streak: 1 })).toBe("learning");
+    expect(termProgress({ status: "unseen", streak: 0 })).toBe("new");
+    expect(termProgress({ status: null, streak: 0 })).toBe("new");
+  });
+});
+
 describe("GET /api/sets", () => {
   it("lists only my sets, with their term counts", async () => {
     const anna = await addUser("anna", "secret-pw");
@@ -47,6 +58,50 @@ describe("GET /api/sets", () => {
     expect(await res.json()).toEqual([
       expect.objectContaining({ title: "Spanish animals", description: "", termCount: 2, termLang: null }),
     ]);
+  });
+
+  it("counts known, learning and new terms per set", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const ben = await addUser("ben", "secret-pw");
+    const set = await addSet(anna, "Spanish animals", "", [
+      ["el perro", "the dog"],
+      ["el gato", "the cat"],
+      ["el caballo", "the horse"],
+      ["el pez", "the fish"],
+      ["el pájaro", "the bird"],
+    ]);
+    const { results } = await env.DB.prepare("SELECT id FROM terms WHERE set_id = ? ORDER BY position")
+      .bind(set)
+      .all<{ id: number }>();
+    const [perro, gato, caballo, pez] = results.map((row) => row.id);
+    const mark = (term: number, status: string | null) =>
+      env.DB.prepare("INSERT INTO term_state (user_id, term_id, set_id, status) VALUES (?, ?, ?, ?)")
+        .bind(anna, term, set, status)
+        .run();
+    const answered = (term: number, streak: number) =>
+      env.DB.prepare("INSERT INTO term_stats (user_id, term_id, set_id, streak) VALUES (?, ?, ?, ?)")
+        .bind(anna, term, set, streak)
+        .run();
+    await mark(perro, "know_it");
+    await mark(gato, "still_learning");
+    await answered(caballo, 1); // right once, not marked yet
+    await mark(pez, null); // only starred: still new
+    await answered(pez, 0);
+    // Ben's progress on his own set doesn't leak into Anna's.
+    const benSet = await addSet(ben, "Ben set", "", [["hola", "hello"]]);
+    await env.DB.prepare(
+      "INSERT INTO term_state (user_id, term_id, set_id, status) SELECT ?, id, set_id, 'know_it' FROM terms WHERE set_id = ?",
+    )
+      .bind(ben, benSet)
+      .run();
+    const cookie = await login("anna", "secret-pw");
+
+    const list = await api("/api/sets", { cookie });
+    expect(await list.json()).toEqual([
+      expect.objectContaining({ title: "Spanish animals", termCount: 5, knownCount: 1, learningCount: 2 }),
+    ]);
+    const detail = await api(`/api/sets/${set}`, { cookie });
+    expect(await detail.json()).toEqual(expect.objectContaining({ termCount: 5, knownCount: 1, learningCount: 2 }));
   });
 
   it("finds sets by title, description and term", async () => {
@@ -104,6 +159,8 @@ describe("GET /api/sets/:id", () => {
       termLang: null,
       defLang: null,
       termCount: 2,
+      knownCount: 0,
+      learningCount: 0,
       createdAt: expect.any(Number),
       updatedAt: expect.any(Number),
       bestSeconds: null,
@@ -179,6 +236,8 @@ describe("POST /api/sets", () => {
       termLang: "es",
       defLang: "en",
       termCount: 2,
+      knownCount: 0,
+      learningCount: 0,
       createdAt: expect.any(Number),
       updatedAt: expect.any(Number),
       bestSeconds: null,

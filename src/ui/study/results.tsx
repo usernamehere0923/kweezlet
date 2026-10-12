@@ -99,12 +99,20 @@ export function MatchResult({
   );
 }
 
-export function StreakBadge({ days }: { days: number }) {
-  const { tn } = useT();
-  return (
+/** Days studied in a row. `notYetToday` adds a nudge: today isn't studied yet. */
+export function StreakBadge({ days, notYetToday }: { days: number; notYetToday?: boolean }) {
+  const { t, tn } = useT();
+  const badge = (
     <span className="inline-flex h-8 items-center gap-1.5 rounded-full bg-accent-wash px-3 text-sm font-semibold text-accent-deep">
       <Icon name="starFilled" size="1rem" className="text-accent" />
       {tn("study.streak", days)}
+    </span>
+  );
+  if (!notYetToday) return badge;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
+      {badge}
+      <span className="text-sm text-muted">{t("study.streakKeep")}</span>
     </span>
   );
 }

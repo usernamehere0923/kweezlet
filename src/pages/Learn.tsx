@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { MASTERY } from "../../worker/shared";
+import { MASTERY, termProgress } from "../../worker/shared";
 import type { SetTerm } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
@@ -24,8 +24,8 @@ export function LearnPage() {
   const { t } = useT();
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const streak = useStudyDay();
   const round = useQuestionRound();
+  const streak = useStudyDay(round.score.total > 0);
   const [allLearned, setAllLearned] = useState(false);
   // How many of this round's two correct answers each term has.
   const inRound = useRef(new Map<number, number>());
@@ -85,9 +85,7 @@ export function LearnPage() {
     return <PageLoading label={t("common.loading")} />;
   }
 
-  const remaining = set.terms.filter((term) => term.streak < 1).length;
-  const familiar = set.terms.filter((term) => term.streak === 1).length;
-  const mastered = set.terms.filter((term) => term.streak >= MASTERY).length;
+  const count = (progress: string) => set.terms.filter((term) => termProgress(term) === progress).length;
   const question = round.question;
 
   return (
@@ -105,13 +103,13 @@ export function LearnPage() {
 
       <div className="mb-5 flex flex-wrap gap-2">
         <Tag tone="neutral">
-          {t("learn.remaining")} {remaining}
+          {t("study.new")} {count("new")}
         </Tag>
         <Tag tone="accent">
-          {t("learn.familiar")} {familiar}
+          {t("study.learning")} {count("learning")}
         </Tag>
         <Tag tone="correct">
-          {t("learn.mastered")} {mastered}
+          {t("study.known")} {count("known")}
         </Tag>
       </div>
 

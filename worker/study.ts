@@ -142,11 +142,28 @@ export const studyRoutes = new Hono<AppEnv>()
     return c.json(result, 200);
   })
 
+  // The streak for Home, before studying. Today not studied yet still shows
+  // the run up to yesterday: it only breaks when today ends without study.
+  .get("/study/streak", validate("query", dayBody), async (c) => {
+    const user = c.get("user");
+    const { day } = c.req.valid("query");
+    const { results } = await c.env.DB.prepare(
+      "SELECT day FROM study_days WHERE user_id = ? AND day <= ? ORDER BY day DESC",
+    )
+      .bind(user.id, day)
+      .all<{ day: string }>();
+    const days = results.map((row) => row.day);
+    const studiedToday = days[0] === day;
+    return c.json({ streak: streakOf(days, studiedToday ? day : previousDay(day)), studiedToday }, 200);
+  })
+
   // "I studied today": remember the day and answer the new streak length.
   .post("/study/day", validate("json", dayBody), async (c) => {
     const user = c.get("user");
     const { day } = c.req.valid("json");
     const db = c.env.DB;
+    // No notifyLater here: it would reload the study page that sent this in
+    // the middle of the first flip. The mark or answer that follows notifies.
     await db
       .prepare("INSERT INTO study_days (user_id, day) VALUES (?, ?) ON CONFLICT DO NOTHING")
       .bind(user.id, day)

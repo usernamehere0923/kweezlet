@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { notifyLater } from "./live";
-import { LANGUAGES, type Language } from "./shared";
+import { LANGUAGES, type Language, termProgress, type TermProgress } from "./shared";
 import type { Status } from "./study";
 import type { AppEnv } from "./types";
 import { idParam, validate } from "./validate";
@@ -43,7 +43,21 @@ type TermRow = {
   streak: number;
 };
 
-function toSetJson(row: SetRow & { term_count?: number }) {
+/**
+ * Per set: how many terms are known / learning. The same rule as
+ * termProgress() in worker/shared.ts, in SQL. `s` is the set row.
+ */
+const progressCount = (where: string) =>
+  `(SELECT COUNT(*) FROM terms t
+      LEFT JOIN term_state ts ON ts.term_id = t.id AND ts.user_id = t.user_id
+      LEFT JOIN term_stats st ON st.term_id = t.id AND st.user_id = t.user_id
+     WHERE t.set_id = s.id AND t.user_id = s.user_id AND (${where}))`;
+const KNOWN_COUNT = progressCount("ts.status = 'know_it'");
+const LEARNING_COUNT = progressCount("ts.status = 'still_learning' OR (ts.status IS NULL AND st.streak > 0)");
+
+type CountRow = { term_count?: number; known_count?: number; learning_count?: number };
+
+function toSetJson(row: SetRow & CountRow) {
   return {
     id: row.id,
     title: row.title,
@@ -52,6 +66,9 @@ function toSetJson(row: SetRow & { term_count?: number }) {
     termLang: row.term_lang as Language | null,
     defLang: row.def_lang as Language | null,
     termCount: row.term_count ?? 0,
+    /** Terms known / learning (termProgress); the rest are new. */
+    knownCount: row.known_count ?? 0,
+    learningCount: row.learning_count ?? 0,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -109,8 +126,14 @@ async function loadSetDetail(db: D1Database, userId: number, id: number): Promis
   const set = setRows!.results[0] as (SetRow & { best_seconds: number | null }) | undefined;
   if (!set) return null;
   const terms = termRows!.results as TermRow[];
+  const count = (progress: TermProgress) => terms.filter((row) => termProgress(row) === progress).length;
   return {
-    ...toSetJson({ ...set, term_count: terms.length }),
+    ...toSetJson({
+      ...set,
+      term_count: terms.length,
+      known_count: count("known"),
+      learning_count: count("learning"),
+    }),
     terms: terms.map((row) => ({ ...row, status: row.status ?? "unseen", starred: !!row.starred })),
     bestSeconds: set.best_seconds,
   };
@@ -181,13 +204,14 @@ export const setRoutes = new Hono<AppEnv>()
       : "";
     const { results } = await c.env.DB.prepare(
       `SELECT s.id, s.title, s.description, s.term_lang, s.def_lang, s.created_at, s.updated_at,
-              (SELECT COUNT(*) FROM terms t WHERE t.set_id = s.id AND t.user_id = s.user_id) AS term_count
+              (SELECT COUNT(*) FROM terms t WHERE t.set_id = s.id AND t.user_id = s.user_id) AS term_count,
+              ${KNOWN_COUNT} AS known_count, ${LEARNING_COUNT} AS learning_count
          FROM sets s
         WHERE s.user_id = ? ${search}
         ORDER BY s.updated_at DESC, s.id DESC`,
     )
       .bind(user.id, ...(q ? [like, like, like, like] : []))
-      .all<SetRow & { term_count: number }>();
+      .all<SetRow & CountRow>();
     return c.json(results.map(toSetJson), 200);
   })
 

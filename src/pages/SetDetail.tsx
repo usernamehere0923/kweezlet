@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
+import { termProgress } from "../../worker/shared";
 import type { SetDetail as SetDetailData } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
@@ -14,6 +15,7 @@ import {
   Modal,
   PageTitle,
   PageLoading,
+  ProgressBar,
   StudyModeTile,
   TermList,
   Text,
@@ -45,6 +47,8 @@ export function SetDetailPage() {
   useEffect(() => void reload(), [reload]);
   useLive("sets", () => void reload());
   useLive("match", () => void reload());
+  // Marks and answers on another device move the progress bar and the dots.
+  useLive("study", () => void reload());
 
   async function remove() {
     const res = await api.sets[":id"].$delete({ param: { id } });
@@ -89,6 +93,12 @@ export function SetDetailPage() {
         </Button>
       </div>
 
+      {set.termCount > 0 && (
+        <section className="mb-8">
+          <ProgressBar value={set.knownCount} learning={set.learningCount} max={set.termCount} />
+        </section>
+      )}
+
       <section className="mb-8">
         <Heading className="mb-3">{t("sets.study")}</Heading>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -115,7 +125,7 @@ export function SetDetailPage() {
         <Text variant="small" className="mb-3">
           {tn("study.terms", set.termCount)}
         </Text>
-        <TermList terms={set.terms} />
+        <TermList terms={set.terms.map((term) => ({ ...term, progress: termProgress(term) }))} />
       </section>
 
       <Modal

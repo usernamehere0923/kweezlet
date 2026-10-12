@@ -5,7 +5,18 @@ import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
 import { useUser } from "../lib/session";
-import { ButtonLink, Card, EmptyState, Heading, PageTitle, SearchField, PageLoading, StudySetCard } from "../ui";
+import { localDay } from "../lib/study";
+import {
+  ButtonLink,
+  Card,
+  EmptyState,
+  Heading,
+  PageTitle,
+  SearchField,
+  PageLoading,
+  StreakBadge,
+  StudySetCard,
+} from "../ui";
 
 /** How long typing has to pause before the search goes out. */
 const SEARCH_PAUSE_MS = 250;
@@ -19,6 +30,7 @@ export function HomePage() {
   const [query, setQuery] = useState("");
   const [sets, setSets] = useState<SetSummary[] | null>(null);
   const [dueCount, setDueCount] = useState(0);
+  const [streak, setStreak] = useState({ streak: 0, studiedToday: false });
   const request = useRef(0);
 
   useEffect(() => {
@@ -35,7 +47,6 @@ export function HomePage() {
   }, [query]);
 
   useEffect(() => void reload(), [reload]);
-  useLive("sets", () => void reload());
 
   // How many terms are due for a review today (worker/review.ts). Only the
   // count is needed, so one card. Deleting a set elsewhere changes it too.
@@ -47,12 +58,38 @@ export function HomePage() {
     [],
   );
   useEffect(() => void loadDue(), [loadDue]);
-  useLive("study", () => void loadDue());
-  useLive("sets", () => void loadDue());
+
+  // Days studied in a row, shown before studying (worker/study.ts).
+  const loadStreak = useCallback(
+    () =>
+      api.study.streak.$get({ query: { day: localDay() } }).then(async (res) => {
+        if (res.ok) setStreak(await res.json());
+      }),
+    [],
+  );
+  useEffect(() => void loadStreak(), [loadStreak]);
+
+  // Marks and answers elsewhere move the bars, the due count and the streak;
+  // editing or deleting a set moves the bars and the due count.
+  useLive("study", () => {
+    void reload();
+    void loadDue();
+    void loadStreak();
+  });
+  useLive("sets", () => {
+    void reload();
+    void loadDue();
+  });
 
   return (
     <div className="mx-auto max-w-2xl">
       <PageTitle subtitle={t("app.tagline")}>{t("home.greeting", { name: user.username })}</PageTitle>
+
+      {streak.streak > 0 && (
+        <div className="mb-6">
+          <StreakBadge days={streak.streak} notYetToday={!streak.studiedToday} />
+        </div>
+      )}
 
       {dueCount > 0 && (
         <Card className="mb-6 flex items-center justify-between gap-3">
@@ -99,6 +136,8 @@ export function HomePage() {
                   key={set.id}
                   title={set.title}
                   termCount={set.termCount}
+                  known={set.knownCount}
+                  learning={set.learningCount}
                   onClick={() => navigate(`/sets/${set.id}`)}
                 />
               ))}

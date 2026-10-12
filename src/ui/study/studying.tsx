@@ -123,32 +123,38 @@ export function CardNav({
 }
 
 /**
- * Progress through a set. Plain: value/max. Segmented: known + learning out of max.
+ * Progress through a set. Plain: value/max. Segmented: known + learning out of
+ * max, the rest is new. `compact`: a thin bar without the counts, for lists.
  */
 export function ProgressBar({
   value,
   max,
   learning,
   label,
+  compact,
 }: {
   value: number;
   max: number;
   /** Optional second segment (orange) after the green "known" part. */
   learning?: number;
   label?: string;
+  compact?: boolean;
 }) {
   const { t } = useT();
   const pct = (n: number) => `${max ? Math.min(100, (n / max) * 100) : 0}%`;
   const segmented = learning !== undefined;
   return (
     <div>
-      {segmented && (
-        <div className="mb-2 flex justify-between text-sm font-medium">
+      {segmented && !compact && (
+        <div className="mb-2 flex justify-between gap-3 text-sm font-medium">
           <span className="text-correct">
             {t("study.known")} {value}
           </span>
           <span className="text-accent-strong">
             {t("study.learning")} {learning}
+          </span>
+          <span className="text-muted">
+            {t("study.new")} {Math.max(0, max - value - learning)}
           </span>
         </div>
       )}
@@ -158,7 +164,7 @@ export function ProgressBar({
         aria-valuemin={0}
         aria-valuemax={max}
         aria-valuenow={value}
-        className="flex h-2 w-full overflow-hidden rounded-full bg-sunken"
+        className={cx("flex w-full overflow-hidden rounded-full bg-sunken", compact ? "h-1.5" : "h-2")}
       >
         <div
           className={cx("h-full transition-[width] duration-300", segmented ? "bg-correct" : "bg-accent")}

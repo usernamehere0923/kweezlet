@@ -216,3 +216,46 @@ describe("POST /api/study/day", () => {
     expect(results).toEqual([]);
   });
 });
+
+describe("GET /api/study/streak", () => {
+  async function streak(day: string, cookie: string) {
+    const res = await api(`/api/study/streak?day=${day}`, { cookie });
+    expect(res.status).toBe(200);
+    return res.json();
+  }
+
+  it("counts up to today once today is studied", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    await env.DB.prepare("INSERT INTO study_days (user_id, day) VALUES (?, '2026-10-11'), (?, '2026-10-10')")
+      .bind(anna, anna)
+      .run();
+    const cookie = await login("anna", "secret-pw");
+    expect(await streak("2026-10-11", cookie)).toEqual({ streak: 2, studiedToday: true });
+  });
+
+  it("before studying today, the run up to yesterday still counts", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    await env.DB.prepare("INSERT INTO study_days (user_id, day) VALUES (?, '2026-10-10'), (?, '2026-10-09')")
+      .bind(anna, anna)
+      .run();
+    const cookie = await login("anna", "secret-pw");
+    expect(await streak("2026-10-11", cookie)).toEqual({ streak: 2, studiedToday: false });
+  });
+
+  it("a missed day ends it, and other users' days don't count", async () => {
+    const anna = await addUser("anna", "secret-pw");
+    const ben = await addUser("ben", "secret-pw");
+    await env.DB.prepare("INSERT INTO study_days (user_id, day) VALUES (?, '2026-10-09'), (?, '2026-10-10')")
+      .bind(anna, ben)
+      .run();
+    const cookie = await login("anna", "secret-pw");
+    expect(await streak("2026-10-11", cookie)).toEqual({ streak: 0, studiedToday: false });
+  });
+
+  it("a day that is not a day is a validation error", async () => {
+    await addUser("anna", "secret-pw");
+    const cookie = await login("anna", "secret-pw");
+    const res = await api("/api/study/streak?day=2026-02-31", { cookie });
+    expect(res.status).toBe(400);
+  });
+});

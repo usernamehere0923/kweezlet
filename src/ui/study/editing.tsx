@@ -1,5 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef } from "react";
+import type { TermProgress } from "../../../worker/shared";
 import { useT } from "../../i18n";
+import { cx } from "../cx";
 import { IconButton } from "../Button";
 
 export type TermEditorHandle = { focus: () => void };
@@ -78,12 +80,32 @@ export const TermEditorRow = forwardRef<
 });
 
 /** Read-only list of all terms in a set. */
-export function TermList({ terms }: { terms: { term: string; definition: string }[] }) {
+const progressDots: Record<TermProgress, string> = {
+  known: "bg-correct",
+  learning: "bg-accent",
+  new: "bg-line",
+};
+
+/** Small coloured dot for where a term stands; the word is there for screen readers. */
+export function TermProgressDot({ progress }: { progress: TermProgress }) {
+  const { t } = useT();
+  return (
+    <span className={cx("inline-block size-2.5 shrink-0 rounded-full", progressDots[progress])}>
+      <span className="sr-only">{t(`study.${progress}`)}</span>
+    </span>
+  );
+}
+
+/** The terms of a set, read-only. `progress` adds a status dot before each term. */
+export function TermList({ terms }: { terms: { term: string; definition: string; progress?: TermProgress }[] }) {
   return (
     <ul className="divide-y divide-line-soft overflow-hidden rounded-ui-xl border border-line-soft bg-surface">
       {terms.map((item, i) => (
         <li key={i} className="grid gap-1 px-5 py-4 md:grid-cols-[1fr_2fr] md:gap-8">
-          <span className="font-medium text-ink">{item.term}</span>
+          <span className="flex items-center gap-2.5 font-medium text-ink">
+            {item.progress && <TermProgressDot progress={item.progress} />}
+            {item.term}
+          </span>
           <span className="text-ink-soft">{item.definition}</span>
         </li>
       ))}

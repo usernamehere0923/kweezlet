@@ -19,10 +19,10 @@ export function MatchPage() {
   const { t } = useT();
   const { id = "" } = useParams();
   const navigate = useNavigate();
-  const streak = useStudyDay();
   const [tiles, setTiles] = useState<MatchTileData[]>([]);
   const board = useMatchBoard(tiles);
   const [startedAt, setStartedAt] = useState<number | null>(null);
+  const streak = useStudyDay(startedAt !== null);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [result, setResult] = useState<RoundResult | null>(null);
   const [now, setNow] = useState(() => Date.now());

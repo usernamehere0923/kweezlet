@@ -98,6 +98,8 @@ const SPANISH = {
   termLang: "es",
   defLang: "en",
   termCount: 2,
+  knownCount: 1,
+  learningCount: 0,
   createdAt: 1,
   updatedAt: 1,
 };
@@ -108,6 +110,8 @@ const SWISS = {
   termLang: null,
   defLang: null,
   termCount: 1,
+  knownCount: 0,
+  learningCount: 0,
   createdAt: 1,
   updatedAt: 1,
 };
@@ -130,11 +134,41 @@ describe("study sets", () => {
     renderApp("/");
     expect(await screen.findByText("Spanish animals")).toBeTruthy();
     expect(screen.getByText("Swiss history")).toBeTruthy();
+    // Each card shows how far along it is: one of the two Spanish terms is known.
+    const bars = screen.getAllByRole("progressbar");
+    expect(bars.map((bar) => [bar.getAttribute("aria-valuenow"), bar.getAttribute("aria-valuemax")])).toEqual([
+      ["1", "2"],
+      ["0", "1"],
+    ]);
 
     await userEvent.type(screen.getByRole("searchbox", { name: "Search your sets" }), "swiss");
     await waitFor(() => expect(calls.filter((c) => c.path === "/api/sets").at(-1)?.query.q).toBe("swiss"));
     expect(screen.getByText("Swiss history")).toBeTruthy();
     expect(screen.queryByText("Spanish animals")).toBeNull();
+  });
+
+  test("home shows the streak, with a nudge until today is studied", async () => {
+    const studied = { streak: 4, studiedToday: false };
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [SPANISH] }),
+      "GET /api/study/streak": () => ({ json: studied }),
+    });
+    renderApp("/");
+    expect(await screen.findByText("4 day streak")).toBeTruthy();
+    expect(screen.getByText("Study today to keep it")).toBeTruthy();
+    expect(calls.find((c) => c.path === "/api/study/streak")?.query.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  test("home hides the nudge once today is studied", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [SPANISH] }),
+      "GET /api/study/streak": () => ({ json: { streak: 5, studiedToday: true } }),
+    });
+    renderApp("/");
+    expect(await screen.findByText("5 day streak")).toBeTruthy();
+    expect(screen.queryByText("Study today to keep it")).toBeNull();
   });
 
   test("home offers to create the first set when there are none", async () => {
@@ -191,6 +225,13 @@ describe("study sets", () => {
     expect(screen.getByText("chapter 1")).toBeTruthy();
     expect(screen.getByText("el perro")).toBeTruthy();
     expect(screen.getByText("the dog")).toBeTruthy();
+    expect(screen.getByText("Known 1")).toBeTruthy();
+    expect(screen.getByText("Learning 0")).toBeTruthy();
+    expect(screen.getByText("New 1")).toBeTruthy();
+    // Each term says where it stands (a dot, named for screen readers).
+    const [perro, gato] = screen.getAllByRole("listitem");
+    expect(perro.textContent).toContain("Newel perro");
+    expect(gato.textContent).toContain("Knownel gato");
     expect(screen.getByRole("button", { name: "Flashcards" })).toBeTruthy();
   });
 
@@ -422,21 +463,29 @@ const THREE_DETAIL = {
   ],
 };
 
+const FLIP = "Tap or press Space to flip";
+
 describe("flashcards", () => {
   test("shows the first card with progress and the streak", async () => {
     mockApi(flashcardsApi());
     renderApp("/sets/7/flashcards");
     expect(await screen.findByText("el perro")).toBeTruthy();
     expect(screen.getByText("1 / 2")).toBeTruthy();
-    expect(screen.getByText("3 day streak")).toBeTruthy();
     expect(screen.getByText("Known 1")).toBeTruthy();
+    // The streak shows once a card is flipped.
+    await userEvent.click(screen.getByRole("button", { name: FLIP }));
+    expect(await screen.findByText("3 day streak")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to the set" })).toBeTruthy();
   });
 
-  test("records the study day with the local date", async () => {
+  test("records the study day with the local date, but only after a flip", async () => {
     const { calls } = mockApi(flashcardsApi());
     renderApp("/sets/7/flashcards");
     await screen.findByText("el perro");
+    // Opening the deck alone does not count as studying.
+    expect(calls.some((c) => c.path === "/api/study/day")).toBe(false);
+    await userEvent.click(screen.getByRole("button", { name: FLIP }));
+    await waitFor(() => expect(calls.some((c) => c.path === "/api/study/day")).toBe(true));
     const body = calls.find((c) => c.path === "/api/study/day")?.body as { day: string };
     expect(body.day).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
@@ -583,14 +632,14 @@ describe("learn", () => {
     renderApp("/sets/7/learn");
 
     // The round covers the two terms that are not learned yet.
-    expect(await screen.findByText("Remaining 2")).toBeTruthy();
-    expect(screen.getByText("Learned 1")).toBeTruthy();
+    expect(await screen.findByText("New 2")).toBeTruthy();
+    expect(screen.getByText("Known 1")).toBeTruthy();
 
     // Question 1: the definition is shown, pick the term.
     expect(screen.getByText("the cat")).toBeTruthy();
     await userEvent.click(screen.getByText("el gato"));
     expect(await screen.findByText("Correct!")).toBeTruthy();
-    expect(await screen.findByText("Familiar 1")).toBeTruthy();
+    expect(await screen.findByText("Learning 1")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));
 
     // Question 2: the other term.
@@ -674,7 +723,7 @@ describe("learn", () => {
     renderApp("/sets/7/learn");
 
     // Written questions from the start: both terms have one correct answer.
-    expect(await screen.findByText("Familiar 2")).toBeTruthy();
+    expect(await screen.findByText("Learning 2")).toBeTruthy();
     await userEvent.type(screen.getByLabelText("Your answer"), "el gat");
     await userEvent.click(screen.getByRole("button", { name: "Check" }));
     expect(await screen.findByText("Correct!")).toBeTruthy();
@@ -771,7 +820,7 @@ describe("test mode", () => {
   test("when the time runs out the test is over", async () => {
     let nowMs = 10_000_000;
     vi.spyOn(Date, "now").mockImplementation(() => nowMs);
-    mockApi(testApi());
+    const { calls } = mockApi(testApi());
     renderApp("/sets/7/test");
     await screen.findByText("Number of questions");
     await userEvent.click(screen.getByLabelText("Matching"));
@@ -785,6 +834,8 @@ describe("test mode", () => {
     expect(screen.getByText(/0 of \d+ correct/)).toBeTruthy();
     // The clock stops once the paper is handed in.
     expect(stopped).toHaveBeenCalled();
+    // An empty paper that ran out of time is not a study day.
+    expect(calls.some((c) => c.path === "/api/study/day")).toBe(false);
   });
 
   test("a set without terms has nothing to test", async () => {
