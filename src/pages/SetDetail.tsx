@@ -4,6 +4,8 @@ import type { SetDetail as SetDetailData } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
+import { MIN_MATCH_TERMS } from "../lib/quiz";
+import { formatTime } from "../lib/study";
 import {
   Button,
   ButtonLink,
@@ -42,6 +44,7 @@ export function SetDetailPage() {
 
   useEffect(() => void reload(), [reload]);
   useLive("sets", () => void reload());
+  useLive("match", () => void reload());
 
   async function remove() {
     const res = await api.sets[":id"].$delete({ param: { id } });
@@ -96,6 +99,18 @@ export function SetDetailPage() {
           <StudyModeTile mode="flashcards" onClick={() => navigate(`/sets/${id}/flashcards`)} />
           <StudyModeTile mode="learn" onClick={() => navigate(`/sets/${id}/learn`)} />
           <StudyModeTile mode="test" onClick={() => navigate(`/sets/${id}/test`)} />
+          <StudyModeTile
+            mode="match"
+            onClick={() => navigate(`/sets/${id}/match`)}
+            disabled={set.termCount < MIN_MATCH_TERMS}
+            hint={
+              set.termCount < MIN_MATCH_TERMS
+                ? t("match.tooFewTitle")
+                : set.bestSeconds !== null
+                  ? t("match.bestTime", { time: formatTime(set.bestSeconds) })
+                  : undefined
+            }
+          />
         </div>
       </section>
 

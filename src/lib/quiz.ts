@@ -18,6 +18,32 @@ export type TestQuestion = {
 
 export type MatchPair = { id: number; term: string; definition: string };
 
+/** One tile in a Match round. `pairId` links the term tile to its definition. */
+export type MatchTileData = { key: string; pairId: number; kind: "term" | "definition"; label: string };
+
+/** Pairs in one Match round: 12 tiles in two columns, chosen for a 390px screen. */
+export const MATCH_PAIRS = 6;
+/** A set needs at least this many terms before Match makes sense. */
+export const MIN_MATCH_TERMS = 3;
+
+/**
+ * The tiles of a Match round: `count` random pairs, each as a term and a
+ * definition tile, all shuffled together. Fewer pairs when there are fewer.
+ */
+export function buildMatchRound(pairs: MatchPair[], count: number): MatchTileData[] {
+  const tile = (pair: MatchPair, kind: MatchTileData["kind"]): MatchTileData => ({
+    key: `${kind}${pair.id}`,
+    pairId: pair.id,
+    kind,
+    label: kind === "term" ? pair.term : pair.definition,
+  });
+  return shuffle(
+    shuffle(pairs)
+      .slice(0, Math.min(count, pairs.length))
+      .flatMap((pair) => [tile(pair, "term"), tile(pair, "definition")]),
+  );
+}
+
 export type TestPaper = {
   questions: TestQuestion[];
   /** The matching round at the end of the paper, empty when not chosen. */

@@ -106,6 +106,7 @@ describe("GET /api/sets/:id", () => {
       termCount: 2,
       createdAt: expect.any(Number),
       updatedAt: expect.any(Number),
+      bestSeconds: null,
       terms: [
         {
           id: expect.any(Number),
@@ -180,6 +181,7 @@ describe("POST /api/sets", () => {
       termCount: 2,
       createdAt: expect.any(Number),
       updatedAt: expect.any(Number),
+      bestSeconds: null,
       terms: [
         {
           id: expect.any(Number),

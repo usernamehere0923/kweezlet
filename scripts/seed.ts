@@ -43,6 +43,10 @@ const statements: string[] = [
      (${demo}, ${term("Spanish animals", "el gato")}, ${set("Spanish animals")}, 2, 0, 2),
      (${demo}, ${term("Spanish animals", "el caballo")}, ${set("Spanish animals")}, 1, 0, 1),
      (${demo}, ${term("Swiss history", "1291")}, ${set("Swiss history")}, 1, 1, 0)`,
+  // Best Match times: one fast round on the animals, an older one on history.
+  `INSERT INTO match_best (user_id, set_id, seconds, achieved_at) VALUES
+     (${demo}, ${set("Spanish animals")}, 12, unixepoch() - 86400),
+     (${demo}, ${set("Swiss history")}, 27, unixepoch() - 3 * 86400)`,
   // Studied today and on the two days before: a three day streak.
   `INSERT INTO study_days (user_id, day) VALUES (${demo}, '${day(0)}'), (${demo}, '${day(1)}'), (${demo}, '${day(2)}')`,
 ];

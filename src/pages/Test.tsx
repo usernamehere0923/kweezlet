@@ -4,8 +4,15 @@ import type { SetDetail } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
-import { buildTest, scoreTest, type MatchPair, type QuestionKind, type TestPaper } from "../lib/quiz";
-import { shuffle, useStudyDay } from "../lib/study";
+import {
+  buildMatchRound,
+  buildTest,
+  scoreTest,
+  type MatchTileData,
+  type QuestionKind,
+  type TestPaper,
+} from "../lib/quiz";
+import { formatTime, useStudyDay } from "../lib/study";
 import {
   AnswerOption,
   Button,
@@ -28,12 +35,6 @@ import {
 
 type TimerChoice = "off" | "5" | "10";
 type LengthChoice = "5" | "10" | "all";
-
-type Tile = { key: string; pairId: number; kind: "term" | "definition"; label: string };
-
-function formatTime(seconds: number): string {
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
 
 export function TestPage() {
   const { t, tn } = useT();
@@ -88,16 +89,7 @@ export function TestPage() {
     return () => clearInterval(tick);
   }, [deadline, view]);
 
-  const tiles = useMemo<Tile[]>(() => {
-    if (!paper) return [];
-    const pair = (p: MatchPair, kind: Tile["kind"]): Tile => ({
-      key: `${kind}${p.id}`,
-      pairId: p.id,
-      kind,
-      label: kind === "term" ? p.term : p.definition,
-    });
-    return shuffle(paper.matching.flatMap((p) => [pair(p, "term"), pair(p, "definition")]));
-  }, [paper]);
+  const tiles = useMemo(() => (paper ? buildMatchRound(paper.matching, paper.matching.length) : []), [paper]);
 
   function start() {
     if (!set) return;
@@ -121,7 +113,7 @@ export function TestPage() {
     setAnswers((list) => list.map((value, i) => (i === questionIndex ? given : value)));
   }
 
-  function tapTile(tile: Tile) {
+  function tapTile(tile: MatchTileData) {
     if (matched.has(tile.pairId)) return;
     if (pickedTile === null || pickedTile === tile.key) {
       setPickedTile(pickedTile === tile.key ? null : tile.key);

@@ -18,6 +18,7 @@ import {
   ICON_NAMES,
   IconButton,
   KnowItButtons,
+  MatchResult,
   MatchTile,
   Modal,
   PageTitle,
@@ -443,11 +444,18 @@ function StudyKit() {
 
       <Section
         title="StudyModeTile"
-        code={`<StudyModeTile mode="flashcards" onClick={() => start("flashcards")} />   // flashcards | learn | test | match`}
+        code={`<StudyModeTile mode="match" hint="Best time 0:23" onClick={() => start("match")} />   // flashcards | learn | test | match · hint | disabled`}
       >
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {(["flashcards", "learn", "test", "match"] as const).map((m) => (
-            <StudyModeTile key={m} mode={m} active={mode === m} onClick={() => setMode(m)} />
+            <StudyModeTile
+              key={m}
+              mode={m}
+              active={mode === m}
+              onClick={() => setMode(m)}
+              hint={m === "match" ? t("match.bestTime", { time: "0:23" }) : undefined}
+              disabled={m === "test"}
+            />
           ))}
         </div>
       </Section>
@@ -587,6 +595,15 @@ function StudyKit() {
       >
         <div className="mx-auto max-w-md">
           <ResultSummary correct={5} total={6} onStudyAgain={() => {}} onDone={() => {}} />
+        </div>
+      </Section>
+
+      <Section
+        title="MatchResult"
+        code={`<MatchResult time="0:23" isNewBest bestTime="0:23" onPlayAgain={restart} onDone={() => navigate("/")} />`}
+      >
+        <div className="mx-auto max-w-md">
+          <MatchResult time="0:23" isNewBest bestTime="0:23" onPlayAgain={() => {}} onDone={() => {}} />
         </div>
       </Section>
     </Chapter>

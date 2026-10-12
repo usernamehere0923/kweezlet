@@ -10,6 +10,7 @@ import {
   FeedbackBanner,
   FlipCard,
   KnowItButtons,
+  MatchResult,
   MatchTile,
   ProgressBar,
   ResultSummary,
@@ -192,9 +193,35 @@ describe("progress and results", () => {
     renderUi(<StreakBadge days={1} />);
     expect(screen.getByText("1 day streak")).toBeTruthy();
   });
+
+  test("MatchResult shows the time and the new-best banner only when earned", async () => {
+    const again = vi.fn();
+    const done = vi.fn();
+    const { rerender } = renderUi(
+      <MatchResult time="0:23" isNewBest bestTime="0:23" onPlayAgain={again} onDone={done} />,
+    );
+    expect(screen.getByText("New best time!")).toBeTruthy();
+    expect(screen.getByText("Your time")).toBeTruthy();
+    expect(screen.getByText("0:23")).toBeTruthy();
+    expect(screen.getByText("Best time 0:23")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Play again" }));
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
+    expect([again.mock.calls.length, done.mock.calls.length]).toEqual([1, 1]);
+    rerender(<MatchResult time="0:31" isNewBest={false} bestTime="0:23" onPlayAgain={again} onDone={done} />);
+    expect(screen.queryByText("New best time!")).toBeNull();
+  });
 });
 
 describe("overview and editing", () => {
+  test("StudyModeTile: hint under the label and a disabled tile that does nothing", async () => {
+    const open = vi.fn();
+    renderUi(<StudyModeTile mode="match" hint="Best time 0:23" onClick={open} disabled />);
+    expect(screen.getByText("Match")).toBeTruthy();
+    expect(screen.getByText("Best time 0:23")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: /Match/ }));
+    expect(open).not.toHaveBeenCalled();
+  });
+
   test("StudySetCard and StudyModeTile are clickable", async () => {
     const open = vi.fn();
     renderUi(
