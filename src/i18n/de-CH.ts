@@ -16,7 +16,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "common.close": "Schliessen",
   "common.delete": "Löschen",
   "common.loading": "Lädt…",
-  "dev.ribbon": "DEV",
+  "dev.ribbon": "Test",
   "common.saved": "Gespeichert",
   "common.clear": "Leeren",
 

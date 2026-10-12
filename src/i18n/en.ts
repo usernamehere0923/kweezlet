@@ -14,7 +14,7 @@ export const en = {
   "common.close": "Close",
   "common.delete": "Delete",
   "common.loading": "Loading…",
-  "dev.ribbon": "DEV",
+  "dev.ribbon": "Test",
   "common.saved": "Saved",
   "common.clear": "Clear",
 
