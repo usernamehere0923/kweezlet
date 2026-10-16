@@ -102,6 +102,8 @@ export function ReviewPage() {
   }
 
   const question = round.question;
+  // The card behind the question carries its set's languages (worker/review.ts).
+  const card = cards?.find((candidate) => candidate.id === question?.termId);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -144,6 +146,10 @@ export function ReviewPage() {
               onPick={(option) => onAnswer(round.pick(option))}
               onSubmitTyped={() => onAnswer(round.submitTyped())}
               onContinue={() => round.next(askFrom(cards))}
+              speak={{
+                text: question.prompt,
+                lang: card ? (question.promptSide === "term" ? card.termLang : card.defLang) : null,
+              }}
             />
           </SlideSwap>
         </>

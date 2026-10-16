@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import type { Language } from "./shared";
 import type { AppEnv } from "./types";
 import { validate } from "./validate";
 
@@ -14,6 +15,9 @@ export type ReviewCard = {
   streak: number;
   setId: number;
   setTitle: string;
+  /** The set's languages, so the card can be spoken (worker/shared.ts). */
+  termLang: Language | null;
+  defLang: Language | null;
 };
 
 export type ReviewOverview = {
@@ -34,7 +38,7 @@ export const reviewRoutes = new Hono<AppEnv>()
     // COUNT(*) OVER () sees the whole result before LIMIT caps the rows.
     const { results } = await c.env.DB.prepare(
       `SELECT t.id, t.term, t.definition, st.streak,
-              t.set_id AS setId, s.title AS setTitle,
+              t.set_id AS setId, s.title AS setTitle, s.term_lang AS termLang, s.def_lang AS defLang,
               COUNT(*) OVER () AS dueCount
          FROM terms t
          JOIN sets s ON s.id = t.set_id AND s.user_id = t.user_id

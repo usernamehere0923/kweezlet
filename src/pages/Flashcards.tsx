@@ -114,6 +114,11 @@ export function FlashcardsPage() {
   }
 
   const known = set.terms.filter((term) => term.status === "know_it").length;
+  // The speaker says the face that is showing, in that side's language.
+  const showingTerm = side === "term" ? !flipped : flipped;
+  const speak = current
+    ? { text: showingTerm ? current.term : current.definition, lang: showingTerm ? set.termLang : set.defLang }
+    : undefined;
   const learning = set.terms.filter((term) => term.status === "still_learning").length;
 
   return (
@@ -177,6 +182,7 @@ export function FlashcardsPage() {
               frontLabel={t(side === "term" ? "study.term" : "study.definition")}
               backLabel={t(side === "term" ? "study.definition" : "study.term")}
               flipped={flipped}
+              speak={speak}
               onFlip={(next) => {
                 setFlipped(next);
                 setStarted(true);
