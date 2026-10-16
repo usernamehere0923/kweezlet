@@ -3,6 +3,7 @@ import { useT } from "../../i18n";
 import { Button, IconButton } from "../Button";
 import { cx } from "../cx";
 import { Icon } from "../Icon";
+import { SpeakButton, type Speech } from "../speech";
 import { Card } from "../surfaces";
 import { Heading, Text } from "../Text";
 import { useHotkey } from "../useHotkey";
@@ -21,6 +22,7 @@ export function FlipCard({
   hotkey = true,
   frontLabel,
   backLabel,
+  speak,
 }: {
   front: ReactNode;
   back: ReactNode;
@@ -30,6 +32,8 @@ export function FlipCard({
   hotkey?: boolean;
   frontLabel?: ReactNode;
   backLabel?: ReactNode;
+  /** What the speaker button says out loud: the visible face's text and language. */
+  speak?: Speech;
 }) {
   const { t } = useT();
   const [own, setOwn] = useState(false);
@@ -43,33 +47,32 @@ export function FlipCard({
   const face =
     "absolute inset-0 flex flex-col items-center justify-center rounded-ui-xl border border-line-soft bg-surface p-8 shadow-raised [backface-visibility:hidden]";
   return (
-    <button
-      type="button"
-      onClick={flip}
-      aria-label={t("study.tapToFlip")}
-      className="block aspect-[4/3] w-full [perspective:1400px] md:aspect-[16/9]"
-    >
-      <div
-        className={cx(
-          "relative size-full transition-transform duration-500 ease-out [transform-style:preserve-3d]",
-          flipped && "[transform:rotateY(180deg)]",
-        )}
-      >
-        <div className={face} aria-hidden={flipped}>
-          <span className="absolute top-4 left-5 text-xs font-semibold tracking-wide text-faint uppercase">
-            {frontLabel ?? t("study.term")}
-          </span>
-          <span className="text-center font-serif text-3xl text-ink md:text-4xl">{front}</span>
-          <span className="absolute bottom-4 text-xs text-faint">{t("study.tapToFlip")}</span>
+    <div className="relative block aspect-[4/3] w-full [perspective:1400px] md:aspect-[16/9]">
+      <button type="button" onClick={flip} aria-label={t("study.tapToFlip")} className="block size-full">
+        <div
+          className={cx(
+            "relative size-full transition-transform duration-500 ease-out [transform-style:preserve-3d]",
+            flipped && "[transform:rotateY(180deg)]",
+          )}
+        >
+          <div className={face} aria-hidden={flipped}>
+            <span className="absolute top-4 left-5 text-xs font-semibold tracking-wide text-faint uppercase">
+              {frontLabel ?? t("study.term")}
+            </span>
+            <span className="text-center font-serif text-3xl text-ink md:text-4xl">{front}</span>
+            <span className="absolute bottom-4 text-xs text-faint">{t("study.tapToFlip")}</span>
+          </div>
+          <div className={cx(face, "[transform:rotateY(180deg)]")} aria-hidden={!flipped}>
+            <span className="absolute top-4 left-5 text-xs font-semibold tracking-wide text-faint uppercase">
+              {backLabel ?? t("study.definition")}
+            </span>
+            <span className="text-center text-2xl text-ink-soft md:text-3xl">{back}</span>
+          </div>
         </div>
-        <div className={cx(face, "[transform:rotateY(180deg)]")} aria-hidden={!flipped}>
-          <span className="absolute top-4 left-5 text-xs font-semibold tracking-wide text-faint uppercase">
-            {backLabel ?? t("study.definition")}
-          </span>
-          <span className="text-center text-2xl text-ink-soft md:text-3xl">{back}</span>
-        </div>
-      </div>
-    </button>
+      </button>
+      {/* A sibling of the flip button, never inside it: buttons cannot nest. */}
+      {speak && <SpeakButton speech={speak} className="absolute right-3 bottom-3 z-10" />}
+    </div>
   );
 }
 
@@ -347,6 +350,7 @@ export function QuestionCard({
   onPick,
   onSubmitTyped,
   onContinue,
+  speak,
 }: {
   /** Already translated, e.g. "Give the definition". */
   label: ReactNode;
@@ -362,13 +366,18 @@ export function QuestionCard({
   onPick: (option: string) => void;
   onSubmitTyped: () => void;
   onContinue: () => void;
+  /** What the speaker button says out loud: the prompt and its language. */
+  speak?: Speech;
 }) {
   const optionState = (option: string): AnswerState =>
     !feedback ? "idle" : option === answer ? "correct" : option === picked ? "wrong" : "idle";
   return (
     <>
       <Card className="mb-5">
-        <Text variant="small">{label}</Text>
+        <div className="flex items-start justify-between gap-2">
+          <Text variant="small">{label}</Text>
+          {speak && <SpeakButton speech={speak} />}
+        </div>
         <Heading className="mt-1">{prompt}</Heading>
       </Card>
 

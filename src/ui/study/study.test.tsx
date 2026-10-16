@@ -1,8 +1,9 @@
 import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef, useState } from "react";
-import { describe, expect, test, vi } from "vitest";
+import { afterEach, describe, expect, test, vi } from "vitest";
 import { renderUi } from "../../test/render";
+import { mockSpeech } from "../../test/server";
 import {
   AnswerInput,
   AnswerOption,
@@ -70,6 +71,45 @@ describe("FlipCard", () => {
     const hidden = (text: string) => screen.getByText(text).closest("[aria-hidden]")!.getAttribute("aria-hidden");
     expect(hidden("Definition")).toBe("false");
     expect(hidden("Term")).toBe("true");
+  });
+});
+
+describe("speech", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  test("FlipCard speaks the visible face without flipping, and can stop", async () => {
+    const { spoken, synthesis } = mockSpeech();
+    const onFlip = vi.fn();
+    const { rerender } = renderUi(
+      <FlipCard front="el gato" back="the cat" onFlip={onFlip} speak={{ text: "el gato", lang: "es" }} />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Speak" }));
+    expect(spoken[0]).toMatchObject({ text: "el gato", lang: "es" });
+    expect(onFlip).not.toHaveBeenCalled();
+
+    // Tap again and the button falls silent instead of repeating.
+    await userEvent.click(screen.getByRole("button", { name: "Stop" }));
+    expect(synthesis.cancel).toHaveBeenCalled();
+    expect(onFlip).not.toHaveBeenCalled();
+
+    // No speak prop: no button.
+    rerender(<FlipCard front="el gato" back="the cat" onFlip={onFlip} />);
+    expect(screen.queryByRole("button", { name: "Speak" })).toBeNull();
+  });
+
+  test("TermList speaks terms and definitions in the set's languages", async () => {
+    const { spoken } = mockSpeech();
+    renderUi(
+      <TermList terms={[{ term: "el gato", definition: "the cat" }]} speak={{ termLang: "es", defLang: "en" }} />,
+    );
+    const speakers = screen.getAllByRole("button", { name: "Speak" });
+    expect(speakers).toHaveLength(2);
+    await userEvent.click(speakers[0]);
+    await userEvent.click(speakers[1]);
+    expect(spoken.map((utterance) => [utterance.text, utterance.lang])).toEqual([
+      ["el gato", "es"],
+      ["the cat", "en"],
+    ]);
   });
 });
 

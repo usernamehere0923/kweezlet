@@ -181,6 +181,8 @@ export const en = {
   "study.terms_other": "{count} terms",
   "study.by": "by {name}",
   "study.tapToFlip": "Tap or press Space to flip",
+  "study.speak": "Speak",
+  "study.stopSpeaking": "Stop",
   "study.counter": "{current} / {total}",
   "study.prev": "Previous card",
   "study.next": "Next card",

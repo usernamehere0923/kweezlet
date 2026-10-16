@@ -12,6 +12,8 @@ export type TestQuestion = {
   termId: number;
   /** Everything the user reads. True/false statements are "term — definition". */
   prompt: string;
+  /** Which side of the pair the prompt is: it decides the speech language. */
+  promptSide: "term" | "definition";
   label: TKey;
   /** The right option, the expected typed text, or "true"/"false". */
   answer: string;
@@ -77,6 +79,7 @@ export function makeQuestion(term: QuestionTerm, pool: QuestionTerm[], kind: Que
       termId: term.id,
       label: "test.statement",
       prompt: `${term.term} — ${shown}`,
+      promptSide: "term",
       answer: wrong ? "false" : "true",
       options: ["true", "false"],
     };
@@ -90,6 +93,7 @@ export function makeQuestion(term: QuestionTerm, pool: QuestionTerm[], kind: Que
     termId: term.id,
     label: askTerm ? "learn.askTerm" : "learn.askDefinition",
     prompt: askTerm ? term.definition : term.term,
+    promptSide: askTerm ? "definition" : "term",
     answer,
     options: kind === "written" ? [] : shuffle([...new Set([answer, ...distractors])]),
   };
