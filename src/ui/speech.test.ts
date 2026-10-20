@@ -95,4 +95,25 @@ describe("useSpeech", () => {
     talker.unmount();
     expect(synthesis.cancel).not.toHaveBeenCalled();
   });
+
+  test("a speaker cut off by another one leaves and stops without silencing it", () => {
+    const { spoken, synthesis } = mockSpeech();
+    const first = renderHook(() => useSpeech());
+    const second = renderHook(() => useSpeech());
+    act(() => first.result.current.say({ text: "el gato", lang: "es" }));
+    act(() => second.result.current.say({ text: "the cat", lang: "en" }));
+    synthesis.cancel.mockClear();
+
+    // The browser has not told the first one it was cut off (Safari sometimes never does).
+    act(() => first.result.current.stop());
+    expect(first.result.current.speaking).toBe(false);
+    first.unmount();
+    expect(synthesis.cancel).not.toHaveBeenCalled();
+    expect(second.result.current.speaking).toBe(true);
+
+    // The second one is still its own voice: its stop does cancel.
+    act(() => second.result.current.stop());
+    expect(synthesis.cancel).toHaveBeenCalledOnce();
+    expect(spoken).toHaveLength(2);
+  });
 });
