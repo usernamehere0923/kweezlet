@@ -42,6 +42,12 @@ describe("login", () => {
     expect(localStorage.getItem("kz_locale")).toBe("de-CH");
   });
 
+  test("a server error at start falls back to the login page", async () => {
+    mockApi({ "GET /api/me": () => ({ status: 500 }) });
+    renderApp();
+    expect(await screen.findByLabelText("Username")).toBeTruthy();
+  });
+
   test("offline at start falls back to the login page", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("offline")));
     renderApp();
@@ -62,6 +68,23 @@ describe("logged in", () => {
     renderApp("/settings");
     await userEvent.setup().click(await screen.findByRole("radio", { name: "Deutsch" }));
     expect(await screen.findByLabelText("Benutzername")).toBeTruthy();
+  });
+
+  test("a server error while reloading the user keeps the session", async () => {
+    let me: () => { status?: number; json?: unknown } = () => ({ json: ME });
+    mockApi({ "GET /api/me": () => me() });
+    renderApp("/settings");
+    expect(await screen.findByText("Logged in as demo")).toBeTruthy();
+
+    // Another device changed a setting, and the reload hits a broken server.
+    me = () => ({ status: 500 });
+    await waitFor(() => expect(FakeSocket.instances.length).toBeGreaterThan(0));
+    await act(async () => {
+      FakeSocket.last.receive(JSON.stringify({ topic: "settings" }));
+    });
+    expect(await screen.findByText("Something went wrong. Please try again.")).toBeTruthy();
+    expect(screen.getByText("Logged in as demo")).toBeTruthy();
+    expect(screen.queryByLabelText("Username")).toBeNull();
   });
 
   test("server errors show a toast", async () => {

@@ -16,6 +16,8 @@ type SessionApi = Session & {
   refresh: () => Promise<void>;
 };
 
+const ANONYMOUS: Session = { status: "anonymous", user: null };
+
 const SessionContext = createContext<SessionApi | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
@@ -30,23 +32,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [setLocale],
   );
 
-  const refresh = useCallback(
-    () =>
-      api.me
-        .$get()
-        .then(async (res) => (res.ok ? signedIn(await res.json()) : setSession({ status: "anonymous", user: null })))
-        .catch(() => setSession((s) => (s.status === "loading" ? { status: "anonymous", user: null } : s))),
-    [signedIn],
-  );
+  const refresh = useCallback(() => {
+    // Only a 401 means logged out, and api.ts reports that (UNAUTHORIZED_EVENT,
+    // below). A server error or no connection keeps the session as it is; on
+    // the first load there is none yet, so: the login.
+    const failed = () => setSession((s) => (s.status === "loading" ? ANONYMOUS : s));
+    return api.me
+      .$get()
+      .then(async (res) => (res.ok ? signedIn(await res.json()) : failed()))
+      .catch(failed);
+  }, [signedIn]);
 
   const logout = useCallback(async () => {
     await api.logout.$post().catch(() => undefined);
-    setSession({ status: "anonymous", user: null });
+    setSession(ANONYMOUS);
   }, []);
 
   useEffect(() => void refresh(), [refresh]);
   useEffect(() => {
-    const onUnauthorized = () => setSession({ status: "anonymous", user: null });
+    const onUnauthorized = () => setSession(ANONYMOUS);
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, []);
