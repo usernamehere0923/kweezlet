@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { termProgress } from "../../worker/progress";
-import type { SetDetail as SetDetailData } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
-import { useLive } from "../lib/live";
 import { MIN_MATCH_TERMS } from "../lib/quiz";
+import { useStudySet } from "../lib/studySet";
 import { formatTime } from "../lib/formatTime";
 import {
   Button,
@@ -27,28 +26,16 @@ export function SetDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const [set, setSet] = useState<SetDetailData | null>(null);
   const [missing, setMissing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-
-  const reload = useCallback(
-    () =>
-      api.sets[":id"].$get({ param: { id } }).then(async (res) => {
-        if (res.ok) {
-          setSet(await res.json());
-          setMissing(false);
-        } else if (res.status === 404) {
-          setMissing(true);
-        }
-      }),
-    [id],
-  );
-
-  useEffect(() => void reload(), [reload]);
-  useLive("sets", () => void reload());
-  useLive("match", () => void reload());
   // Marks and answers on another device move the progress bar and the dots.
-  useLive("study", () => void reload());
+  // Only a set that is gone says so; any other failure keeps what is shown.
+  const { set } = useStudySet(id, ["sets", "match", "study"], {
+    onLoad: () => setMissing(false),
+    onFail: (status) => {
+      if (status === 404) setMissing(true);
+    },
+  });
 
   async function remove() {
     setConfirming(false);

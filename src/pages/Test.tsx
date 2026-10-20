@@ -72,7 +72,7 @@ export function TestPage() {
   const streak = useStudyDay(handedIn || answers.some((answer) => answer !== null));
   const [deadline, setDeadline] = useState<number | null>(null);
 
-  const [set] = useStudySet(id, ["sets"]);
+  const { set } = useStudySet(id, ["sets"]);
   // Time is up: hand in the paper.
   const timeUp = useCallback(() => setView("result"), []);
 

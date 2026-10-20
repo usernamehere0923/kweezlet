@@ -1,38 +1,47 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import type { SetDetail } from "../../worker/sets";
+import type { SetDetail, SetTerm } from "../../worker/sets";
 import { api } from "./api";
 import { useLive } from "./live";
 
 type Topic = "sets" | "study" | "match";
 
+type Options = {
+  /** Runs after every load; `first` is the page's first one. */
+  onLoad?: (data: SetDetail, first: boolean) => void;
+  /** The set could not be loaded. Default: back to the set's page. */
+  onFail?: (status: number) => void;
+};
+
 /**
- * The set a study page works on, kept fresh: refetched when another device
- * changes one of `topics`. A set that is gone sends the user back to it.
- * `onLoad(data, first)` runs after every load; `first` is the page's first one.
+ * The set a page works on, kept fresh: refetched when another device changes
+ * one of `topics`. A set that cannot be loaded sends the user back to it,
+ * unless `onFail` decides otherwise.
  */
-export function useStudySet(id: string, topics: Topic[], onLoad?: (data: SetDetail, first: boolean) => void) {
+export function useStudySet(id: string, topics: Topic[], options: Options = {}) {
   const navigate = useNavigate();
   const [set, setSet] = useState<SetDetail | null>(null);
   const request = useRef(0);
-  const latestOnLoad = useRef(onLoad);
+  const latest = useRef(options);
   useEffect(() => {
-    latestOnLoad.current = onLoad;
+    latest.current = options;
   });
 
   const load = useCallback(
     (first: boolean) => {
       const mine = ++request.current;
       return api.sets[":id"].$get({ param: { id } }).then(async (res) => {
+        // An older answer must not overwrite a newer one.
         if (!res.ok) {
-          navigate(`/sets/${id}`);
+          if (mine !== request.current) return;
+          if (latest.current.onFail) latest.current.onFail(res.status);
+          else navigate(`/sets/${id}`);
           return;
         }
         const data = await res.json();
-        // An older answer must not overwrite a newer one.
         if (mine !== request.current) return;
         setSet(data);
-        latestOnLoad.current?.(data, first);
+        latest.current.onLoad?.(data, first);
       });
     },
     [id, navigate],
@@ -46,5 +55,10 @@ export function useStudySet(id: string, topics: Topic[], onLoad?: (data: SetDeta
   useLive("study", refresh("study"));
   useLive("match", refresh("match"));
 
-  return [set, setSet] as const;
+  /** Changes one term here, after the server saved it. */
+  const updateTerm = useCallback((termId: number, patch: Partial<SetTerm>) => {
+    setSet((s) => s && { ...s, terms: s.terms.map((term) => (term.id === termId ? { ...term, ...patch } : term)) });
+  }, []);
+
+  return { set, setSet, updateTerm };
 }

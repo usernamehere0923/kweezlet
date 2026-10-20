@@ -44,6 +44,19 @@ describe("set detail", () => {
     expect(await screen.findByText("Page not found")).toBeTruthy();
   });
 
+  test("a server error is not a missing set", async () => {
+    mockApi({ "GET /api/me": () => ({ json: ME }), "GET /api/sets/7": () => ({ status: 500 }) });
+    renderApp("/sets/7");
+    expect(await screen.findByText("Something went wrong. Please try again.")).toBeTruthy();
+    expect(screen.queryByText("Page not found")).toBeNull();
+  });
+
+  test("a study mode of a set that is gone goes back to the set", async () => {
+    mockApi({ "GET /api/me": () => ({ json: ME }), "GET /api/sets/7": () => ({ status: 404 }) });
+    renderApp("/sets/7/learn");
+    expect(await screen.findByText("Page not found")).toBeTruthy();
+  });
+
   test("deleting a set asks first, then deletes", async () => {
     const { calls } = mockApi({
       "GET /api/me": () => ({ json: ME }),

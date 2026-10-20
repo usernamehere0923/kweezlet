@@ -51,24 +51,17 @@ export function LearnPage() {
   }
 
   // Another device answered or renamed something: catch up, keep the question.
-  const [set, setSet] = useStudySet(id, ["sets", "study"], (data, first) => {
-    if (first) begin(data.terms);
+  const { set, updateTerm } = useStudySet(id, ["sets", "study"], {
+    onLoad: (data, first) => {
+      if (first) begin(data.terms);
+    },
   });
 
   async function postAnswer(termId: number, correct: boolean) {
     const res = await api.terms[":id"].answer.$post({ param: { id: String(termId) }, json: { correct } });
     if (res.ok) {
       const saved = await res.json();
-      setSet((s) =>
-        s
-          ? {
-              ...s,
-              terms: s.terms.map((term) =>
-                term.id === termId ? { ...term, streak: saved.streak, status: saved.status } : term,
-              ),
-            }
-          : s,
-      );
+      updateTerm(termId, { streak: saved.streak, status: saved.status });
     }
   }
 

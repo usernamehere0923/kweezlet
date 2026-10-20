@@ -29,13 +29,15 @@ export function MatchPage() {
   const [now, setNow] = useState(() => Date.now());
 
   // A new best time comes in on "match", from this device or another one.
-  const [set, setSet] = useStudySet(id, ["sets", "match"], (detail) => {
-    // The first round starts here; later reloads leave a running one alone.
-    setTiles((current) =>
-      current.length > 0 || detail.terms.length < MIN_MATCH_TERMS
-        ? current
-        : buildMatchRound(detail.terms, MATCH_PAIRS),
-    );
+  const { set, setSet } = useStudySet(id, ["sets", "match"], {
+    onLoad: (detail) => {
+      // The first round starts here; later reloads leave a running one alone.
+      setTiles((current) =>
+        current.length > 0 || detail.terms.length < MIN_MATCH_TERMS
+          ? current
+          : buildMatchRound(detail.terms, MATCH_PAIRS),
+      );
+    },
   });
 
   // The clock: only ticks while a round is running.

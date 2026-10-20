@@ -44,16 +44,18 @@ export function FlashcardsPage() {
   const streak = useStudyDay(started);
 
   // Another device marked or renamed something: catch up, keep the position.
-  const [set, setSet] = useStudySet(id, ["sets", "study"], (data) => {
-    // Surviving terms keep their shuffled place; new ones go to the end.
-    setOrder((prev) => {
-      const had = new Set(prev);
-      const seen = new Set(data.terms.map((term) => term.id));
-      return [
-        ...prev.filter((termId) => seen.has(termId)),
-        ...data.terms.map((term) => term.id).filter((termId) => !had.has(termId)),
-      ];
-    });
+  const { set, updateTerm } = useStudySet(id, ["sets", "study"], {
+    onLoad: (data) => {
+      // Surviving terms keep their shuffled place; new ones go to the end.
+      setOrder((prev) => {
+        const had = new Set(prev);
+        const seen = new Set(data.terms.map((term) => term.id));
+        return [
+          ...prev.filter((termId) => seen.has(termId)),
+          ...data.terms.map((term) => term.id).filter((termId) => !had.has(termId)),
+        ];
+      });
+    },
   });
 
   // The deck is the shuffled order, cut down to the chosen filter. Marking a
@@ -68,12 +70,6 @@ export function FlashcardsPage() {
   }, [set, order, filter]);
   const at = deck.length === 0 ? 0 : Math.min(Math.max(index, 0), deck.length - 1);
   const current = deck[at] ?? null;
-
-  function updateTerm(termId: number, state: Partial<SetTerm>) {
-    setSet((s) =>
-      s ? { ...s, terms: s.terms.map((term) => (term.id === termId ? { ...term, ...state } : term)) } : s,
-    );
-  }
 
   /** `back`: slide as if going to an earlier card. A new order or filter goes forward. */
   function goTo(next: number, back = next < at) {
