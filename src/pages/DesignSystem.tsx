@@ -32,6 +32,7 @@ import {
   SlideSwap,
   PageLoading,
   Spinner,
+  SpeakButton,
   StreakBadge,
   StudyModeTile,
   StudySetCard,
@@ -559,13 +560,20 @@ function StudyKit() {
       <Section
         title="FlipCard · CardNav · KnowItButtons · ProgressBar"
         code={`<ProgressBar value={known} learning={learning} max={terms.length} />   // compact: thin, no counts
-<FlipCard front={card.term} back={card.definition} flipped={flipped} onFlip={setFlipped} />
+<FlipCard front={card.term} back={card.definition} flipped={flipped} onFlip={setFlipped}
+  speak={{ text: flipped ? card.definition : card.term, lang: flipped ? defLang : termLang }} />
 <CardNav index={i} total={terms.length} onPrev={prev} onNext={next} onShuffle={shuffle} />
 <KnowItButtons onKnowIt={...} onStillLearning={...} />`}
       >
         <div className="mx-auto flex max-w-2xl flex-col gap-5">
           <ProgressBar value={known} learning={learning} max={ANIMALS.length} />
-          <FlipCard front={ANIMALS[card].term} back={ANIMALS[card].definition} flipped={flipped} onFlip={setFlipped} />
+          <FlipCard
+            front={ANIMALS[card].term}
+            back={ANIMALS[card].definition}
+            flipped={flipped}
+            onFlip={setFlipped}
+            speak={{ text: flipped ? ANIMALS[card].definition : ANIMALS[card].term, lang: flipped ? "en" : "es" }}
+          />
           <CardNav
             index={card}
             total={ANIMALS.length}
@@ -676,6 +684,18 @@ function StudyKit() {
   onContinue={() => round.next(ask)} />`}
       >
         <QuestionDemo />
+      </Section>
+
+      <Section
+        title="SpeakButton"
+        code={`<SpeakButton speech={{ text: "el gato", lang: "es" }} />   // Web Speech API; tap again to stop
+<FlipCard ... speak={{ text: visible.text, lang: visible.lang }} />   // speaks the visible face
+<TermList terms={terms} speak={{ termLang: set.termLang, defLang: set.defLang }} />`}
+      >
+        <div className="flex items-center gap-3">
+          <SpeakButton speech={{ text: "el gato", lang: "es" }} />
+          <SpeakButton speech={{ text: "the cat", lang: "en" }} size="md" />
+        </div>
       </Section>
 
       <Section

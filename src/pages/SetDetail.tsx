@@ -125,7 +125,10 @@ export function SetDetailPage() {
         <Text variant="small" className="mb-3">
           {tn("study.terms", set.termCount)}
         </Text>
-        <TermList terms={set.terms.map((term) => ({ ...term, progress: termProgress(term) }))} />
+        <TermList
+          terms={set.terms.map((term) => ({ ...term, progress: termProgress(term) }))}
+          speak={{ termLang: set.termLang, defLang: set.defLang }}
+        />
       </section>
 
       <Modal

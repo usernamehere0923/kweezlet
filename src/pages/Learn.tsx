@@ -143,6 +143,10 @@ export function LearnPage() {
               onPick={(option) => onAnswer(round.pick(option))}
               onSubmitTyped={() => onAnswer(round.submitTyped())}
               onContinue={() => round.next(askFrom(set.terms))}
+              speak={{
+                text: question.prompt,
+                lang: question.promptSide === "term" ? set.termLang : set.defLang,
+              }}
             />
           </SlideSwap>
         )

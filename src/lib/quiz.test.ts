@@ -78,6 +78,16 @@ describe("buildTest", () => {
     expect(paper.questions.map((question) => question.kind)).toEqual(["choice", "written", "choice"]);
   });
 
+  test("the prompt says which side it shows, for the speech language", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0); // asks for the term: the prompt is the definition
+    const asked = buildTest(TERMS, { count: 1, types: ["choice"], matching: false }).questions[0];
+    expect(asked.promptSide).toBe("definition");
+
+    vi.spyOn(Math, "random").mockReturnValue(0.99); // the other way round
+    const telling = buildTest(TERMS, { count: 1, types: ["choice"], matching: false }).questions[0];
+    expect(telling.promptSide).toBe("term");
+  });
+
   test("no question types means a matching-only paper", () => {
     const paper = buildTest(TERMS, { count: 3, types: [], matching: true });
     expect(paper.questions).toEqual([]);
@@ -133,6 +143,7 @@ const choice: TestQuestion = {
   kind: "choice",
   termId: 1,
   prompt: "el perro",
+  promptSide: "term",
   label: "learn.askDefinition",
   answer: "the dog",
   options: ["the dog", "the cat"],
@@ -141,6 +152,7 @@ const written: TestQuestion = {
   kind: "written",
   termId: 1,
   prompt: "el perro",
+  promptSide: "term",
   label: "learn.askDefinition",
   answer: "the dog",
   options: [],
@@ -149,6 +161,7 @@ const statement: TestQuestion = {
   kind: "truefalse",
   termId: 1,
   prompt: "el perro — the cat",
+  promptSide: "term",
   label: "test.statement",
   answer: "false",
   options: ["true", "false"],

@@ -185,6 +185,8 @@ export const deCH: Record<keyof typeof en, string> = {
   "study.terms_other": "{count} Begriffe",
   "study.by": "von {name}",
   "study.tapToFlip": "Tippen oder Leertaste zum Umdrehen",
+  "study.speak": "Vorlesen",
+  "study.stopSpeaking": "Stoppen",
   "study.counter": "{current} / {total}",
   "study.prev": "Vorherige Karte",
   "study.next": "Nächste Karte",

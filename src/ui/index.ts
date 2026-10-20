@@ -10,6 +10,7 @@ export { Icon, ICON_NAMES, type IconName } from "./Icon";
 export { LogoMark, Wordmark } from "./Logo";
 export { Confetti, prefersReducedMotion, SlideSwap, useCountUp } from "./motion";
 export { PageLoading, Spinner } from "./Spinner";
+export { SpeakButton, speak, speechAvailable, stopSpeaking, useSpeech, type Speech } from "./speech";
 export { Card, EmptyState, ErrorBoundary, Modal, Tag, ToastProvider, useToast } from "./surfaces";
 export { Heading, PageTitle, Text, TextLink } from "./Text";
 export { useHotkey } from "./useHotkey";

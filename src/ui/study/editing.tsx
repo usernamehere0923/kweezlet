@@ -3,6 +3,7 @@ import type { TermProgress } from "../../../worker/shared";
 import { useT } from "../../i18n";
 import { cx } from "../cx";
 import { IconButton } from "../Button";
+import { SpeakButton } from "../speech";
 
 export type TermEditorHandle = { focus: () => void };
 
@@ -96,17 +97,28 @@ export function TermProgressDot({ progress }: { progress: TermProgress }) {
   );
 }
 
-/** The terms of a set, read-only. `progress` adds a status dot before each term. */
-export function TermList({ terms }: { terms: { term: string; definition: string; progress?: TermProgress }[] }) {
+/** The terms of a set, read-only. `progress` adds a status dot before each term;
+ * `speak` adds a speaker per term and definition (the set's languages). */
+export function TermList({
+  terms,
+  speak,
+}: {
+  terms: { term: string; definition: string; progress?: TermProgress }[];
+  speak?: { termLang: string | null; defLang: string | null };
+}) {
   return (
     <ul className="divide-y divide-line-soft overflow-hidden rounded-ui-xl border border-line-soft bg-surface">
       {terms.map((item, i) => (
         <li key={i} className="grid gap-1 px-5 py-4 md:grid-cols-[1fr_2fr] md:gap-8">
           <span className="flex items-center gap-2.5 font-medium text-ink">
             {item.progress && <TermProgressDot progress={item.progress} />}
-            {item.term}
+            <span className="flex-1">{item.term}</span>
+            {speak && <SpeakButton speech={{ text: item.term, lang: speak.termLang }} />}
           </span>
-          <span className="text-ink-soft">{item.definition}</span>
+          <span className="flex items-start justify-between gap-2 text-ink-soft">
+            <span className="flex-1">{item.definition}</span>
+            {speak && <SpeakButton speech={{ text: item.definition, lang: speak.defLang }} />}
+          </span>
         </li>
       ))}
     </ul>

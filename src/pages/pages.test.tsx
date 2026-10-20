@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 import { ME, renderApp } from "../test/render";
-import { FakeSocket, mockApi } from "../test/server";
+import { FakeSocket, mockApi, mockSpeech } from "../test/server";
 
 describe("settings", () => {
   test("changing the language saves it on the server", async () => {
@@ -589,6 +589,23 @@ describe("flashcards", () => {
     });
     expect(screen.getByText("el gato")).toBeTruthy();
     expect(screen.queryByText("el perro")).toBeNull();
+  });
+
+  test("the card speaks the visible side in its language", async () => {
+    const { spoken } = mockSpeech();
+    mockApi(flashcardsApi());
+    renderApp("/sets/7/flashcards");
+    await screen.findByText("el perro");
+
+    await userEvent.click(screen.getByRole("button", { name: "Speak" }));
+    expect(spoken.at(-1)).toMatchObject({ text: "el perro", lang: "es" });
+
+    // Flipped while the term still talks: the button stops it first…
+    await userEvent.click(screen.getByRole("button", { name: FLIP }));
+    await userEvent.click(screen.getByRole("button", { name: "Stop" }));
+    // …and the next tap reads the definition, in the definitions' language.
+    await userEvent.click(screen.getByRole("button", { name: "Speak" }));
+    expect(spoken.at(-1)).toMatchObject({ text: "the dog", lang: "en" });
   });
 });
 
