@@ -1,7 +1,7 @@
 import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef, useState } from "react";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { renderUi } from "../../test/render";
 import { mockSpeech } from "../../test/server";
 import {
@@ -75,8 +75,6 @@ describe("FlipCard", () => {
 });
 
 describe("speech", () => {
-  afterEach(() => vi.unstubAllGlobals());
-
   test("FlipCard speaks the visible face without flipping, and can stop", async () => {
     const { spoken, synthesis } = mockSpeech();
     const onFlip = vi.fn();

@@ -103,7 +103,7 @@ export function ReviewPage() {
 
   const question = round.question;
   // The card behind the question carries its set's languages (worker/review.ts).
-  const card = cards?.find((candidate) => candidate.id === question?.termId);
+  const card = cards.find((candidate) => candidate.id === question?.termId);
 
   return (
     <div className="mx-auto max-w-2xl">
