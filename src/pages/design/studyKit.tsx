@@ -217,12 +217,12 @@ export function StudyKit() {
 
       <Section
         title="QuestionCard"
-        code={`// One Learn / Review question; useQuestionRound() (src/lib/questionRound.ts) drives it.
-<QuestionCard label={t(question.label)} prompt={question.prompt} answer={question.answer}
-  options={question.options}   // [] = type the answer
-  typed={round.typed} onTyped={round.setTyped} picked={round.picked} feedback={round.feedback}
-  onPick={(o) => onAnswer(round.pick(o))} onSubmitTyped={() => onAnswer(round.submitTyped())}
-  onContinue={() => round.next(ask)} />`}
+        code={`// One Learn / Review question. Pages use <RoundQuestion round={round} ... /> (src/pages/RoundQuestion.tsx),
+// which wires useQuestionRound() (src/lib/questionRound.ts) to it.
+<QuestionCard label="Give the definition" prompt="el gato" answer="the cat"
+  options={["the dog", "the cat"]}   // [] = type the answer
+  typed={typed} onTyped={setTyped} picked={picked} feedback={feedback}
+  onPick={pick} onSubmitTyped={check} onContinue={next} />`}
       >
         <QuestionDemo />
       </Section>

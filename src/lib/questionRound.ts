@@ -2,6 +2,9 @@ import { useCallback, useRef, useState } from "react";
 import type { TestQuestion } from "./quiz";
 import { gradeAnswer } from "./grading";
 
+/** What the user just answered, for the page to save and schedule. */
+export type Answered = { termId: number; correct: boolean };
+
 /** The question for a term id, or null when the term is gone (deleted, answered elsewhere). */
 type AskTerm = (termId: number) => TestQuestion | null;
 
@@ -10,7 +13,7 @@ type AskTerm = (termId: number) => TestQuestion | null;
  * asked one by one, the answer the user gave, the score. Which terms come
  * back and what an answer saves is up to the page: pick() and submitTyped()
  * return what was answered, askAgain() puts a term back in the queue.
- * Show it with <QuestionCard> (src/ui/study).
+ * Show it with <RoundQuestion> (src/pages/RoundQuestion.tsx).
  */
 export function useQuestionRound() {
   const [question, setQuestion] = useState<TestQuestion | null>(null);
@@ -61,7 +64,7 @@ export function useQuestionRound() {
     if (!queue.current.includes(termId)) queue.current.push(termId);
   }, []);
 
-  function answer(correct: boolean, given: string) {
+  function answer(correct: boolean, given: string): Answered | null {
     // Enter in the read-only answer box must not count the answer twice.
     if (!question || feedback) return null;
     setPicked(given);
@@ -88,3 +91,5 @@ export function useQuestionRound() {
     submitTyped: () => answer(question ? gradeAnswer(typed, question.answer) : false, typed),
   };
 }
+
+export type QuestionRound = ReturnType<typeof useQuestionRound>;

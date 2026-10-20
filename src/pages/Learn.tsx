@@ -5,21 +5,11 @@ import type { SetTerm } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useStudySet } from "../lib/studySet";
-import { useQuestionRound } from "../lib/questionRound";
+import { useQuestionRound, type Answered } from "../lib/questionRound";
 import { buildQuestion, shuffle } from "../lib/quiz";
 import { useStudyDay } from "../lib/studyDay";
-import {
-  Button,
-  ButtonLink,
-  EmptyState,
-  Heading,
-  PageLoading,
-  QuestionCard,
-  ResultSummary,
-  SlideSwap,
-  StreakBadge,
-  Tag,
-} from "../ui";
+import { Button, ButtonLink, EmptyState, Heading, PageLoading, ResultSummary, StreakBadge, Tag } from "../ui";
+import { RoundQuestion } from "./RoundQuestion";
 
 export function LearnPage() {
   const { t } = useT();
@@ -65,9 +55,7 @@ export function LearnPage() {
     }
   }
 
-  function onAnswer(answered: { termId: number; correct: boolean } | null) {
-    if (!answered) return;
-    const { termId, correct } = answered;
+  function onAnswer({ termId, correct }: Answered) {
     const count = (inRound.current.get(termId) ?? 0) + (correct ? 1 : 0);
     inRound.current.set(termId, correct ? count : 0);
     // Mistakes and half-learned terms come back later in this round.
@@ -80,7 +68,6 @@ export function LearnPage() {
   }
 
   const count = (progress: string) => set.terms.filter((term) => termProgress(term) === progress).length;
-  const question = round.question;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -122,27 +109,12 @@ export function LearnPage() {
           onDone={() => navigate(`/sets/${id}`)}
         />
       ) : (
-        question && (
-          <SlideSwap id={question}>
-            <QuestionCard
-              label={t(question.label)}
-              prompt={question.prompt}
-              answer={question.answer}
-              options={question.options}
-              typed={round.typed}
-              onTyped={round.setTyped}
-              picked={round.picked}
-              feedback={round.feedback}
-              onPick={(option) => onAnswer(round.pick(option))}
-              onSubmitTyped={() => onAnswer(round.submitTyped())}
-              onContinue={() => round.next(askFrom(set.terms))}
-              speak={{
-                text: question.prompt,
-                lang: question.promptSide === "term" ? set.termLang : set.defLang,
-              }}
-            />
-          </SlideSwap>
-        )
+        <RoundQuestion
+          round={round}
+          langs={set}
+          onAnswer={onAnswer}
+          onContinue={() => round.next(askFrom(set.terms))}
+        />
       )}
     </div>
   );

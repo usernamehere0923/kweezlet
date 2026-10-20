@@ -4,20 +4,11 @@ import type { ReviewCard } from "../../worker/review";
 import { useT } from "../i18n";
 import { api, offline } from "../lib/api";
 import { useLive } from "../lib/live";
-import { useQuestionRound } from "../lib/questionRound";
+import { useQuestionRound, type Answered } from "../lib/questionRound";
 import { buildQuestion, shuffle } from "../lib/quiz";
 import { useStudyDay } from "../lib/studyDay";
-import {
-  ButtonLink,
-  EmptyState,
-  Heading,
-  PageLoading,
-  QuestionCard,
-  ResultSummary,
-  SlideSwap,
-  StreakBadge,
-  Tag,
-} from "../ui";
+import { ButtonLink, EmptyState, Heading, PageLoading, ResultSummary, StreakBadge, Tag } from "../ui";
+import { RoundQuestion } from "./RoundQuestion";
 
 /** Due cards fetched when another device answers: enough to see which of ours are still due. */
 const REFRESH_LIMIT = 100;
@@ -87,12 +78,11 @@ export function ReviewPage() {
     if (offline(res) || res.status >= 500) round.askAgain(termId);
   }
 
-  function onAnswer(answered: { termId: number; correct: boolean } | null) {
-    if (!answered) return;
-    answeredHere.current.add(answered.termId);
+  function onAnswer({ termId, correct }: Answered) {
+    answeredHere.current.add(termId);
     // A mistake comes back later in this round.
-    if (!answered.correct) round.askAgain(answered.termId);
-    void save(answered.termId, answered.correct);
+    if (!correct) round.askAgain(termId);
+    void save(termId, correct);
   }
 
   if (!cards) {
@@ -131,25 +121,7 @@ export function ReviewPage() {
               {t("learn.remaining")} {round.left}
             </Tag>
           </div>
-          <SlideSwap id={question}>
-            <QuestionCard
-              label={t(question.label)}
-              prompt={question.prompt}
-              answer={question.answer}
-              options={question.options}
-              typed={round.typed}
-              onTyped={round.setTyped}
-              picked={round.picked}
-              feedback={round.feedback}
-              onPick={(option) => onAnswer(round.pick(option))}
-              onSubmitTyped={() => onAnswer(round.submitTyped())}
-              onContinue={() => round.next(askFrom(cards))}
-              speak={{
-                text: question.prompt,
-                lang: card ? (question.promptSide === "term" ? card.termLang : card.defLang) : null,
-              }}
-            />
-          </SlideSwap>
+          <RoundQuestion round={round} langs={card} onAnswer={onAnswer} onContinue={() => round.next(askFrom(cards))} />
         </>
       ) : (
         <EmptyState
