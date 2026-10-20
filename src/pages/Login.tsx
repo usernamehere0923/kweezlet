@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { LOCALES, useT, type Locale } from "../i18n";
+import { useT } from "../i18n";
 import { api, offline } from "../lib/api";
 import { useSession } from "../lib/session";
-import { Button, Card, FormError, PageTitle, SegmentedControl, Text, TextField, Wordmark } from "../ui";
+import { Button, Card, FormError, PageTitle, LocalePicker, Text, TextField, Wordmark } from "../ui";
 
 export function LoginPage() {
   const { t, locale, setLocale } = useT();
@@ -29,13 +29,7 @@ export function LoginPage() {
   return (
     <div className="flex min-h-dvh flex-col px-4 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
       <div className="flex justify-end py-4">
-        <SegmentedControl<Locale>
-          size="sm"
-          label={t("login.language")}
-          value={locale}
-          onChange={setLocale}
-          options={LOCALES.map((l) => ({ value: l, label: t(`locale.${l}`) }))}
-        />
+        <LocalePicker size="sm" label={t("login.language")} value={locale} onChange={setLocale} />
       </div>
       <div className="flex flex-1 items-center justify-center pb-16">
         <div className="w-full max-w-sm">

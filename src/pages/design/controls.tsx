@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useT } from "../../i18n";
+import { useT, type Locale } from "../../i18n";
 import {
   Button,
   Card,
@@ -9,6 +9,7 @@ import {
   FormError,
   Heading,
   IconButton,
+  LocalePicker,
   Modal,
   PageLoading,
   SearchField,
@@ -31,6 +32,7 @@ export function Controls() {
   const [lang, setLang] = useState<"es" | "fr" | "it">("es");
   const [view, setView] = useState<"cards" | "list">("cards");
   const [shuffle, setShuffle] = useState(true);
+  const [locale, setLocale] = useState<Locale>("en");
   const [modal, setModal] = useState(false);
 
   return (
@@ -112,12 +114,13 @@ export function Controls() {
 
       <Chapter title={t("design.choices")}>
         <Section
-          title="Select · SegmentedControl · Checkbox"
+          title="Select · SegmentedControl · Checkbox · LocalePicker"
           code={`<Select label="Language" value={lang} onChange={setLang}
   options={[{ value: "es", label: "Spanish" }, { value: "fr", label: "French" }]} />
 <SegmentedControl label="View" value={view} onChange={setView}
   options={[{ value: "cards", label: "Cards" }, { value: "list", label: "List" }]} />
-<Checkbox label="Shuffle cards" checked={shuffle} onChange={setShuffle} />`}
+<Checkbox label="Shuffle cards" checked={shuffle} onChange={setShuffle} />
+<LocalePicker label={t("settings.language")} value={locale} onChange={setLocale} />   // login, settings`}
         >
           <div className="grid items-start gap-5 md:grid-cols-3">
             <Select
@@ -145,6 +148,10 @@ export function Controls() {
             <div className="pt-7">
               <Checkbox label="Shuffle cards" hint="Random order every round" checked={shuffle} onChange={setShuffle} />
             </div>
+          </div>
+          <div className="mt-5 flex flex-col items-start gap-3">
+            <LocalePicker label={t("settings.language")} value={locale} onChange={setLocale} />
+            <LocalePicker size="sm" label={t("settings.language")} value={locale} onChange={setLocale} />
           </div>
         </Section>
       </Chapter>

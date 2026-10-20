@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { LOCALES, useT, type Locale, type TKey } from "../i18n";
+import { useT, type Locale, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
 import { useSession, useUser } from "../lib/session";
-import { Button, ButtonLink, Card, Heading, PageTitle, SegmentedControl, Text, TextField, useToast } from "../ui";
+import { Button, ButtonLink, Card, Heading, PageTitle, LocalePicker, Text, TextField, useToast } from "../ui";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -30,12 +30,7 @@ export function SettingsPage() {
       <PageTitle>{t("settings.title")}</PageTitle>
       <div className="flex flex-col gap-5">
         <Section title={t("settings.language")}>
-          <SegmentedControl<Locale>
-            label={t("settings.language")}
-            value={locale}
-            onChange={(l) => void changeLocale(l)}
-            options={LOCALES.map((l) => ({ value: l, label: t(`locale.${l}`) }))}
-          />
+          <LocalePicker label={t("settings.language")} value={locale} onChange={(l) => void changeLocale(l)} />
           <Text variant="small" className="mt-3">
             {t("settings.languageHint")}
           </Text>
