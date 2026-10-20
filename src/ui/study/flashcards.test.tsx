@@ -74,6 +74,31 @@ describe("FlipCard", () => {
     rerender(<FlipCard front="el gato" back="the cat" onFlip={onFlip} />);
     expect(screen.queryByRole("button", { name: "Speak" })).toBeNull();
   });
+
+  test("a flip while speaking falls silent, a re-render with the same words does not", async () => {
+    const { synthesis } = mockSpeech();
+    const card = (flipped: boolean) => (
+      <FlipCard
+        front="el gato"
+        back="the cat"
+        flipped={flipped}
+        speak={flipped ? { text: "the cat", lang: "en" } : { text: "el gato", lang: "es" }}
+      />
+    );
+    const { rerender } = renderUi(card(false));
+    await userEvent.click(screen.getByRole("button", { name: "Speak" }));
+    synthesis.cancel.mockClear();
+
+    // Same words in a new object: still talking.
+    rerender(card(false));
+    expect(screen.getByRole("button", { name: "Stop" })).toBeTruthy();
+    expect(synthesis.cancel).not.toHaveBeenCalled();
+
+    // Flipped: the other face has other words, so the old ones stop.
+    rerender(card(true));
+    expect(synthesis.cancel).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Speak" })).toBeTruthy();
+  });
 });
 
 describe("CardNav", () => {

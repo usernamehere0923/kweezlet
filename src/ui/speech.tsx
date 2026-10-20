@@ -106,6 +106,8 @@ export function SpeakButton({
 }): ReactNode {
   const { t } = useT();
   const { speaking, say, stop } = useSpeech();
+  // New text (a flip, the next card or question): the old words stop.
+  useEffect(() => stop, [speech.text, speech.lang, stop]);
   if (!speechAvailable()) return null;
   return (
     <IconButton

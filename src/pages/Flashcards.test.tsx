@@ -180,7 +180,7 @@ describe("flashcards", () => {
   });
 
   test("the card speaks the visible side in its language", async () => {
-    const { spoken } = mockSpeech();
+    const { spoken, synthesis } = mockSpeech();
     mockApi(flashcardsApi());
     renderApp("/sets/7/flashcards");
     await screen.findByText("el perro");
@@ -188,9 +188,10 @@ describe("flashcards", () => {
     await userEvent.click(screen.getByRole("button", { name: "Speak" }));
     expect(spoken.at(-1)).toMatchObject({ text: "el perro", lang: "es" });
 
-    // Flipped while the term still talks: the button stops it first…
+    // Flipped while the term still talks: the term falls silent…
+    synthesis.cancel.mockClear();
     await userEvent.click(screen.getByRole("button", { name: FLIP }));
-    await userEvent.click(screen.getByRole("button", { name: "Stop" }));
+    expect(synthesis.cancel).toHaveBeenCalled();
     // …and the next tap reads the definition, in the definitions' language.
     await userEvent.click(screen.getByRole("button", { name: "Speak" }));
     expect(spoken.at(-1)).toMatchObject({ text: "the dog", lang: "en" });
