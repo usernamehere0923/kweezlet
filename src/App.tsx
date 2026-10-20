@@ -4,7 +4,7 @@ import { I18nProvider, useT } from "./i18n";
 import { SERVER_ERROR_EVENT } from "./lib/api";
 import { clientId, LiveProvider, useLive } from "./lib/live";
 import { SessionProvider, useSession } from "./lib/session";
-import { DesignSystemPage } from "./pages/DesignSystem";
+import { DesignSystemPage } from "./pages/design";
 import { HomePage } from "./pages/Home";
 import { LoginPage } from "./pages/Login";
 import { NotFoundPage } from "./pages/NotFound";

@@ -1,8 +1,8 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
-import { ME, renderApp } from "../test/render";
-import { mockApi } from "../test/server";
+import { ME, renderApp } from "../../test/render";
+import { mockApi } from "../../test/server";
 
 describe("design page", () => {
   test("is reachable by URL only, not from the menu", async () => {
