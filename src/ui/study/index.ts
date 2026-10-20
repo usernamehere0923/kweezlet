@@ -7,3 +7,4 @@ export { StudyModeTile, StudySetCard, type StudyMode } from "./overview";
 export { ProgressBar } from "./ProgressBar";
 export { AnswerInput, AnswerOption, FeedbackBanner, QuestionCard, type AnswerState } from "./question";
 export { MatchResult, ResultSummary, StreakBadge } from "./results";
+export { StudyHeader } from "./StudyHeader";

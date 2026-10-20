@@ -34,6 +34,7 @@ import {
   Spinner,
   SpeakButton,
   StreakBadge,
+  StudyHeader,
   StudyModeTile,
   StudySetCard,
   Tag,
@@ -537,6 +538,13 @@ function StudyKit() {
           <StudySetCard title="Capitals of Europe" termCount={1} owner="ben" />
           <StudySetCard title="Photosynthesis" termCount={24} tag="Biology" known={9} learning={5} />
         </div>
+      </Section>
+
+      <Section
+        title="StudyHeader"
+        code={`<StudyHeader backTo={setUrl} backLabel={t("study.backToSet")} streak={streak} />   // top of every study mode; no badge at 0`}
+      >
+        <StudyHeader backTo="/design" backLabel={t("study.backToSet")} streak={5} />
       </Section>
 
       <Section
