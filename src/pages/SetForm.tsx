@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router";
 import { LANGUAGES, type Language } from "../../worker/languages";
-import { isTKey, useT, type TKey } from "../i18n";
+import { useT, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
 import {
   Button,
@@ -31,7 +31,7 @@ const LANG_KEY: Record<Language, TKey> = {
 };
 
 /** The message for the server's errors on the terms, or null when there are none. */
-function termsError(errors: Record<string, string>): TKey | null {
+function termsError(errors: Record<string, TKey>): TKey | null {
   // "invalid_value" on the list means a term id went stale (changed on another device).
   if (errors.terms === "validation.invalid_value") return "sets.termsChanged";
   if (errors.terms === "validation.too_big") return "sets.termsTooMany";
@@ -53,7 +53,7 @@ export function SetFormPage() {
   const [termLang, setTermLang] = useState<Language | "">("");
   const [defLang, setDefLang] = useState<Language | "">("");
   const [rows, setRows] = useState<Row[]>([{ term: "", definition: "" }]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, TKey>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(editing);
@@ -138,11 +138,6 @@ export function SetFormPage() {
     }
   }
 
-  const err = (field: string) => {
-    const key = errors[field];
-    return key ? t(isTKey(key) ? key : "validation.invalid") : undefined;
-  };
-
   if (loading) {
     return <PageLoading label={t("common.loading")} />;
   }
@@ -161,7 +156,7 @@ export function SetFormPage() {
             label={t("sets.fieldTitle")}
             value={title}
             onChange={setTitle}
-            error={err("title")}
+            error={errors.title && t(errors.title)}
             maxLength={200}
             required
           />

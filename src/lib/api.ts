@@ -1,5 +1,6 @@
 import { hc } from "hono/client";
 import type { AppType } from "../../worker/index";
+import { isTKey, type TKey } from "../i18n";
 
 export const UNAUTHORIZED_EVENT = "kz:unauthorized";
 export const SERVER_ERROR_EVENT = "kz:server-error";
@@ -36,14 +37,18 @@ export const api = hc<AppType>("/", { fetch: apiFetch }).api;
 
 /**
  * Field errors from a 400 response, as i18n keys: { password: "validation.too_small" }.
+ * A code without a text of its own becomes "validation.invalid".
  * Pass each one to t() and into <TextField error=...>.
  */
-export async function fieldErrors(res: Response): Promise<Record<string, `validation.${string}`>> {
+export async function fieldErrors(res: Response): Promise<Record<string, TKey>> {
   if (res.status !== 400) return {};
   try {
     const body = (await res.clone().json()) as { fields?: Record<string, string> };
     return Object.fromEntries(
-      Object.entries(body.fields ?? {}).map(([field, code]) => [field, `validation.${code}` as const]),
+      Object.entries(body.fields ?? {}).map(([field, code]) => {
+        const key = `validation.${code}`;
+        return [field, isTKey(key) ? key : "validation.invalid"];
+      }),
     );
   } catch {
     return {};

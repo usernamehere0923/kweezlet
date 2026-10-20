@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { isTKey, LOCALES, useT, type Locale } from "../i18n";
+import { LOCALES, useT, type Locale, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
 import { useSession, useUser } from "../lib/session";
 import { Button, ButtonLink, Card, Heading, PageTitle, SegmentedControl, Text, TextField, useToast } from "../ui";
@@ -73,7 +73,7 @@ function PasswordForm() {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [repeat, setRepeat] = useState("");
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, TKey>>({});
   const [busy, setBusy] = useState(false);
 
   async function submit(e: React.FormEvent) {
@@ -99,12 +99,6 @@ function PasswordForm() {
     }
   }
 
-  const err = (field: string) => {
-    const key = errors[field];
-    if (!key) return undefined;
-    return t(isTKey(key) ? key : "validation.invalid");
-  };
-
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
       <TextField
@@ -113,7 +107,7 @@ function PasswordForm() {
         autoComplete="current-password"
         value={current}
         onChange={setCurrent}
-        error={err("current")}
+        error={errors.current && t(errors.current)}
         required
       />
       <TextField
@@ -123,7 +117,7 @@ function PasswordForm() {
         value={next}
         onChange={setNext}
         hint={t("settings.passwordNewHint")}
-        error={err("next")}
+        error={errors.next && t(errors.next)}
         minLength={8}
         required
       />
@@ -133,7 +127,7 @@ function PasswordForm() {
         autoComplete="new-password"
         value={repeat}
         onChange={setRepeat}
-        error={err("repeat")}
+        error={errors.repeat && t(errors.repeat)}
         required
       />
       <div>
