@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addUser, api, login } from "./helpers";
+import { addUser, api, signedIn } from "./helpers";
 
 describe("auth", () => {
   it("logs in with the right password and sets an HttpOnly cookie", async () => {
@@ -30,8 +30,7 @@ describe("auth", () => {
   });
 
   it("logout ends the session", async () => {
-    await addUser("anna", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
+    const { cookie } = await signedIn("anna");
     expect((await api("/api/me", { cookie })).status).toBe(200);
     expect((await api("/api/logout", { method: "POST", cookie })).status).toBe(200);
     expect((await api("/api/me", { cookie })).status).toBe(401);

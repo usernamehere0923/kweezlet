@@ -3,39 +3,8 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { INTERVAL_DAYS, intervalDays } from "../worker/shared";
-import { addUser, api, login } from "./helpers";
-
-async function addSet(userId: number, title: string): Promise<number> {
-  const row = await env.DB.prepare("INSERT INTO sets (user_id, title) VALUES (?, ?) RETURNING id")
-    .bind(userId, title)
-    .first<{ id: number }>();
-  return row!.id;
-}
-
-/** A term, optionally with an answer history: on review step `step`, due `dueInDays` from now (negative = overdue). */
-async function addTerm(
-  userId: number,
-  setId: number,
-  term: string,
-  position: number,
-  history: { step: number; dueInDays: number; streak?: number } | null,
-) {
-  const row = await env.DB.prepare(
-    "INSERT INTO terms (user_id, set_id, term, definition, position) VALUES (?, ?, ?, ?, ?) RETURNING id",
-  )
-    .bind(userId, setId, term, `the ${term}`, position)
-    .first<{ id: number }>();
-  if (history) {
-    const streak = history.streak ?? history.step;
-    await env.DB.prepare(
-      `INSERT INTO term_stats (user_id, term_id, set_id, correct, wrong, streak, review_step, due_at)
-       VALUES (?, ?, ?, ?, 0, ?, ?, unixepoch() + ? * 86400)`,
-    )
-      .bind(userId, row!.id, setId, streak, streak, history.step, history.dueInDays)
-      .run();
-  }
-  return row!.id;
-}
+import { addSet, addTerm } from "./fixtures";
+import { addUser, api, signedIn } from "./helpers";
 
 /** review_step, and days until due (rounded) right now. */
 async function schedule(termId: number) {
@@ -62,10 +31,9 @@ describe("the schedule", () => {
   });
 
   it("a new term learned in one go comes back tomorrow", async () => {
-    const anna = await addUser("anna", "secret-pw");
-    const set = await addSet(anna, "Spanish animals");
+    const { id: anna, cookie } = await signedIn("anna");
+    const { id: set } = await addSet(anna, "Spanish animals");
     const perro = await addTerm(anna, set, "el perro", 0, null);
-    const cookie = await login("anna", "secret-pw");
 
     // Learn asks until two in a row; studying anyway adds two more.
     for (let i = 0; i < 4; i++) expect((await answer(perro, cookie, true)).status).toBe(200);
@@ -73,21 +41,19 @@ describe("the schedule", () => {
   });
 
   it("answering before the term is due changes nothing", async () => {
-    const anna = await addUser("anna", "secret-pw");
-    const set = await addSet(anna, "Spanish animals");
+    const { id: anna, cookie } = await signedIn("anna");
+    const { id: set } = await addSet(anna, "Spanish animals");
     const perro = await addTerm(anna, set, "el perro", 0, { step: 2, dueInDays: 3 });
-    const cookie = await login("anna", "secret-pw");
 
     await answer(perro, cookie, true);
     expect(await schedule(perro)).toEqual({ step: 2, days: 3 });
   });
 
   it("a due term answered right moves one step up, wrong starts over", async () => {
-    const anna = await addUser("anna", "secret-pw");
-    const set = await addSet(anna, "Spanish animals");
+    const { id: anna, cookie } = await signedIn("anna");
+    const { id: set } = await addSet(anna, "Spanish animals");
     const perro = await addTerm(anna, set, "el perro", 0, { step: 2, dueInDays: -1 });
     const gato = await addTerm(anna, set, "el gato", 1, { step: 4, dueInDays: -1 });
-    const cookie = await login("anna", "secret-pw");
 
     await answer(perro, cookie, true);
     expect(await schedule(perro)).toEqual({ step: 3, days: 4 });
@@ -100,9 +66,8 @@ describe("the schedule", () => {
   });
 
   it("every step waits as long as the table says (SQL and table agree)", async () => {
-    const anna = await addUser("anna", "secret-pw");
-    const set = await addSet(anna, "Spanish animals");
-    const cookie = await login("anna", "secret-pw");
+    const { id: anna, cookie } = await signedIn("anna");
+    const { id: set } = await addSet(anna, "Spanish animals");
     for (const step of [-1, ...INTERVAL_DAYS.keys(), INTERVAL_DAYS.length + 3]) {
       const id = await addTerm(anna, set, `step ${step}`, step + 10, { step, dueInDays: -1, streak: 0 });
       await answer(id, cookie, true);
@@ -113,18 +78,18 @@ describe("the schedule", () => {
 
 describe("GET /api/review", () => {
   it("lists only my answered terms that are due, longest overdue first", async () => {
-    const anna = await addUser("anna", "secret-pw");
+    const { id: anna, cookie } = await signedIn("anna");
     const ben = await addUser("ben", "secret-pw");
-    const animals = await addSet(anna, "Spanish animals");
-    const history = await addSet(anna, "Swiss history");
+    const { id: animals } = await addSet(anna, "Spanish animals");
+    const { id: history } = await addSet(anna, "Swiss history");
     await addTerm(anna, animals, "el perro", 0, null); // never answered: Learn's job
     await addTerm(anna, animals, "el gato", 1, { step: 1, dueInDays: -1 });
     await addTerm(anna, animals, "el pez", 2, { step: 0, dueInDays: 1 }); // not yet
     await addTerm(anna, history, "1291", 0, { step: 2, dueInDays: -5 });
-    const benSet = await addSet(ben, "Ben set");
+    const { id: benSet } = await addSet(ben, "Ben set");
     await addTerm(ben, benSet, "ben term", 0, { step: 0, dueInDays: -9 });
 
-    const res = await api("/api/review", { cookie: await login("anna", "secret-pw") });
+    const res = await api("/api/review", { cookie });
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({
       dueCount: 2,
@@ -136,10 +101,9 @@ describe("GET /api/review", () => {
   });
 
   it("caps the cards but counts them all", async () => {
-    const anna = await addUser("anna", "secret-pw");
-    const set = await addSet(anna, "Spanish animals");
+    const { id: anna, cookie } = await signedIn("anna");
+    const { id: set } = await addSet(anna, "Spanish animals");
     for (let i = 0; i < 3; i++) await addTerm(anna, set, `term ${i}`, i, { step: 0, dueInDays: -1 });
-    const cookie = await login("anna", "secret-pw");
 
     const res = await api("/api/review?limit=2", { cookie });
     const body = (await res.json()) as { cards: unknown[]; dueCount: number };
@@ -153,8 +117,7 @@ describe("GET /api/review", () => {
   });
 
   it("a limit that makes no sense is a validation error", async () => {
-    await addUser("anna", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
+    const { cookie } = await signedIn("anna");
     for (const limit of ["0", "101", "abc"]) {
       const res = await api(`/api/review?limit=${limit}`, { cookie });
       expect(res.status, `limit ${limit}`).toBe(400);

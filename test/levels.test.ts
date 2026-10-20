@@ -3,7 +3,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { LEVELS } from "../worker/types";
-import { addUser, api, login } from "./helpers";
+import { addUser, api, signedIn } from "./helpers";
 
 const levelOf = async (id: number) =>
   (await env.DB.prepare("SELECT level FROM users WHERE id = ?").bind(id).first<{ level: string }>())!.level;
@@ -46,8 +46,7 @@ describe("account levels", () => {
 
   it("/api/me tells the user their level", async () => {
     await addUser("anna", "secret-pw");
-    await addUser("ben", "secret-pw");
-    const cookie = await login("ben", "secret-pw");
+    const { cookie } = await signedIn("ben");
     expect(await (await api("/api/me", { cookie })).json()).toEqual(expect.objectContaining({ level: "standard" }));
   });
 });

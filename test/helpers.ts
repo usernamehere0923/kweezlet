@@ -30,3 +30,9 @@ export async function login(username: string, password: string): Promise<string>
   if (res.status !== 200) throw new Error(`login failed: ${res.status}`);
   return res.headers.get("Set-Cookie")!.split(";")[0];
 }
+
+/** A new user, logged in: their id and Cookie header value. */
+export async function signedIn(username: string, password = "secret-pw"): Promise<{ id: number; cookie: string }> {
+  const id = await addUser(username, password);
+  return { id, cookie: await login(username, password) };
+}

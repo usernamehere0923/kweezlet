@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addUser, api, login } from "./helpers";
+import { api, login, signedIn } from "./helpers";
 
 function nextMessage(ws: WebSocket): Promise<unknown> {
   return new Promise((resolve) => {
@@ -9,8 +9,7 @@ function nextMessage(ws: WebSocket): Promise<unknown> {
 
 describe("live sync", () => {
   it("notify() reaches the user's other open sockets", async () => {
-    await addUser("anna", "secret-pw");
-    const phone = await login("anna", "secret-pw");
+    const { cookie: phone } = await signedIn("anna");
     const mac = await login("anna", "secret-pw");
 
     const res = await api("/api/live", { cookie: mac, headers: { Upgrade: "websocket" } });
@@ -25,8 +24,7 @@ describe("live sync", () => {
   });
 
   it("a write reaches the other sockets after its response", async () => {
-    await addUser("anna", "secret-pw");
-    const phone = await login("anna", "secret-pw");
+    const { cookie: phone } = await signedIn("anna");
     const mac = await login("anna", "secret-pw");
 
     const res = await api("/api/live", { cookie: mac, headers: { Upgrade: "websocket" } });

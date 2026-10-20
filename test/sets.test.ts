@@ -4,26 +4,14 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { exportUserData } from "../worker/export";
 import { termProgress } from "../worker/shared";
-import { addUser, api, login } from "./helpers";
-
-async function addSet(userId: number, title: string, description = "", terms: [string, string][] = []) {
-  const row = await env.DB.prepare("INSERT INTO sets (user_id, title, description) VALUES (?, ?, ?) RETURNING id")
-    .bind(userId, title, description)
-    .first<{ id: number }>();
-  const id = row!.id;
-  for (const [position, [term, definition]] of terms.entries()) {
-    await env.DB.prepare("INSERT INTO terms (user_id, set_id, term, definition, position) VALUES (?, ?, ?, ?, ?)")
-      .bind(userId, id, term, definition, position)
-      .run();
-  }
-  return id;
-}
+import { addSet } from "./fixtures";
+import { addUser, api, signedIn } from "./helpers";
 
 describe("sets and terms", () => {
   it("are part of the user's export", async () => {
     const anna = await addUser("anna", "secret-pw");
     const ben = await addUser("ben", "secret-pw");
-    await addSet(anna, "Anna set", "for the exam", [["hola", "hello"]]);
+    await addSet(anna, "Anna set", { description: "for the exam", terms: [["hola", "hello"]] });
     await addSet(ben, "Ben set");
 
     const data = await exportUserData(env.DB, anna);
@@ -44,14 +32,15 @@ describe("termProgress", () => {
 
 describe("GET /api/sets", () => {
   it("lists only my sets, with their term counts", async () => {
-    const anna = await addUser("anna", "secret-pw");
+    const { id: anna, cookie } = await signedIn("anna");
     const ben = await addUser("ben", "secret-pw");
-    await addSet(anna, "Spanish animals", "", [
-      ["el perro", "the dog"],
-      ["el gato", "the cat"],
-    ]);
+    await addSet(anna, "Spanish animals", {
+      terms: [
+        ["el perro", "the dog"],
+        ["el gato", "the cat"],
+      ],
+    });
     await addSet(ben, "Ben's secret set");
-    const cookie = await login("anna", "secret-pw");
 
     const res = await api("/api/sets", { cookie });
     expect(res.status).toBe(200);
@@ -61,19 +50,18 @@ describe("GET /api/sets", () => {
   });
 
   it("counts known, learning and new terms per set", async () => {
-    const anna = await addUser("anna", "secret-pw");
+    const { id: anna, cookie } = await signedIn("anna");
     const ben = await addUser("ben", "secret-pw");
-    const set = await addSet(anna, "Spanish animals", "", [
-      ["el perro", "the dog"],
-      ["el gato", "the cat"],
-      ["el caballo", "the horse"],
-      ["el pez", "the fish"],
-      ["el pájaro", "the bird"],
-    ]);
-    const { results } = await env.DB.prepare("SELECT id FROM terms WHERE set_id = ? ORDER BY position")
-      .bind(set)
-      .all<{ id: number }>();
-    const [perro, gato, caballo, pez] = results.map((row) => row.id);
+    const { id: set, termIds } = await addSet(anna, "Spanish animals", {
+      terms: [
+        ["el perro", "the dog"],
+        ["el gato", "the cat"],
+        ["el caballo", "the horse"],
+        ["el pez", "the fish"],
+        ["el pájaro", "the bird"],
+      ],
+    });
+    const [perro, gato, caballo, pez] = termIds;
     const mark = (term: number, status: string | null) =>
       env.DB.prepare("INSERT INTO term_state (user_id, term_id, set_id, status) VALUES (?, ?, ?, ?)")
         .bind(anna, term, set, status)
@@ -88,13 +76,12 @@ describe("GET /api/sets", () => {
     await mark(pez, null); // only starred: still new
     await answered(pez, 0);
     // Ben's progress on his own set doesn't leak into Anna's.
-    const benSet = await addSet(ben, "Ben set", "", [["hola", "hello"]]);
+    const { id: benSet } = await addSet(ben, "Ben set", { terms: [["hola", "hello"]] });
     await env.DB.prepare(
       "INSERT INTO term_state (user_id, term_id, set_id, status) SELECT ?, id, set_id, 'know_it' FROM terms WHERE set_id = ?",
     )
       .bind(ben, benSet)
       .run();
-    const cookie = await login("anna", "secret-pw");
 
     const list = await api("/api/sets", { cookie });
     expect(await list.json()).toEqual([
@@ -105,10 +92,9 @@ describe("GET /api/sets", () => {
   });
 
   it("finds sets by title, description and term", async () => {
-    const anna = await addUser("anna", "secret-pw");
-    await addSet(anna, "Spanish animals", "chapter 1", [["el perro", "the dog"]]);
-    await addSet(anna, "Swiss history", "dates to remember", [["1291", "Bundesbrief"]]);
-    const cookie = await login("anna", "secret-pw");
+    const { id: anna, cookie } = await signedIn("anna");
+    await addSet(anna, "Spanish animals", { description: "chapter 1", terms: [["el perro", "the dog"]] });
+    await addSet(anna, "Swiss history", { description: "dates to remember", terms: [["1291", "Bundesbrief"]] });
 
     for (const [q, expected] of [
       ["swiss", ["Swiss history"]],
@@ -126,10 +112,9 @@ describe("GET /api/sets", () => {
   });
 
   it("treats % and _ in the search as plain text", async () => {
-    const anna = await addUser("anna", "secret-pw");
+    const { id: anna, cookie } = await signedIn("anna");
     await addSet(anna, "Sale 50% off");
     await addSet(anna, "Completely different");
-    const cookie = await login("anna", "secret-pw");
 
     const res = await api("/api/sets?q=" + encodeURIComponent("%"), { cookie });
     expect(((await res.json()) as { title: string }[]).map((s) => s.title)).toEqual(["Sale 50% off"]);
@@ -143,12 +128,14 @@ describe("GET /api/sets", () => {
 
 describe("GET /api/sets/:id", () => {
   it("returns one set with its terms in order", async () => {
-    const anna = await addUser("anna", "secret-pw");
-    const id = await addSet(anna, "Spanish animals", "chapter 1", [
-      ["el perro", "the dog"],
-      ["el gato", "the cat"],
-    ]);
-    const cookie = await login("anna", "secret-pw");
+    const { id: anna, cookie } = await signedIn("anna");
+    const { id } = await addSet(anna, "Spanish animals", {
+      description: "chapter 1",
+      terms: [
+        ["el perro", "the dog"],
+        ["el gato", "the cat"],
+      ],
+    });
 
     const res = await api(`/api/sets/${id}`, { cookie });
     expect(res.status).toBe(200);
@@ -188,10 +175,9 @@ describe("GET /api/sets/:id", () => {
   });
 
   it("another user's set is a 404", async () => {
-    await addUser("anna", "secret-pw");
+    const { cookie } = await signedIn("anna");
     const ben = await addUser("ben", "secret-pw");
-    const id = await addSet(ben, "Ben's secret set");
-    const cookie = await login("anna", "secret-pw");
+    const { id } = await addSet(ben, "Ben's secret set");
 
     const res = await api(`/api/sets/${id}`, { cookie });
     expect(res.status).toBe(404);
@@ -199,8 +185,7 @@ describe("GET /api/sets/:id", () => {
   });
 
   it("an id that is not a number is a validation error", async () => {
-    await addUser("anna", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
+    const { cookie } = await signedIn("anna");
 
     const res = await api("/api/sets/not-a-number", { cookie });
     expect(res.status).toBe(400);
@@ -210,8 +195,7 @@ describe("GET /api/sets/:id", () => {
 
 describe("POST /api/sets", () => {
   it("creates a set with its terms and returns it", async () => {
-    await addUser("anna", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
+    const { cookie } = await signedIn("anna");
 
     const res = await api("/api/sets", {
       method: "POST",
@@ -268,11 +252,10 @@ describe("POST /api/sets", () => {
   });
 
   it("puts the terms into the new set when other sets exist", async () => {
-    const anna = await addUser("anna", "secret-pw");
+    const { id: anna, cookie } = await signedIn("anna");
     const ben = await addUser("ben", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
-    const older = await addSet(anna, "Older", "", [["a", "b"]]);
-    await addSet(ben, "Ben set", "", [["c", "d"]]);
+    const { id: older } = await addSet(anna, "Older", { terms: [["a", "b"]] });
+    await addSet(ben, "Ben set", { terms: [["c", "d"]] });
 
     const res = await api("/api/sets", {
       method: "POST",
@@ -286,8 +269,7 @@ describe("POST /api/sets", () => {
   });
 
   it("leaves no empty set behind when a term cannot be saved", async () => {
-    const anna = await addUser("anna", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
+    const { id: anna, cookie } = await signedIn("anna");
     await env.DB.exec(
       "CREATE TRIGGER fail_term BEFORE INSERT ON terms WHEN NEW.term = 'boom' BEGIN SELECT RAISE(ABORT, 'boom'); END",
     );
@@ -305,8 +287,7 @@ describe("POST /api/sets", () => {
   });
 
   it("rejects bad data with field errors", async () => {
-    await addUser("anna", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
+    const { cookie } = await signedIn("anna");
 
     const res = await api("/api/sets", {
       method: "POST",
@@ -321,8 +302,7 @@ describe("POST /api/sets", () => {
   });
 
   it("rejects a set without terms", async () => {
-    await addUser("anna", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
+    const { cookie } = await signedIn("anna");
 
     const res = await api("/api/sets", { method: "POST", cookie, json: { title: "Empty", terms: [] } });
     expect(res.status).toBe(400);
@@ -330,15 +310,13 @@ describe("POST /api/sets", () => {
   });
 
   it("a new set cannot adopt existing terms", async () => {
-    const anna = await addUser("anna", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
-    const id = await addSet(anna, "Mine", "", [["a", "b"]]);
-    const mine = (await (await api(`/api/sets/${id}`, { cookie })).json()) as { terms: { id: number }[] };
+    const { id: anna, cookie } = await signedIn("anna");
+    const [termId] = (await addSet(anna, "Mine", { terms: [["a", "b"]] })).termIds;
 
     const res = await api("/api/sets", {
       method: "POST",
       cookie,
-      json: { title: "Copy", terms: [{ id: mine.terms[0].id, term: "a", definition: "b" }] },
+      json: { title: "Copy", terms: [{ id: termId, term: "a", definition: "b" }] },
     });
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "validation", fields: { terms: "invalid_value" } });
@@ -347,12 +325,14 @@ describe("POST /api/sets", () => {
 
 describe("PATCH /api/sets/:id", () => {
   it("updates terms in place and keeps their ids", async () => {
-    const anna = await addUser("anna", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
-    const id = await addSet(anna, "Old title", "old", [
-      ["el perro", "the dog"],
-      ["el gato", "the cat"],
-    ]);
+    const { id: anna, cookie } = await signedIn("anna");
+    const { id } = await addSet(anna, "Old title", {
+      description: "old",
+      terms: [
+        ["el perro", "the dog"],
+        ["el gato", "the cat"],
+      ],
+    });
     const before = (await (await api(`/api/sets/${id}`, { cookie })).json()) as {
       terms: { id: number; term: string }[];
     };
@@ -402,16 +382,14 @@ describe("PATCH /api/sets/:id", () => {
   });
 
   it("refuses a term id that belongs to another set", async () => {
-    const anna = await addUser("anna", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
-    const mine = await addSet(anna, "Mine", "", [["a", "b"]]);
-    const other = await addSet(anna, "Other", "", [["c", "d"]]);
-    const otherTerms = (await (await api(`/api/sets/${other}`, { cookie })).json()) as { terms: { id: number }[] };
+    const { id: anna, cookie } = await signedIn("anna");
+    const { id: mine } = await addSet(anna, "Mine", { terms: [["a", "b"]] });
+    const [otherTerm] = (await addSet(anna, "Other", { terms: [["c", "d"]] })).termIds;
 
     const res = await api(`/api/sets/${mine}`, {
       method: "PATCH",
       cookie,
-      json: { title: "Hijacked", terms: [{ id: otherTerms.terms[0].id, term: "c", definition: "d" }] },
+      json: { title: "Hijacked", terms: [{ id: otherTerm, term: "c", definition: "d" }] },
     });
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "validation", fields: { terms: "invalid_value" } });
@@ -423,29 +401,24 @@ describe("PATCH /api/sets/:id", () => {
   });
 
   it("refuses a term id that belongs to another user", async () => {
-    const anna = await addUser("anna", "secret-pw");
+    const { id: anna, cookie } = await signedIn("anna");
     const ben = await addUser("ben", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
-    const mine = await addSet(anna, "Mine", "", [["a", "b"]]);
-    const bens = await addSet(ben, "Ben's", "", [["c", "d"]]);
-    const benTerms = (await (await api(`/api/sets/${bens}`, { cookie: await login("ben", "secret-pw") })).json()) as {
-      terms: { id: number }[];
-    };
+    const { id: mine } = await addSet(anna, "Mine", { terms: [["a", "b"]] });
+    const [benTerm] = (await addSet(ben, "Ben's", { terms: [["c", "d"]] })).termIds;
 
     const res = await api(`/api/sets/${mine}`, {
       method: "PATCH",
       cookie,
-      json: { title: "Mine", terms: [{ id: benTerms.terms[0].id, term: "c", definition: "d" }] },
+      json: { title: "Mine", terms: [{ id: benTerm, term: "c", definition: "d" }] },
     });
     expect(res.status).toBe(400);
     expect(await res.json()).toEqual({ error: "validation", fields: { terms: "invalid_value" } });
   });
 
   it("another user's set is a 404", async () => {
-    await addUser("anna", "secret-pw");
+    const { cookie } = await signedIn("anna");
     const ben = await addUser("ben", "secret-pw");
-    const id = await addSet(ben, "Ben's secret set", "", [["c", "d"]]);
-    const cookie = await login("anna", "secret-pw");
+    const { id } = await addSet(ben, "Ben's secret set", { terms: [["c", "d"]] });
 
     const res = await api(`/api/sets/${id}`, {
       method: "PATCH",
@@ -458,9 +431,8 @@ describe("PATCH /api/sets/:id", () => {
 
 describe("DELETE /api/sets/:id", () => {
   it("removes the set and its terms", async () => {
-    const anna = await addUser("anna", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
-    const id = await addSet(anna, "Gone soon", "", [["a", "b"]]);
+    const { id: anna, cookie } = await signedIn("anna");
+    const { id } = await addSet(anna, "Gone soon", { terms: [["a", "b"]] });
 
     const res = await api(`/api/sets/${id}`, { method: "DELETE", cookie });
     expect(res.status).toBe(200);
@@ -472,10 +444,9 @@ describe("DELETE /api/sets/:id", () => {
   });
 
   it("another user's set is a 404", async () => {
-    await addUser("anna", "secret-pw");
+    const { cookie } = await signedIn("anna");
     const ben = await addUser("ben", "secret-pw");
-    const id = await addSet(ben, "Ben's secret set", "", [["c", "d"]]);
-    const cookie = await login("anna", "secret-pw");
+    const { id } = await addSet(ben, "Ben's secret set", { terms: [["c", "d"]] });
 
     const res = await api(`/api/sets/${id}`, { method: "DELETE", cookie });
     expect(res.status).toBe(404);
