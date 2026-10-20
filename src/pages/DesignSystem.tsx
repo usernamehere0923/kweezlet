@@ -44,6 +44,7 @@ import {
   TextField,
   TextLink,
   useToast,
+  Wordmark,
   type AnswerState,
   type MatchState,
   type StudyMode,
@@ -196,6 +197,9 @@ function Foundations() {
               </span>
             ))}
           </div>
+        </Section>
+        <Section title="Wordmark" code={`<Wordmark />   // the K mark + name: top bar and login`}>
+          <Wordmark />
         </Section>
       </Chapter>
     </>
