@@ -58,4 +58,21 @@ describe("set detail", () => {
     await waitFor(() => expect(calls.some((c) => c.method === "DELETE" && c.path === "/api/sets/7")).toBe(true));
     expect(await screen.findByText("Set deleted")).toBeTruthy();
   });
+
+  test("a delete that fails offline closes the dialog and keeps the set", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets/7": () => ({ json: SPANISH_DETAIL }),
+      "DELETE /api/sets/7": () => {
+        throw new TypeError("Failed to fetch");
+      },
+    });
+    renderApp("/sets/7");
+    await userEvent.click(await screen.findByRole("button", { name: "Delete set" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
+    expect(await screen.findByText("No connection to the server.")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.queryByText("Set deleted")).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Spanish animals" })).toBeTruthy();
+  });
 });
