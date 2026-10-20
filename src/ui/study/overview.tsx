@@ -43,13 +43,12 @@ export function StudySetCard({
       style={index !== undefined ? { animationDelay: `${Math.min(index, STAGGER_MAX) * 70}ms` } : undefined}
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-[17px] leading-snug font-semibold text-ink">{title}</h3>
+        {/* A span, not a heading: a button may only hold phrasing content. */}
+        <span className="text-[17px] leading-snug font-semibold text-ink">{title}</span>
         {tag && <Tag>{tag}</Tag>}
       </div>
       <div className="flex items-center gap-3 text-sm text-muted">
-        <span className="inline-flex h-6 items-center rounded-full bg-sunken px-2.5 font-medium text-ink-soft">
-          {tn("study.terms", termCount)}
-        </span>
+        <Tag tone="neutral">{tn("study.terms", termCount)}</Tag>
         {owner && (
           <span className="inline-flex items-center gap-1.5">
             <Icon name="user" size="0.95rem" />
