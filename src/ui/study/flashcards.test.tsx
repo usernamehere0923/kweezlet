@@ -9,19 +9,6 @@ import { CardNav, FlipCard, KnowItButtons } from "..";
 
 const flipCard = () => screen.getByRole("button", { name: "Tap or press Space to flip" });
 
-/**
- * jsdom's :focus-visible is unreliable: `el` answers it as told. "throws" acts
- * like a browser that doesn't know the selector. Set it before `el` gets focus.
- */
-function focusVisible(el: Element, answer: boolean | "throws") {
-  const matches = el.matches.bind(el);
-  vi.spyOn(el, "matches").mockImplementation((selector: string) => {
-    if (selector !== ":focus-visible") return matches(selector);
-    if (answer === "throws") throw new SyntaxError("unknown selector");
-    return answer;
-  });
-}
-
 describe("FlipCard", () => {
   test("uncontrolled: click and Space flip it", async () => {
     const onFlip = vi.fn();
@@ -34,7 +21,7 @@ describe("FlipCard", () => {
     expect(onFlip.mock.calls).toEqual([[true], [false]]);
   });
 
-  test("Space is ignored while typing, with modifiers, and on a keyboard-focused button", () => {
+  test("Space is ignored while typing, with modifiers, and on a focused button before any tap or click", () => {
     const onFlip = vi.fn();
     renderUi(
       <>
@@ -45,7 +32,6 @@ describe("FlipCard", () => {
     fireEvent.keyDown(screen.getByLabelText("field"), { key: " " });
     fireEvent.keyDown(document.body, { key: " ", ctrlKey: true });
     fireEvent.keyDown(document.body, { key: "x" });
-    focusVisible(flipCard(), true);
     flipCard().focus();
     fireEvent.keyDown(flipCard(), { key: " " });
     expect(onFlip).not.toHaveBeenCalled();
@@ -56,7 +42,6 @@ describe("FlipCard", () => {
     const onFlip = vi.fn();
     renderUi(<FlipCard front="el gato" back="the cat" onFlip={onFlip} speak={{ text: "el gato", lang: "es" }} />);
     const speaker = screen.getByRole("button", { name: "Speak" });
-    focusVisible(speaker, false);
     await userEvent.click(speaker);
     await userEvent.keyboard(" ");
     expect(onFlip.mock.calls).toEqual([[true]]);
@@ -71,7 +56,8 @@ describe("FlipCard", () => {
     const onFlip = vi.fn();
     renderUi(<FlipCard front="el gato" back="the cat" onFlip={onFlip} speak={{ text: "el gato", lang: "es" }} />);
     const speaker = screen.getByRole("button", { name: "Speak" });
-    focusVisible(speaker, true);
+    // A tap somewhere first: the Tab afterwards still counts as keyboard.
+    fireEvent.pointerDown(document.body);
     await userEvent.tab();
     await userEvent.tab();
     expect(document.activeElement).toBe(speaker);
@@ -79,15 +65,6 @@ describe("FlipCard", () => {
     expect(spoken).toHaveLength(1);
     expect(onFlip).not.toHaveBeenCalled();
     expect(faceHidden("the cat")).toBe(true);
-  });
-
-  test("a browser without :focus-visible leaves Space to a focused button", () => {
-    const onFlip = vi.fn();
-    renderUi(<FlipCard front="el gato" back="the cat" onFlip={onFlip} />);
-    focusVisible(flipCard(), "throws");
-    flipCard().focus();
-    fireEvent.keyDown(flipCard(), { key: " " });
-    expect(onFlip).not.toHaveBeenCalled();
   });
 
   test("hotkey off: Space does nothing", () => {
