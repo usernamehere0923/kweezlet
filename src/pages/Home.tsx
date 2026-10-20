@@ -59,7 +59,7 @@ export function HomePage() {
   );
   useEffect(() => void loadDue(), [loadDue]);
 
-  // Days studied in a row, shown before studying (worker/study.ts).
+  // Days studied in a row, shown before studying (worker/streak.ts).
   const loadStreak = useCallback(
     () =>
       api.study.streak.$get({ query: { day: localDay() } }).then(async (res) => {
