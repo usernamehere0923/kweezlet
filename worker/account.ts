@@ -4,7 +4,7 @@ import { constantTimeEqual, hashPassword, newPasswordHash } from "./crypto";
 import { exportUserData } from "./export";
 import { notifyLater } from "./live";
 import { localeSchema, publicUser, type AppEnv } from "./types";
-import { validate } from "./validate";
+import { validate, validationError } from "./validate";
 
 export const accountRoutes = new Hono<AppEnv>()
   .get("/", (c) => {
@@ -31,7 +31,7 @@ export const accountRoutes = new Hono<AppEnv>()
         .bind(user.id)
         .first<{ password_hash: string; salt: string }>();
       if (!row || !constantTimeEqual(await hashPassword(current, row.salt), row.password_hash)) {
-        return c.json({ error: "validation" as const, fields: { current: "wrong_password" } }, 400);
+        return validationError(c, { current: "wrong_password" });
       }
       const { salt, hash } = await newPasswordHash(next);
       await db.batch([

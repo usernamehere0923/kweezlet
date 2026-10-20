@@ -5,7 +5,7 @@ import { LANGUAGES, type Language } from "./languages";
 import { allIdsOwned, ownedTermIds, termStatements } from "./setTerms";
 import type { Status, TermStatus } from "./study";
 import type { AppEnv } from "./types";
-import { idParam, validate } from "./validate";
+import { idParam, validate, validationError } from "./validate";
 
 const languageSchema = z.enum(LANGUAGES);
 
@@ -181,7 +181,7 @@ export const setRoutes = new Hono<AppEnv>()
     const db = c.env.DB;
     // A new set's terms are new terms; it cannot adopt existing ones.
     if (body.terms.some((t) => t.id !== undefined)) {
-      return c.json({ error: "validation" as const, fields: { terms: "invalid_value" } }, 400);
+      return validationError(c, { terms: "invalid_value" });
     }
     // One batch: a failed term insert must not leave an empty set behind. Inside
     // the batch the new set is the user's highest id, so the terms find it.
@@ -215,7 +215,7 @@ export const setRoutes = new Hono<AppEnv>()
     const ownedIds = await ownedTermIds(db, user.id, id);
     if (!ownedIds) return c.json({ error: "not_found" as const }, 404);
     if (!allIdsOwned(body.terms, ownedIds)) {
-      return c.json({ error: "validation" as const, fields: { terms: "invalid_value" } }, 400);
+      return validationError(c, { terms: "invalid_value" });
     }
     // One batch: the set and its terms change together or not at all.
     await db.batch([

@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import type { ValidationTargets } from "hono";
+import type { Context, ValidationTargets } from "hono";
 import { z, type ZodType } from "zod";
 
 /**
@@ -15,9 +15,14 @@ export function validate<T extends ZodType, Target extends keyof ValidationTarge
         const key = issue.path.join(".") || "_";
         fields[key] ??= issue.code;
       }
-      return c.json({ error: "validation" as const, fields }, 400);
+      return validationError(c, fields);
     }
   });
+}
+
+/** The app's 400 answer: one code per field, e.g. { terms: "invalid_value" }. */
+export function validationError<Fields extends Record<string, string>>(c: Context, fields: Fields) {
+  return c.json({ error: "validation" as const, fields }, 400);
 }
 
 /** The `:id` in a route path: a positive whole number. */
