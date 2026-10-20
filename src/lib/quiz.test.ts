@@ -6,6 +6,7 @@ import {
   gradeQuestion,
   scoreTest,
   shuffle,
+  speechFor,
   type MatchPair,
   type TestQuestion,
 } from "./quiz";
@@ -215,5 +216,28 @@ describe("shuffle", () => {
   test("keeps every item exactly once", () => {
     const mixed = shuffle([1, 2, 3, 4, 5]);
     expect([...mixed].sort()).toEqual([1, 2, 3, 4, 5]);
+  });
+});
+
+describe("speechFor", () => {
+  const question = (promptSide: TestQuestion["promptSide"]): TestQuestion => ({
+    kind: "choice",
+    termId: 1,
+    prompt: "el perro",
+    promptSide,
+    label: "test.statement",
+    answer: "the dog",
+    options: [],
+  });
+  const langs = { termLang: "es", defLang: "en" } as const;
+
+  test("speaks the prompt in the language of its side", () => {
+    expect(speechFor(question("term"), langs)).toEqual({ text: "el perro", lang: "es" });
+    expect(speechFor(question("definition"), langs)).toEqual({ text: "el perro", lang: "en" });
+  });
+
+  test("true/false says nothing; unknown languages leave the voice to the browser", () => {
+    expect(speechFor(question(null), langs)).toBeUndefined();
+    expect(speechFor(question("term"), undefined)).toEqual({ text: "el perro", lang: null });
   });
 });

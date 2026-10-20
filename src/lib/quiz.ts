@@ -1,5 +1,7 @@
+import type { Language } from "../../worker/languages";
 import type { SetTerm } from "../../worker/sets";
 import type { TKey } from "../i18n";
+import type { Speech } from "../ui";
 import { gradeAnswer } from "./grading";
 
 /** Fisher-Yates, returns a new list. */
@@ -33,6 +35,19 @@ export type TestQuestion = {
   /** The pick list; empty for written questions. */
   options: string[];
 };
+
+/** A set's languages: term_lang / def_lang. */
+export type SetLangs = { termLang: Language | null; defLang: Language | null };
+
+/**
+ * What the speaker says for `question`: its prompt in the language of its side.
+ * Nothing for true/false; no language when the set's languages aren't known.
+ */
+export function speechFor(question: TestQuestion, langs: SetLangs | undefined): Speech | undefined {
+  if (!question.promptSide) return undefined;
+  const lang = langs ? (question.promptSide === "term" ? langs.termLang : langs.defLang) : null;
+  return { text: question.prompt, lang };
+}
 
 export type MatchPair = { id: number; term: string; definition: string };
 

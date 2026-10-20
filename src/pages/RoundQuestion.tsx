@@ -1,6 +1,6 @@
-import type { Language } from "../../worker/languages";
 import { useT } from "../i18n";
 import type { Answered, QuestionRound } from "../lib/questionRound";
+import { speechFor, type SetLangs } from "../lib/quiz";
 import { QuestionCard, SlideSwap } from "../ui";
 
 /**
@@ -15,7 +15,7 @@ export function RoundQuestion({
   onContinue,
 }: {
   round: QuestionRound;
-  langs: { termLang: Language | null; defLang: Language | null } | undefined;
+  langs: SetLangs | undefined;
   onAnswer: (answered: Answered) => void;
   onContinue: () => void;
 }) {
@@ -37,14 +37,7 @@ export function RoundQuestion({
         onPick={(option) => answered(round.pick(option))}
         onSubmitTyped={() => answered(round.submitTyped())}
         onContinue={onContinue}
-        speak={
-          question.promptSide
-            ? {
-                text: question.prompt,
-                lang: langs ? (question.promptSide === "term" ? langs.termLang : langs.defLang) : null,
-              }
-            : undefined
-        }
+        speak={speechFor(question, langs)}
       />
     </SlideSwap>
   );
