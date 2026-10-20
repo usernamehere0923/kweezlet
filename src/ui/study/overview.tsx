@@ -2,7 +2,7 @@ import { useT } from "../../i18n";
 import { cx } from "../cx";
 import { Icon, type IconName } from "../Icon";
 import { Tag } from "../surfaces";
-import { ProgressBar } from "./studying";
+import { ProgressBar } from "./ProgressBar";
 
 /** Cards after this many rise together: a long list shouldn't keep you waiting. */
 const STAGGER_MAX = 8;
