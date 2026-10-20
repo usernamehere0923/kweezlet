@@ -1,6 +1,6 @@
 import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { useState } from "react";
+import { StrictMode, useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { faceHidden } from "../../test/queries";
 import { renderUi } from "../../test/render";
@@ -129,6 +129,20 @@ describe("FlipCard", () => {
     rerender(card(true));
     expect(synthesis.cancel).toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Speak" })).toBeTruthy();
+  });
+  test("mounting does not stop the voice, leaving stops it once", async () => {
+    const { synthesis } = mockSpeech();
+    const { unmount } = renderUi(
+      <StrictMode>
+        <FlipCard front="el gato" back="the cat" speak={{ text: "el gato", lang: "es" }} />
+      </StrictMode>,
+    );
+    expect(synthesis.cancel).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Speak" }));
+    expect(screen.getByRole("button", { name: "Stop" })).toBeTruthy();
+    synthesis.cancel.mockClear();
+    unmount();
+    expect(synthesis.cancel).toHaveBeenCalledOnce();
   });
 });
 
