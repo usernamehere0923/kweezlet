@@ -47,8 +47,14 @@ export function FlipCard({
   const face =
     "absolute inset-0 flex flex-col items-center justify-center rounded-ui-xl border border-line-soft bg-surface p-8 shadow-raised [backface-visibility:hidden]";
   return (
-    <div className="relative block aspect-[4/3] w-full [perspective:1400px] md:aspect-[16/9]">
-      <button type="button" onClick={flip} aria-label={t("study.tapToFlip")} className="block size-full">
+    <div className="relative block aspect-[4/3] w-full md:aspect-[16/9]">
+      {/* perspective only reaches direct children: it sits on the parent of the turning div. */}
+      <button
+        type="button"
+        onClick={flip}
+        aria-label={t("study.tapToFlip")}
+        className="block size-full [perspective:1400px]"
+      >
         <div
           className={cx(
             "relative size-full transition-transform duration-500 ease-out [transform-style:preserve-3d]",
