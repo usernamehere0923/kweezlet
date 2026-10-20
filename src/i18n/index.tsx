@@ -1,9 +1,9 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { LOCALES, type Locale } from "../../worker/languages";
 import { deCH } from "./de-CH";
 import { en } from "./en";
 
-export const LOCALES = ["en", "de-CH"] as const;
-export type Locale = (typeof LOCALES)[number];
+export { LOCALES, type Locale };
 export type TKey = keyof typeof en;
 /** Keys that come as a _one/_other pair, without the suffix: "study.terms". */
 export type TPluralKey = TKey extends infer K ? (K extends `${infer B}_one` ? B : never) : never;

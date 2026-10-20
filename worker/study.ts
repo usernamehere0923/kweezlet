@@ -1,13 +1,16 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { notifyLater } from "./live";
-import { INTERVAL_DAYS, intervalSql, MASTERY } from "./shared";
+import { MASTERY } from "./progress";
+import { INTERVAL_DAYS, intervalSql } from "./schedule";
 import type { AppEnv } from "./types";
 import { idParam, validate } from "./validate";
 
-/** How a term can be marked. No row yet = "unseen" (see worker/sets.ts). */
-export const STATUSES = ["still_learning", "know_it"] as const;
+/** How a term can be marked. */
+const STATUSES = ["still_learning", "know_it"] as const;
 export type Status = (typeof STATUSES)[number];
+/** What the API answers: "unseen" = the term has no mark yet. */
+export type TermStatus = "unseen" | Status;
 
 const stateBody = z.object({
   status: z.enum(STATUSES).nullish(),
@@ -76,7 +79,7 @@ export const studyRoutes = new Hono<AppEnv>()
       .run();
     notifyLater(c, "study");
     // Annotated so the status keeps its literal type for the UI's typed client.
-    const result: { termId: number; status: "unseen" | Status; starred: boolean } = {
+    const result: { termId: number; status: TermStatus; starred: boolean } = {
       termId: id,
       status: status ?? "unseen",
       starred,
@@ -95,7 +98,7 @@ export const studyRoutes = new Hono<AppEnv>()
     // Counted in SQL, not read-then-written: two answers in flight at once
     // (fast tapping, two devices) must both count. The insert reads the term
     // itself, so a term that isn't the user's writes nothing and returns no row.
-    // The review schedule (worker/shared.ts) only moves when the term is due:
+    // The review schedule (worker/schedule.ts) only moves when the term is due:
     // correct goes one step up and waits that step's interval, wrong starts
     // over. A first answer, right or wrong, brings the term back tomorrow.
     // SQLite evaluates every SET expression on the old row.
@@ -134,7 +137,7 @@ export const studyRoutes = new Hono<AppEnv>()
     if (!next) return c.json({ error: "not_found" as const }, 404);
     const status = (marked!.results[0] as { status: Status | null } | undefined)?.status ?? null;
     notifyLater(c, "study");
-    const result: { termId: number; correct: number; wrong: number; streak: number; status: "unseen" | Status } = {
+    const result: { termId: number; correct: number; wrong: number; streak: number; status: TermStatus } = {
       termId: id,
       ...next,
       status: status ?? "unseen",

@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { MASTERY, termProgress } from "../../worker/shared";
+import { MASTERY, termProgress } from "../../worker/progress";
 import type { SetTerm } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";

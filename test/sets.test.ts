@@ -3,7 +3,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { exportUserData } from "../worker/export";
-import { termProgress } from "../worker/shared";
+import { termProgress } from "../worker/progress";
 import { addSet } from "./fixtures";
 import { addUser, api, signedIn } from "./helpers";
 

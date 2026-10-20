@@ -1,8 +1,8 @@
 // The review queue: which terms are due again, for the user and nobody else.
-// The schedule table itself is in worker/shared.ts and checked here too.
+// The schedule table itself is in worker/schedule.ts and checked here too.
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
-import { INTERVAL_DAYS, intervalDays } from "../worker/shared";
+import { INTERVAL_DAYS, intervalDays } from "../worker/schedule";
 import { addSet, addTerm } from "./fixtures";
 import { addUser, api, signedIn } from "./helpers";
 

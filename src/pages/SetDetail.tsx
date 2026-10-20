@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { termProgress } from "../../worker/shared";
+import { termProgress } from "../../worker/progress";
 import type { SetDetail as SetDetailData } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";

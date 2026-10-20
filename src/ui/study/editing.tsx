@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef } from "react";
-import type { TermProgress } from "../../../worker/shared";
+import type { TermProgress } from "../../../worker/progress";
 import { useT } from "../../i18n";
 import { cx } from "../cx";
 import { IconButton } from "../Button";

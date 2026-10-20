@@ -1,8 +1,9 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { notifyLater } from "./live";
-import { LANGUAGES, type Language, termProgress, type TermProgress } from "./shared";
-import type { Status } from "./study";
+import { LANGUAGES, type Language } from "./languages";
+import { termProgress, type TermProgress } from "./progress";
+import type { Status, TermStatus } from "./study";
 import type { AppEnv } from "./types";
 import { idParam, validate } from "./validate";
 
@@ -45,7 +46,7 @@ type TermRow = {
 
 /**
  * Per set: how many terms are known / learning. The same rule as
- * termProgress() in worker/shared.ts, in SQL. `s` is the set row.
+ * termProgress() in worker/progress.ts, in SQL. `s` is the set row.
  */
 const progressCount = (where: string) =>
   `(SELECT COUNT(*) FROM terms t
@@ -81,8 +82,6 @@ function likePattern(q: string): string {
 
 // The JSON shapes of the routes below. The UI imports these as types.
 export type SetSummary = ReturnType<typeof toSetJson>;
-/** "unseen" = the term has no mark yet (worker/study.ts stores the rest). */
-export type TermStatus = "unseen" | Status;
 export type SetTerm = {
   id: number;
   term: string;

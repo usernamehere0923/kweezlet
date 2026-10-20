@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router";
-import { LANGUAGES, type Language } from "../../worker/shared";
+import { LANGUAGES, type Language } from "../../worker/languages";
 import { isTKey, useT, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
 import {
