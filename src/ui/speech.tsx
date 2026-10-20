@@ -48,20 +48,32 @@ export function useSpeech(): { speaking: boolean; say: (speech: Speech) => void;
   const [speaking, setSpeaking] = useState(false);
   // Which say() is the current one; older onDone callbacks must not clear it.
   const turn = useRef(0);
+  // The utterance this hook has talking, null when silent. Holding it keeps
+  // Chrome from garbage-collecting it mid-sentence, which loses its onend.
+  const talking = useRef<SpeechSynthesisUtterance | null>(null);
 
-  useEffect(() => () => stopSpeaking(), []);
+  // Only this hook's own voice: another speaker on the screen keeps talking.
+  useEffect(
+    () => () => {
+      if (talking.current) stopSpeaking();
+    },
+    [],
+  );
 
   const say = useCallback((speech: Speech) => {
     if (!speechAvailable()) return;
     const mine = ++turn.current;
     setSpeaking(true);
-    speak(speech, () => {
-      if (turn.current === mine) setSpeaking(false);
+    talking.current = speak(speech, () => {
+      if (turn.current !== mine) return;
+      talking.current = null;
+      setSpeaking(false);
     });
   }, []);
 
   const stop = useCallback(() => {
     turn.current += 1;
+    talking.current = null;
     setSpeaking(false);
     stopSpeaking();
   }, []);

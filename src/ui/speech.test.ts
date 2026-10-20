@@ -1,9 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, test, vi } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { mockSpeech } from "../test/server";
 import { speak, speechAvailable, stopSpeaking, useSpeech } from "./speech";
-
-afterEach(() => vi.unstubAllGlobals());
 
 describe("speak", () => {
   test("says the text in its language and prefers a matching voice", () => {
@@ -81,5 +79,20 @@ describe("useSpeech", () => {
     act(() => result.current.say({ text: "el gato", lang: "es" }));
     unmount();
     expect(synthesis.cancel).toHaveBeenCalled();
+  });
+
+  test("a silent speaker leaving does not cut off another one", () => {
+    const { spoken, synthesis } = mockSpeech();
+    const talker = renderHook(() => useSpeech());
+    const silent = renderHook(() => useSpeech());
+    act(() => talker.result.current.say({ text: "el gato", lang: "es" }));
+    synthesis.cancel.mockClear();
+    silent.unmount();
+    expect(synthesis.cancel).not.toHaveBeenCalled();
+
+    // Finished on its own: leaving afterwards has nothing to stop either.
+    act(() => spoken[0].onend?.());
+    talker.unmount();
+    expect(synthesis.cancel).not.toHaveBeenCalled();
   });
 });
