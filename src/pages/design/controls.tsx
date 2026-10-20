@@ -74,7 +74,8 @@ export function Controls() {
 <TextField label="Description" multiline value={d} onChange={setD} />
 <TextField label="Title" value={v} onChange={setV} error="Too short" />
 <SearchField label="Search" clearLabel="Clear" value={q} onChange={setQ} />
-<FormError>Fill in both fields of a term, or delete the row.</FormError>`}
+<FormError>Fill in both fields of a term, or delete the row.</FormError>
+<FormError boxed>Wrong username or password.</FormError>   // a small form's one answer (login)`}
         >
           <div className="grid gap-5 md:grid-cols-2">
             <TextField
@@ -103,6 +104,9 @@ export function Controls() {
             </div>
           </div>
           <FormError className="mt-5">Fill in both fields of a term, or delete the row.</FormError>
+          <FormError boxed className="mt-3">
+            {t("login.invalid")}
+          </FormError>
         </Section>
       </Chapter>
 

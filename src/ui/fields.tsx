@@ -147,11 +147,29 @@ export function SearchField({
   );
 }
 
-/** Form-level error for the things no single field owns ("fill every row"). */
-export function FormError({ children, className }: { children: ReactNode; className?: string }) {
+/**
+ * Form-level error for the things no single field owns ("fill every row").
+ * `boxed` puts it on a tinted box: the one answer a small form gives (login).
+ */
+export function FormError({
+  children,
+  boxed,
+  className,
+}: {
+  children: ReactNode;
+  boxed?: boolean;
+  className?: string;
+}) {
   return (
-    <p role="alert" className={cx("flex items-center gap-1.5 text-sm text-wrong", className)}>
-      <Icon name="alertCircle" size="0.95rem" />
+    <p
+      role="alert"
+      className={cx(
+        "flex items-center text-sm",
+        boxed ? "gap-2 rounded-ui bg-wrong-wash px-3 py-2.5 text-wrong-strong" : "gap-1.5 text-wrong",
+        className,
+      )}
+    >
+      <Icon name="alertCircle" size={boxed ? "1rem" : "0.95rem"} />
       {children}
     </p>
   );

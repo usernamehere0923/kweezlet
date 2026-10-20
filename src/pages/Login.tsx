@@ -2,7 +2,7 @@ import { useState } from "react";
 import { LOCALES, useT, type Locale } from "../i18n";
 import { api, offline } from "../lib/api";
 import { useSession } from "../lib/session";
-import { Button, Card, Icon, SegmentedControl, TextField, Wordmark } from "../ui";
+import { Button, Card, FormError, PageTitle, SegmentedControl, Text, TextField, Wordmark } from "../ui";
 
 export function LoginPage() {
   const { t, locale, setLocale } = useT();
@@ -43,8 +43,7 @@ export function LoginPage() {
             <Wordmark />
           </div>
           <Card padding="lg">
-            <h1 className="font-serif text-3xl text-ink">{t("login.title")}</h1>
-            <p className="mt-1 mb-6 text-muted">{t("login.subtitle")}</p>
+            <PageTitle subtitle={t("login.subtitle")}>{t("login.title")}</PageTitle>
             <form onSubmit={submit} className="flex flex-col gap-4">
               <TextField
                 label={t("login.username")}
@@ -64,21 +63,15 @@ export function LoginPage() {
                 autoComplete="current-password"
                 required
               />
-              {error && (
-                <p
-                  role="alert"
-                  className="flex items-center gap-2 rounded-ui bg-wrong-wash px-3 py-2.5 text-sm text-wrong-strong"
-                >
-                  <Icon name="alertCircle" size="1rem" />
-                  {error}
-                </p>
-              )}
+              {error && <FormError boxed>{error}</FormError>}
               <Button type="submit" loading={busy} fullWidth className="mt-2">
                 {t("login.submit")}
               </Button>
             </form>
           </Card>
-          <p className="mt-6 text-center font-serif text-muted italic">{t("app.tagline")}</p>
+          <Text variant="muted" className="mt-6 text-center font-serif italic">
+            {t("app.tagline")}
+          </Text>
         </div>
       </div>
     </div>
