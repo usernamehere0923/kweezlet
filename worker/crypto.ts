@@ -4,7 +4,7 @@
 const ITERATIONS = 100_000; // the most PBKDF2 iterations Workers allow
 const encoder = new TextEncoder();
 
-export function toHex(bytes: ArrayBuffer | Uint8Array): string {
+function toHex(bytes: ArrayBuffer | Uint8Array): string {
   return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 

@@ -1,7 +1,7 @@
 /**
  * "Download my data" (Settings). Every table that has a user_id column and
  * holds the user's own data MUST be listed here, or it is silently missing
- * from their backup. test/export.test.ts fails when one is forgotten.
+ * from their backup. test/ownership.test.ts fails when one is forgotten.
  */
 export const exportTables: string[] = ["sets", "terms", "term_state", "study_days", "term_stats", "match_best"];
 

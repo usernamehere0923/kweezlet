@@ -5,7 +5,7 @@ export const localeSchema = z.enum(LOCALES);
 
 /** Account levels (migrations/0007_user_level.sql). The first account is admin, the rest standard. */
 export const LEVELS = ["admin", "pro", "standard"] as const;
-export type Level = (typeof LEVELS)[number];
+type Level = (typeof LEVELS)[number];
 
 /** The logged-in user, available in every protected route as c.get("user"). */
 export type User = { id: number; username: string; locale: Locale; level: Level };

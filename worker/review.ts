@@ -20,7 +20,7 @@ export type ReviewCard = {
   defLang: Language | null;
 };
 
-export type ReviewOverview = {
+type ReviewOverview = {
   /** Due terms across all sets, longest overdue first, at most `limit` of them. */
   cards: ReviewCard[];
   /** How many terms are due altogether, before the cap. */
