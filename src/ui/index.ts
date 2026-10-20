@@ -13,6 +13,7 @@ export { Modal } from "./Modal";
 export { Confetti, SlideSwap } from "./motion";
 export { SegmentedControl } from "./SegmentedControl";
 export { SpeakButton, type Speech } from "./speech";
+export { PageLoadFailed } from "./PageLoadFailed";
 export { PageLoading, Spinner } from "./Spinner";
 export { Card, EmptyState, Tag } from "./surfaces";
 export { Heading, PageTitle, Text, TextLink } from "./Text";

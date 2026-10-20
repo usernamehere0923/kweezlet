@@ -16,6 +16,7 @@ export const en = {
   "common.saved": "Saved",
   "common.clear": "Clear",
   "common.backHome": "Back home",
+  "common.retry": "Try again",
 
   "errors.server": "Something went wrong. Please try again.",
   "errors.offline": "No connection to the server.",
@@ -43,6 +44,7 @@ export const en = {
   "home.greeting": "Hi {name}",
 
   "sets.new": "Create a set",
+  "sets.loadFailed": "Couldn't load this set.",
   "sets.emptyTitle": "No sets yet",
   "sets.emptyText": "Create your first set and start learning.",
   "sets.emptyAction": "Create your first set",

@@ -11,6 +11,7 @@ import {
   IconButton,
   LocalePicker,
   Modal,
+  PageLoadFailed,
   PageLoading,
   SearchField,
   SegmentedControl,
@@ -201,7 +202,7 @@ export function Controls() {
 
       <Chapter title={t("design.feedback")}>
         <Section
-          title="useToast · Modal · Spinner · PageLoading"
+          title="useToast · Modal · Spinner · PageLoading · PageLoadFailed"
           code={`const toast = useToast();
 toast(t("common.saved"), "success");        // "info" | "success" | "error"
 
@@ -211,7 +212,8 @@ toast(t("common.saved"), "success");        // "info" | "success" | "error"
 </Modal>
 <Spinner />
 if (!data) return <PageLoading />;   // whole page loading
-<PageLoading fullScreen />           // the app's first load, before any page`}
+<PageLoading fullScreen />           // the app's first load, before any page
+if (failed) return <PageLoadFailed title={t("sets.loadFailed")} onRetry={retry} />;   // first load failed`}
         >
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="secondary" onClick={() => toast(t("design.toastText"), "info")}>
@@ -229,6 +231,7 @@ if (!data) return <PageLoading />;   // whole page loading
             <Spinner className="text-accent" />
           </div>
           <PageLoading />
+          <PageLoadFailed title={t("sets.loadFailed")} onRetry={() => toast(t("common.loading"), "info")} />
           <Modal
             open={modal}
             onClose={() => setModal(false)}

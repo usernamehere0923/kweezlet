@@ -18,6 +18,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "common.saved": "Gespeichert",
   "common.clear": "Leeren",
   "common.backHome": "Zurück zum Start",
+  "common.retry": "Nochmals versuchen",
 
   "errors.server": "Etwas ist schiefgelaufen. Bitte versuch es nochmals.",
   "errors.offline": "Keine Verbindung zum Server.",
@@ -45,6 +46,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "home.greeting": "Hoi {name}",
 
   "sets.new": "Set erstellen",
+  "sets.loadFailed": "Dieses Set konnte nicht geladen werden.",
   "sets.emptyTitle": "Noch keine Sets",
   "sets.emptyText": "Erstelle dein erstes Set und fang an zu lernen.",
   "sets.emptyAction": "Erstes Set erstellen",
