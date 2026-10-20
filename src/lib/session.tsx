@@ -37,14 +37,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     // below). A server error or no connection keeps the session as it is; on
     // the first load there is none yet, so: the login.
     const failed = () => setSession((s) => (s.status === "loading" ? ANONYMOUS : s));
-    return api.me
-      .$get()
-      .then(async (res) => (res.ok ? signedIn(await res.json()) : failed()))
-      .catch(failed);
+    return api.me.$get().then(async (res) => (res.ok ? signedIn(await res.json()) : failed()));
   }, [signedIn]);
 
   const logout = useCallback(async () => {
-    await api.logout.$post().catch(() => undefined);
+    await api.logout.$post();
     setSession(ANONYMOUS);
   }, []);
 

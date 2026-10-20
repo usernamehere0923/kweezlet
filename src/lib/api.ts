@@ -8,14 +8,16 @@ export const SERVER_ERROR_EVENT = "kz:server-error";
 /**
  * Every API call goes through here. It reports problems centrally:
  *   401 -> back to the login page,  5xx / no connection -> an error toast.
+ * It never throws: without a connection the call answers Response.error()
+ * (ok false, status 0), so a page handles it like any failed request.
  */
 async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   let res: Response;
   try {
     res = await fetch(input, { ...init, credentials: "same-origin" });
-  } catch (err) {
+  } catch {
     window.dispatchEvent(new CustomEvent(SERVER_ERROR_EVENT, { detail: "offline" }));
-    throw err;
+    return Response.error();
   }
   const url = String(input instanceof Request ? input.url : input);
   if (res.status === 401 && !url.endsWith("/api/login")) {
@@ -34,6 +36,11 @@ async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<R
  *   await api.me.settings.$patch({ json: { locale: "de-CH" } });
  */
 export const api = hc<AppType>("/", { fetch: apiFetch }).api;
+
+/** The call never reached the server (no connection). The toast is already showing. */
+export function offline(res: { type: string }): boolean {
+  return res.type === "error";
+}
 
 /**
  * Field errors from a 400 response, as i18n keys: { password: "validation.too_small" }.

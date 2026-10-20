@@ -34,6 +34,23 @@ describe("login", () => {
     expect((await screen.findByRole("alert")).textContent).toContain(message);
   });
 
+  test("logging in offline does not claim a wrong password", async () => {
+    mockApi({
+      "GET /api/me": () => ({ status: 401 }),
+      "POST /api/login": () => {
+        throw new TypeError("Failed to fetch");
+      },
+    });
+    renderApp();
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText("Username"), "demo");
+    await user.type(screen.getByLabelText("Password"), "demo");
+    await user.click(screen.getByRole("button", { name: "Log in" }));
+    expect(await screen.findByText("No connection to the server.")).toBeTruthy();
+    expect(screen.queryByText("Wrong username or password.")).toBeNull();
+    expect(screen.getByRole("button", { name: "Log in" })).toHaveProperty("disabled", false);
+  });
+
   test("switching the language on the login page", async () => {
     mockApi({ "GET /api/me": () => ({ status: 401 }) });
     renderApp();

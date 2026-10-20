@@ -128,4 +128,21 @@ describe("learn", () => {
     await userEvent.click(screen.getByRole("button", { name: "Check" }));
     expect(await screen.findByText("Correct!")).toBeTruthy();
   });
+
+  test("an answer sent while offline says so and the round goes on", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    mockApi({
+      ...learnApi(LEARN_DETAIL),
+      "POST /api/terms/71/answer": () => {
+        throw new TypeError("Failed to fetch");
+      },
+    });
+    renderApp("/sets/7/learn");
+
+    await screen.findByText("the cat");
+    await userEvent.click(screen.getByText("el gato"));
+    expect(await screen.findByText("No connection to the server.")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+    expect(await screen.findByText("the dog")).toBeTruthy();
+  });
 });

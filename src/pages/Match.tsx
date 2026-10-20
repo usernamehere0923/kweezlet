@@ -61,17 +61,12 @@ export function MatchPage() {
     setNow(end);
     // Floored like the clock, so the result shows the time the clock stopped at.
     const seconds = Math.max(1, Math.floor((end - started) / 1000));
-    void api.sets[":id"].match
-      .$post({ param: { id }, json: { seconds } })
-      .then(async (res) => {
-        const { best, isNewBest } = res.ok ? await res.json() : { best: set?.bestSeconds ?? seconds, isNewBest: false };
-        setResult({ seconds, best, isNewBest });
-        if (res.ok) setSet((s) => (s ? { ...s, bestSeconds: best } : s));
-      })
-      .catch(() => {
-        // The api layer reports the failure; show the time, claim no record.
-        setResult({ seconds, best: set?.bestSeconds ?? seconds, isNewBest: false });
-      });
+    void api.sets[":id"].match.$post({ param: { id }, json: { seconds } }).then(async (res) => {
+      // Not saved (api.ts reports why): show the time, claim no record.
+      const { best, isNewBest } = res.ok ? await res.json() : { best: set?.bestSeconds ?? seconds, isNewBest: false };
+      setResult({ seconds, best, isNewBest });
+      if (res.ok) setSet((s) => (s ? { ...s, bestSeconds: best } : s));
+    });
   }
 
   /** `at` is the tap's timestamp, read in the click handler (react purity). */

@@ -52,9 +52,9 @@ export function SetDetailPage() {
 
   async function remove() {
     setConfirming(false);
-    // No connection: api.ts shows the toast, the set stays.
-    const res = await api.sets[":id"].$delete({ param: { id } }).catch(() => null);
-    if (res?.ok) {
+    // Not deleted (api.ts shows why): the set stays.
+    const res = await api.sets[":id"].$delete({ param: { id } });
+    if (res.ok) {
       toast(t("sets.deleted"), "success");
       navigate("/");
     }

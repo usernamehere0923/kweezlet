@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import type { ReviewCard } from "../../worker/review";
 import { useT } from "../i18n";
-import { api } from "../lib/api";
+import { api, offline } from "../lib/api";
 import { useLive } from "../lib/live";
 import { useQuestionRound } from "../lib/questionRound";
 import { buildQuestion, shuffle } from "../lib/quiz";
@@ -81,12 +81,10 @@ export function ReviewPage() {
   });
 
   async function save(termId: number, correct: boolean) {
-    const res = await api.terms[":id"].answer
-      .$post({ param: { id: String(termId) }, json: { correct } })
-      .catch(() => null);
+    const res = await api.terms[":id"].answer.$post({ param: { id: String(termId) }, json: { correct } });
     // Not saved (offline, server error; api.ts shows the toast): ask it again
     // so the answer gets another try. A 404 means the term is gone.
-    if (!res || res.status >= 500) round.askAgain(termId);
+    if (offline(res) || res.status >= 500) round.askAgain(termId);
   }
 
   function onAnswer(answered: { termId: number; correct: boolean } | null) {

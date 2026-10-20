@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { LOCALES, useT, type Locale } from "../i18n";
-import { api } from "../lib/api";
+import { api, offline } from "../lib/api";
 import { useSession } from "../lib/session";
 import { Button, Card, Icon, SegmentedControl, TextField, Wordmark } from "../ui";
 
@@ -16,16 +16,13 @@ export function LoginPage() {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    try {
-      const res = await api.login.$post({ json: { username, password } });
-      if (res.ok) {
-        signedIn(await res.json());
-        return;
-      }
-      setError(t(res.status === 429 ? "login.rateLimited" : "login.invalid"));
-    } catch {
-      // network error: the app-wide toast already says so
+    const res = await api.login.$post({ json: { username, password } });
+    if (res.ok) {
+      signedIn(await res.json());
+      return;
     }
+    // No connection: the app-wide toast already says so.
+    if (!offline(res)) setError(t(res.status === 429 ? "login.rateLimited" : "login.invalid"));
     setBusy(false);
   }
 
