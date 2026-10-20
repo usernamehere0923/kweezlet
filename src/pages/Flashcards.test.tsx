@@ -188,10 +188,17 @@ describe("flashcards", () => {
     await userEvent.click(screen.getByRole("button", { name: "Speak" }));
     expect(spoken.at(-1)).toMatchObject({ text: "el perro", lang: "es" });
 
-    // Flipped while the term still talks: the term falls silent…
+    // A tap on Stop falls silent…
+    synthesis.cancel.mockClear();
+    await userEvent.click(screen.getByRole("button", { name: "Stop" }));
+    expect(synthesis.cancel).toHaveBeenCalled();
+    await userEvent.click(screen.getByRole("button", { name: "Speak" }));
+
+    // …so does a flip while the term still talks…
     synthesis.cancel.mockClear();
     await userEvent.click(screen.getByRole("button", { name: FLIP }));
     expect(synthesis.cancel).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Speak" })).toBeTruthy();
     // …and the next tap reads the definition, in the definitions' language.
     await userEvent.click(screen.getByRole("button", { name: "Speak" }));
     expect(spoken.at(-1)).toMatchObject({ text: "the dog", lang: "en" });
