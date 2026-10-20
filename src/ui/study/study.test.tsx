@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { createRef, useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { renderUi } from "../../test/render";
-import { mockSpeech } from "../../test/server";
+import { mockSpeech } from "../../test/speech";
 import {
   AnswerInput,
   AnswerOption,

@@ -2,7 +2,8 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 import { ME, renderApp } from "../test/render";
-import { FakeSocket, mockApi, mockSpeech } from "../test/server";
+import { FakeSocket, mockApi } from "../test/server";
+import { mockSpeech } from "../test/speech";
 
 describe("settings", () => {
   test("changing the language saves it on the server", async () => {

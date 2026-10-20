@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import { mockSpeech } from "../test/server";
+import { mockSpeech } from "../test/speech";
 import { speak, speechAvailable, stopSpeaking, useSpeech } from "./speech";
 
 describe("speak", () => {
