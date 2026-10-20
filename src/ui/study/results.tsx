@@ -1,12 +1,23 @@
+import type { ReactNode } from "react";
 import { useT } from "../../i18n";
 import { Button } from "../Button";
 import { cx } from "../cx";
 import { Icon } from "../Icon";
 import { Confetti, useCountUp } from "../motion";
-import { Tag } from "../surfaces";
+import { surface, Tag } from "../surfaces";
 
 /** Confetti from this score on: a celebration, not a consolation. */
 const CELEBRATE_FROM = 0.8;
+
+/** The card an end-of-round screen sits in, its buttons at the bottom. */
+function ResultPanel({ children, actions }: { children: ReactNode; actions: ReactNode }) {
+  return (
+    <div className={cx(surface, "relative flex flex-col items-center gap-6 p-8 text-center")}>
+      {children}
+      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">{actions}</div>
+    </div>
+  );
+}
 
 /**
  * End-of-round screen: score ring, counts, "study again". The ring fills
@@ -30,7 +41,20 @@ export function ResultSummary({
   const r = 52;
   const circumference = 2 * Math.PI * r;
   return (
-    <div className="relative flex flex-col items-center gap-6 rounded-ui-xl border border-line-soft bg-surface p-8 text-center">
+    <ResultPanel
+      actions={
+        <>
+          <Button icon="retry" onClick={onStudyAgain}>
+            {t("study.studyAgain")}
+          </Button>
+          {onDone && (
+            <Button variant="ghost" onClick={onDone}>
+              {t("study.done")}
+            </Button>
+          )}
+        </>
+      }
+    >
       {landed && ratio >= CELEBRATE_FROM && <Confetti />}
       <div className="relative size-36">
         <svg viewBox="0 0 120 120" className="size-full -rotate-90">
@@ -60,17 +84,7 @@ export function ResultSummary({
         <h2 className="font-serif text-3xl text-ink">{t("study.resultTitle")}</h2>
         <p className="mt-1 text-muted">{t("study.resultScore", { correct, total })}</p>
       </div>
-      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-        <Button icon="retry" onClick={onStudyAgain}>
-          {t("study.studyAgain")}
-        </Button>
-        {onDone && (
-          <Button variant="ghost" onClick={onDone}>
-            {t("study.done")}
-          </Button>
-        )}
-      </div>
-    </div>
+    </ResultPanel>
   );
 }
 
@@ -92,7 +106,18 @@ export function MatchResult({
 }) {
   const { t } = useT();
   return (
-    <div className="relative flex flex-col items-center gap-6 rounded-ui-xl border border-line-soft bg-surface p-8 text-center">
+    <ResultPanel
+      actions={
+        <>
+          <Button icon="retry" onClick={onPlayAgain}>
+            {t("match.playAgain")}
+          </Button>
+          <Button variant="ghost" onClick={onDone}>
+            {t("study.done")}
+          </Button>
+        </>
+      }
+    >
       {isNewBest && (
         <>
           <Confetti />
@@ -109,15 +134,7 @@ export function MatchResult({
         <p className="font-serif text-5xl text-ink tabular-nums">{time}</p>
       </div>
       <p className="text-muted">{t("match.bestTime", { time: bestTime })}</p>
-      <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-        <Button icon="retry" onClick={onPlayAgain}>
-          {t("match.playAgain")}
-        </Button>
-        <Button variant="ghost" onClick={onDone}>
-          {t("study.done")}
-        </Button>
-      </div>
-    </div>
+    </ResultPanel>
   );
 }
 

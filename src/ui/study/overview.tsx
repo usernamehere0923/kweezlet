@@ -1,7 +1,7 @@
 import { useT } from "../../i18n";
 import { cx } from "../cx";
 import { Icon, type IconName } from "../Icon";
-import { Tag } from "../surfaces";
+import { surface, Tag } from "../surfaces";
 import { ProgressBar } from "./ProgressBar";
 
 /** Cards after this many rise together: a long list shouldn't keep you waiting. */
@@ -36,7 +36,8 @@ export function StudySetCard({
       type="button"
       onClick={onClick}
       className={cx(
-        "group flex w-full flex-col gap-3 rounded-ui-xl border border-line-soft bg-surface p-5 text-left transition-all hover:-translate-y-0.5 hover:border-line hover:shadow-raised",
+        surface,
+        "group flex w-full flex-col gap-3 p-5 text-left transition-all hover:-translate-y-0.5 hover:border-line hover:shadow-raised",
         index !== undefined && "animate-rise",
       )}
       style={index !== undefined ? { animationDelay: `${Math.min(index, STAGGER_MAX) * 70}ms` } : undefined}

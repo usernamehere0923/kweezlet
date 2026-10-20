@@ -4,6 +4,7 @@ import { useT } from "../../i18n";
 import { cx } from "../cx";
 import { IconButton } from "../Button";
 import { SpeakButton } from "../speech";
+import { surface } from "../surfaces";
 
 export type TermEditorHandle = { focus: () => void };
 
@@ -35,7 +36,7 @@ export const TermEditorRow = forwardRef<
   useImperativeHandle(ref, () => ({ focus: () => termRef.current?.focus() }));
 
   return (
-    <div className="rounded-ui-xl border border-line-soft bg-surface p-4 md:p-5">
+    <div className={cx(surface, "p-4 md:p-5")}>
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-semibold text-faint">{index + 1}</span>
         {onDelete && <IconButton icon="trash" size="sm" label={t("study.deleteTerm")} onClick={onDelete} />}
@@ -107,7 +108,7 @@ export function TermList({
   speak?: { termLang: string | null; defLang: string | null };
 }) {
   return (
-    <ul className="divide-y divide-line-soft overflow-hidden rounded-ui-xl border border-line-soft bg-surface">
+    <ul className={cx(surface, "divide-y divide-line-soft overflow-hidden")}>
       {terms.map((item, i) => (
         <li key={i} className="grid gap-1 px-5 py-4 md:grid-cols-[1fr_2fr] md:gap-8">
           <span className="flex items-center gap-2.5 font-medium text-ink">

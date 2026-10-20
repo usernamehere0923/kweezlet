@@ -4,6 +4,7 @@ import { IconButton } from "../Button";
 import { cx } from "../cx";
 import { Icon, type IconName } from "../Icon";
 import { SpeakButton, type Speech } from "../speech";
+import { surface } from "../surfaces";
 import { useHotkey } from "../useHotkey";
 
 /** One side of the FlipCard: the corner label, then its content. */
@@ -21,7 +22,8 @@ function Face({
   return (
     <div
       className={cx(
-        "absolute inset-0 flex flex-col items-center justify-center rounded-ui-xl border border-line-soft bg-surface p-8 shadow-raised [backface-visibility:hidden]",
+        surface,
+        "absolute inset-0 flex flex-col items-center justify-center p-8 shadow-raised [backface-visibility:hidden]",
         className,
       )}
       aria-hidden={hidden}
