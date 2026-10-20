@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { useT } from "../../i18n";
+import { useTermRows } from "../../lib/setForm";
 import {
   AnswerInput,
   AnswerOption,
@@ -22,7 +23,6 @@ import {
   Text,
   type AnswerState,
   type StudyMode,
-  type TermEditorHandle,
 } from "../../ui";
 import { ANIMALS, Chapter, Section } from "./layout";
 import { MatchDemo } from "./MatchDemo";
@@ -39,9 +39,8 @@ export function StudyKit() {
   const [picked, setPicked] = useState<number | null>(null);
   const [typed, setTyped] = useState("");
   const [typedState, setTypedState] = useState<"idle" | "correct" | "wrong">("idle");
-  const [rows, setRows] = useState(ANIMALS.slice(0, 2));
+  const termRows = useTermRows(ANIMALS.slice(0, 2));
   const [replays, setReplays] = useState(0);
-  const rowRefs = useRef<(TermEditorHandle | null)[]>([]);
 
   const go = (i: number) => {
     setCard(i);
@@ -248,35 +247,30 @@ export function StudyKit() {
 
       <Section
         title="TermEditorRow · TermList"
-        code={`<TermEditorRow ref={(el) => (refs.current[i] = el)} index={i} term={row.term} definition={row.definition}
+        code={`const { rows, rowRefs, update, next, remove, add } = useTermRows();   // src/lib/setForm.ts
+<TermEditorRow ref={(el) => (rowRefs.current[i] = el)} index={i} term={row.term} definition={row.definition}
   onChange={(term, definition) => update(i, term, definition)}
-  onNext={() => focusOrAddRow(i + 1)}   // Enter in "definition"
+  onNext={() => next(i)}   // Enter in "definition": next row, or a new one
   onDelete={() => remove(i)} />
 <TermList terms={terms} />   // progress: "known" | "learning" | "new" adds a TermProgressDot
 <TermProgressDot progress="learning" />`}
       >
         <div className="flex flex-col gap-3">
-          {rows.map((row, i) => (
+          {termRows.rows.map((row, i) => (
             <TermEditorRow
               key={i}
               ref={(el) => {
-                rowRefs.current[i] = el;
+                termRows.rowRefs.current[i] = el;
               }}
               index={i}
               term={row.term}
               definition={row.definition}
-              onChange={(term, definition) => setRows((r) => r.map((x, j) => (j === i ? { term, definition } : x)))}
-              onNext={() => {
-                if (rows[i + 1]) rowRefs.current[i + 1]?.focus();
-                else {
-                  setRows((r) => [...r, { term: "", definition: "" }]);
-                  setTimeout(() => rowRefs.current[i + 1]?.focus());
-                }
-              }}
-              onDelete={rows.length > 1 ? () => setRows((r) => r.filter((_, j) => j !== i)) : undefined}
+              onChange={(term, definition) => termRows.update(i, term, definition)}
+              onNext={() => termRows.next(i)}
+              onDelete={termRows.rows.length > 1 ? () => termRows.remove(i) : undefined}
             />
           ))}
-          <Button variant="secondary" icon="plus" onClick={() => setRows((r) => [...r, { term: "", definition: "" }])}>
+          <Button variant="secondary" icon="plus" onClick={termRows.add}>
             {t("study.addTerm")}
           </Button>
         </div>
