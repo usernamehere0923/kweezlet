@@ -18,4 +18,5 @@ export { PageLoading, Spinner } from "./Spinner";
 export { Card, EmptyState, Tag } from "./surfaces";
 export { Heading, PageTitle, Text, TextLink } from "./Text";
 export { ToastProvider, useToast } from "./Toast";
+export { HotkeyInput } from "./useHotkey";
 export * from "./study";

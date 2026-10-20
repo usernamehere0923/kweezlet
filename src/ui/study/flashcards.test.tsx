@@ -51,6 +51,24 @@ describe("FlipCard", () => {
     expect(screen.getByRole("button", { name: "Stop" })).toBeTruthy();
   });
 
+  test("Space after clicking a button that brought a new card flips that card, the button isn't pressed again", async () => {
+    const onFlip = vi.fn();
+    const onNext = vi.fn();
+    const deck = (id: number) => (
+      <>
+        <FlipCard key={id} front="el gato" back="the cat" onFlip={onFlip} />
+        <button onClick={onNext}>Next</button>
+      </>
+    );
+    const { rerender } = renderUi(deck(1));
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    // The next card mounts a new hotkey after the click.
+    rerender(deck(2));
+    await userEvent.keyboard(" ");
+    expect(onFlip.mock.calls).toEqual([[true]]);
+    expect(onNext).toHaveBeenCalledOnce();
+  });
+
   test("Space on a keyboard-focused speaker presses it and doesn't flip", async () => {
     const { spoken } = mockSpeech();
     const onFlip = vi.fn();
