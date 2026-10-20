@@ -84,7 +84,7 @@ export function MatchPage() {
   }
 
   if (!set) {
-    return <PageLoading label={t("common.loading")} />;
+    return <PageLoading />;
   }
 
   const elapsed = startedAt === null ? 0 : Math.floor(((finishedAt ?? now) - startedAt) / 1000);

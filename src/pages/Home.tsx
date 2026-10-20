@@ -99,7 +99,7 @@ export function HomePage() {
       )}
 
       {sets === null ? (
-        <PageLoading label={t("common.loading")} />
+        <PageLoading />
       ) : sets.length === 0 && !query && !q ? (
         <EmptyState
           icon="folderPlus"

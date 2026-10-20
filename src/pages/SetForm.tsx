@@ -97,7 +97,7 @@ export function SetFormPage() {
   }
 
   if (loading) {
-    return <PageLoading label={t("common.loading")} />;
+    return <PageLoading />;
   }
 
   const languageOptions: Option<Language | "">[] = [

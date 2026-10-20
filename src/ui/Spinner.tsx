@@ -1,3 +1,4 @@
+import { useT } from "../i18n";
 import { cx } from "./cx";
 
 export function Spinner({ size = 20, className, label }: { size?: number; className?: string; label?: string }) {
@@ -17,11 +18,15 @@ export function Spinner({ size = 20, className, label }: { size?: number; classN
   );
 }
 
-/** A page's content while it loads: a big spinner, centered. */
-export function PageLoading({ label }: { label: string }) {
+/**
+ * A page's content while it loads: a big spinner, centered.
+ * `fullScreen` centers it on the whole screen (the app's first load, before any page).
+ */
+export function PageLoading({ fullScreen }: { fullScreen?: boolean }) {
+  const { t } = useT();
   return (
-    <div className="flex justify-center py-16 text-muted">
-      <Spinner size={28} label={label} />
+    <div className={cx("flex justify-center text-muted", fullScreen ? "min-h-dvh items-center" : "py-16")}>
+      <Spinner size={28} label={t("common.loading")} />
     </div>
   );
 }

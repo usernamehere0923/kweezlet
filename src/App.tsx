@@ -16,7 +16,7 @@ import { FlashcardsPage } from "./pages/Flashcards";
 import { LearnPage } from "./pages/Learn";
 import { MatchPage } from "./pages/Match";
 import { TestPage } from "./pages/Test";
-import { AppShell, DevRibbon, ErrorBoundary, Spinner, ToastProvider, useToast, type NavItem } from "./ui";
+import { AppShell, DevRibbon, ErrorBoundary, PageLoading, ToastProvider, useToast, type NavItem } from "./ui";
 
 export function App() {
   return (
@@ -45,11 +45,7 @@ function Root() {
   }, [t, toast]);
 
   if (session.status === "loading") {
-    return (
-      <div className="flex min-h-dvh items-center justify-center text-muted">
-        <Spinner size={28} label={t("common.loading")} />
-      </div>
-    );
+    return <PageLoading fullScreen />;
   }
   if (session.status === "anonymous") return <LoginPage />;
 

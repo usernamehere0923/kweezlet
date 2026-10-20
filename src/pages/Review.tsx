@@ -86,7 +86,7 @@ export function ReviewPage() {
   }
 
   if (!cards) {
-    return <PageLoading label={t("common.loading")} />;
+    return <PageLoading />;
   }
 
   const question = round.question;

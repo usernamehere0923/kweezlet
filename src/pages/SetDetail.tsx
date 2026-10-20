@@ -62,7 +62,7 @@ export function SetDetailPage() {
     );
   }
   if (!set) {
-    return <PageLoading label={t("common.loading")} />;
+    return <PageLoading />;
   }
 
   return (

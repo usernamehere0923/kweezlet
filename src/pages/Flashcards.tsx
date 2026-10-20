@@ -63,7 +63,7 @@ export function FlashcardsPage() {
   }
 
   if (!set) {
-    return <PageLoading label={t("common.loading")} />;
+    return <PageLoading />;
   }
 
   const known = set.terms.filter((term) => term.status === "know_it").length;

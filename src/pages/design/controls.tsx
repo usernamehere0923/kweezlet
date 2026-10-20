@@ -199,7 +199,8 @@ toast(t("common.saved"), "success");        // "info" | "success" | "error"
   This cannot be undone.
 </Modal>
 <Spinner />
-if (!data) return <PageLoading label={t("common.loading")} />;   // whole page loading`}
+if (!data) return <PageLoading />;   // whole page loading
+<PageLoading fullScreen />           // the app's first load, before any page`}
         >
           <div className="flex flex-wrap items-center gap-3">
             <Button variant="secondary" onClick={() => toast(t("design.toastText"), "info")}>
@@ -216,7 +217,7 @@ if (!data) return <PageLoading label={t("common.loading")} />;   // whole page l
             </Button>
             <Spinner className="text-accent" />
           </div>
-          <PageLoading label={t("common.loading")} />
+          <PageLoading />
           <Modal
             open={modal}
             onClose={() => setModal(false)}

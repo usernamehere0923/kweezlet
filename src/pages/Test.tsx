@@ -53,7 +53,7 @@ export function TestPage() {
   }
 
   if (!set) {
-    return <PageLoading label={t("common.loading")} />;
+    return <PageLoading />;
   }
 
   const score = paper ? scoreTest(paper, answers, board.matched.size) : null;

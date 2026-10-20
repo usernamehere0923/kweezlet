@@ -64,7 +64,7 @@ export function LearnPage() {
   }
 
   if (!set) {
-    return <PageLoading label={t("common.loading")} />;
+    return <PageLoading />;
   }
 
   const count = (progress: string) => set.terms.filter((term) => termProgress(term) === progress).length;
