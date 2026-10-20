@@ -5,7 +5,7 @@ import { useMatchBoard } from "../lib/matchBoard";
 import { buildMatchRound, buildTest, scoreTest, type TestPaper } from "../lib/quiz";
 import { useStudyDay } from "../lib/studyDay";
 import { useStudySet } from "../lib/studySet";
-import { EmptyState, Heading, PageLoading, ResultSummary, StudyHeader } from "../ui";
+import { EmptyState, Heading, PageLoadFailed, PageLoading, ResultSummary, StudyHeader } from "../ui";
 import { TestPaperView } from "./test/TestPaperView";
 import { TestSetup, type TestChoices } from "./test/TestSetup";
 
@@ -26,7 +26,7 @@ export function TestPage() {
   const streak = useStudyDay(handedIn || answers.some((answer) => answer !== null));
   const [deadline, setDeadline] = useState<number | null>(null);
 
-  const { set } = useStudySet(id, ["sets"]);
+  const { set, failed, retry } = useStudySet(id, ["sets"]);
   // Time is up: hand in the paper.
   const timeUp = useCallback(() => setView("result"), []);
 
@@ -52,6 +52,9 @@ export function TestPage() {
     setAnswers((list) => list.map((value, i) => (i === questionIndex ? given : value)));
   }
 
+  if (failed) {
+    return <PageLoadFailed title={t("sets.loadFailed")} onRetry={retry} />;
+  }
   if (!set) {
     return <PageLoading />;
   }

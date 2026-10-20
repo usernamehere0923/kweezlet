@@ -13,6 +13,7 @@ import {
   Heading,
   Modal,
   PageTitle,
+  PageLoadFailed,
   PageLoading,
   ProgressBar,
   StudyModeTile,
@@ -29,12 +30,10 @@ export function SetDetailPage() {
   const [missing, setMissing] = useState(false);
   const [confirming, setConfirming] = useState(false);
   // Marks and answers on another device move the progress bar and the dots.
-  // Only a set that is gone says so; any other failure keeps what is shown.
-  const { set } = useStudySet(id, ["sets", "match", "study"], {
+  // A set that is gone says so here instead of leaving.
+  const { set, failed, retry } = useStudySet(id, ["sets", "match", "study"], {
     onLoad: () => setMissing(false),
-    onFail: (status) => {
-      if (status === 404) setMissing(true);
-    },
+    onMissing: () => setMissing(true),
   });
 
   async function remove() {
@@ -60,6 +59,9 @@ export function SetDetailPage() {
         }
       />
     );
+  }
+  if (failed) {
+    return <PageLoadFailed title={t("sets.loadFailed")} onRetry={retry} />;
   }
   if (!set) {
     return <PageLoading />;

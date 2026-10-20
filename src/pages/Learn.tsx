@@ -8,7 +8,7 @@ import { useStudySet } from "../lib/studySet";
 import { useQuestionRound, type Answered } from "../lib/questionRound";
 import { buildQuestion, shuffle } from "../lib/quiz";
 import { useStudyDay } from "../lib/studyDay";
-import { Button, EmptyState, Heading, PageLoading, ResultSummary, StudyHeader, Tag } from "../ui";
+import { Button, EmptyState, Heading, PageLoadFailed, PageLoading, ResultSummary, StudyHeader, Tag } from "../ui";
 import { RoundQuestion } from "./RoundQuestion";
 
 export function LearnPage() {
@@ -41,7 +41,7 @@ export function LearnPage() {
   }
 
   // Another device answered or renamed something: catch up, keep the question.
-  const { set, updateTerm } = useStudySet(id, ["sets", "study"], {
+  const { set, updateTerm, failed, retry } = useStudySet(id, ["sets", "study"], {
     onLoad: (data, first) => {
       if (first) begin(data.terms);
     },
@@ -63,6 +63,9 @@ export function LearnPage() {
     void postAnswer(termId, correct);
   }
 
+  if (failed) {
+    return <PageLoadFailed title={t("sets.loadFailed")} onRetry={retry} />;
+  }
   if (!set) {
     return <PageLoading />;
   }

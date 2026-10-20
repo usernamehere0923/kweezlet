@@ -44,11 +44,20 @@ describe("set detail", () => {
     expect(await screen.findByText("Page not found")).toBeTruthy();
   });
 
-  test("a server error is not a missing set", async () => {
-    mockApi({ "GET /api/me": () => ({ json: ME }), "GET /api/sets/7": () => ({ status: 500 }) });
+  test("a server error is not a missing set: it offers to try again", async () => {
+    let fail = true;
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets/7": () => (fail ? { status: 500 } : { json: SPANISH_DETAIL }),
+    });
     renderApp("/sets/7");
     expect(await screen.findByText("Something went wrong. Please try again.")).toBeTruthy();
+    expect(screen.getByText("Couldn't load this set.")).toBeTruthy();
     expect(screen.queryByText("Page not found")).toBeNull();
+
+    fail = false;
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Spanish animals" })).toBeTruthy();
   });
 
   test("a study mode of a set that is gone goes back to the set", async () => {

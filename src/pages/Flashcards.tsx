@@ -12,9 +12,10 @@ import {
   Heading,
   IconButton,
   KnowItButtons,
+  PageLoadFailed,
+  PageLoading,
   ProgressBar,
   SegmentedControl,
-  PageLoading,
   SlideSwap,
   StudyHeader,
 } from "../ui";
@@ -30,7 +31,7 @@ export function FlashcardsPage() {
   const streak = useStudyDay(started);
 
   // Another device marked or renamed something: catch up, keep the position.
-  const { set, updateTerm } = useStudySet(id, ["sets", "study"]);
+  const { set, updateTerm, failed, retry } = useStudySet(id, ["sets", "study"]);
   const { deck, at, current, back, goTo: moveTo, reshuffle } = useDeck(set?.terms, filter);
 
   /** Every move shows the next card's front. */
@@ -62,6 +63,9 @@ export function FlashcardsPage() {
     await saveState(current.id, { starred: !current.starred });
   }
 
+  if (failed) {
+    return <PageLoadFailed title={t("sets.loadFailed")} onRetry={retry} />;
+  }
   if (!set) {
     return <PageLoading />;
   }

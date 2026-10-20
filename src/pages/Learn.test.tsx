@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 import { LEARN_DETAIL, studyRoutes } from "../test/fixtures";
@@ -144,5 +144,21 @@ describe("learn", () => {
     expect(await screen.findByText("No connection to the server.")).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(await screen.findByText("the dog")).toBeTruthy();
+  });
+
+  test("a first load that fails offers to try again, and the retry starts the round", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    let fail = true;
+    const routes = learnApi(LEARN_DETAIL);
+    mockApi({ ...routes, "GET /api/sets/7": () => (fail ? { status: 500 } : routes["GET /api/sets/7"]()) });
+    renderApp("/sets/7/learn");
+    expect(await screen.findByText("Couldn't load this set.")).toBeTruthy();
+    expect(screen.queryByText("Page not found")).toBeNull();
+
+    fail = false;
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByText("Couldn't load this set.")).toBeNull());
+    expect(await screen.findByText("the cat")).toBeTruthy();
+    expect(screen.getByText("el gato")).toBeTruthy();
   });
 });

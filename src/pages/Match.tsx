@@ -7,7 +7,18 @@ import { useMatchBoard } from "../lib/matchBoard";
 import { buildMatchRound, MATCH_PAIRS, MIN_MATCH_TERMS, type MatchTileData } from "../lib/quiz";
 import { formatTime } from "../lib/formatTime";
 import { useStudyDay } from "../lib/studyDay";
-import { ButtonLink, EmptyState, Heading, MatchResult, MatchTile, PageLoading, StudyHeader, Tag, Text } from "../ui";
+import {
+  ButtonLink,
+  EmptyState,
+  Heading,
+  MatchResult,
+  MatchTile,
+  PageLoadFailed,
+  PageLoading,
+  StudyHeader,
+  Tag,
+  Text,
+} from "../ui";
 
 type RoundResult = { seconds: number; best: number; isNewBest: boolean };
 
@@ -29,7 +40,7 @@ export function MatchPage() {
   const [now, setNow] = useState(() => Date.now());
 
   // A new best time comes in on "match", from this device or another one.
-  const { set, setSet } = useStudySet(id, ["sets", "match"], {
+  const { set, setSet, failed, retry } = useStudySet(id, ["sets", "match"], {
     onLoad: (detail) => {
       // The first round starts here; later reloads leave a running one alone.
       setTiles((current) =>
@@ -83,6 +94,9 @@ export function MatchPage() {
     if (pairs === tiles.length / 2) finish(started, at);
   }
 
+  if (failed) {
+    return <PageLoadFailed title={t("sets.loadFailed")} onRetry={retry} />;
+  }
   if (!set) {
     return <PageLoading />;
   }

@@ -153,6 +153,32 @@ describe("flashcards", () => {
     expect(screen.queryByText("el perro")).toBeNull();
   });
 
+  test.each([
+    ["a server error", () => ({ status: 500 })],
+    [
+      "no connection",
+      () => {
+        throw new TypeError("Failed to fetch");
+      },
+    ],
+  ])("a live update that fails with %s keeps the card", async (_, failure) => {
+    let fail = false;
+    const routes = flashcardsApi();
+    const { calls } = mockApi({ ...routes, "GET /api/sets/7": () => (fail ? failure() : routes["GET /api/sets/7"]()) });
+    renderApp("/sets/7/flashcards");
+    await screen.findByText("el perro");
+
+    fail = true;
+    await waitFor(() => expect(FakeSocket.instances.length).toBeGreaterThan(0));
+    await act(async () => {
+      FakeSocket.last.receive(JSON.stringify({ topic: "study", data: null }));
+    });
+    await waitFor(() => expect(calls.filter((c) => c.path === "/api/sets/7")).toHaveLength(2));
+    expect(screen.getByText("el perro")).toBeTruthy();
+    expect(screen.queryByText("Couldn't load this set.")).toBeNull();
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
+  });
+
   test("the card speaks the visible side in its language", async () => {
     const { spoken } = mockSpeech();
     mockApi(flashcardsApi());
