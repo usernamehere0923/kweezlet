@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { LOCALES, useT, type Locale } from "../i18n";
 import { SegmentedControl } from "./SegmentedControl";
 
@@ -15,13 +16,7 @@ export function LocalePicker({
   size?: "sm" | "md";
 }) {
   const { t } = useT();
-  return (
-    <SegmentedControl<Locale>
-      label={label}
-      value={value}
-      onChange={onChange}
-      size={size}
-      options={LOCALES.map((locale) => ({ value: locale, label: t(`locale.${locale}`) }))}
-    />
-  );
+  // Stable between renders: SegmentedControl re-measures when its options change.
+  const options = useMemo(() => LOCALES.map((locale) => ({ value: locale, label: t(`locale.${locale}`) })), [t]);
+  return <SegmentedControl<Locale> label={label} value={value} onChange={onChange} size={size} options={options} />;
 }
