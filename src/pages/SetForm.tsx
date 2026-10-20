@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router";
 import { LANGUAGES, type Language } from "../../worker/languages";
 import { useT, type TKey } from "../i18n";
@@ -12,6 +12,7 @@ import {
   Heading,
   PageTitle,
   Select,
+  PageLoadFailed,
   PageLoading,
   TermEditorRow,
   Text,
@@ -46,22 +47,36 @@ export function SetFormPage() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(editing);
 
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  // Only a set that is gone leaves; any other failure offers to try again.
+  const load = useCallback(
+    () =>
+      api.sets[":id"].$get({ param: { id } }).then(async (res) => {
+        if (!res.ok) {
+          if (res.status === 404) navigate("/");
+          else setLoadFailed(true);
+          return;
+        }
+        const set = await res.json();
+        setTitle(set.title);
+        setDescription(set.description);
+        setTermLang(set.termLang ?? "");
+        setDefLang(set.defLang ?? "");
+        setRows(set.terms.map((term) => ({ id: term.id, term: term.term, definition: term.definition })));
+        setLoading(false);
+      }),
+    [id, navigate, setRows],
+  );
+
   useEffect(() => {
-    if (!editing) return;
-    void api.sets[":id"].$get({ param: { id } }).then(async (res) => {
-      if (!res.ok) {
-        navigate("/");
-        return;
-      }
-      const set = await res.json();
-      setTitle(set.title);
-      setDescription(set.description);
-      setTermLang(set.termLang ?? "");
-      setDefLang(set.defLang ?? "");
-      setRows(set.terms.map((term) => ({ id: term.id, term: term.term, definition: term.definition })));
-      setLoading(false);
-    });
-  }, [editing, id, navigate, setRows]);
+    if (editing) void load();
+  }, [editing, load]);
+
+  function retry() {
+    setLoadFailed(false);
+    void load();
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -96,6 +111,9 @@ export function SetFormPage() {
     }
   }
 
+  if (loadFailed) {
+    return <PageLoadFailed title={t("sets.loadFailed")} onRetry={retry} />;
+  }
   if (loading) {
     return <PageLoading />;
   }

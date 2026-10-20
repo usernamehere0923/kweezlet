@@ -133,4 +133,35 @@ describe("set form", () => {
       await screen.findByText("These terms were changed on another device. Reload the page and try again."),
     ).toBeTruthy();
   });
+
+  test("editing a set that is gone goes home", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [] }),
+      "GET /api/sets/7": () => ({ status: 404 }),
+    });
+    renderApp("/sets/7/edit");
+    expect(await screen.findByText("No sets yet")).toBeTruthy();
+    expect(screen.queryByText("Couldn't load this set.")).toBeNull();
+  });
+
+  test("editing offline offers to try again instead of leaving", async () => {
+    let offline = true;
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [] }),
+      "GET /api/sets/7": () => {
+        if (offline) throw new TypeError("Failed to fetch");
+        return { json: SPANISH_DETAIL };
+      },
+    });
+    renderApp("/sets/7/edit");
+    expect(await screen.findByText("Couldn't load this set.")).toBeTruthy();
+    expect(screen.getByText("No connection to the server.")).toBeTruthy();
+    expect(screen.queryByText("No sets yet")).toBeNull();
+
+    offline = false;
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByDisplayValue("Spanish animals")).toBeTruthy();
+  });
 });
