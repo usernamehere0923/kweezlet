@@ -56,3 +56,5 @@ export function useMatchBoard(tiles: MatchTileData[]) {
 
   return { matched, tap, reset, stateOf };
 }
+
+export type MatchBoard = ReturnType<typeof useMatchBoard>;
