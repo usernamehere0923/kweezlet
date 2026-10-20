@@ -68,7 +68,7 @@ function LiveSync() {
   const toast = useToast();
   useLive("settings", () => void refresh());
   useLive("ping", (data) => {
-    if ((data as { from?: string } | undefined)?.from !== clientId) toast(t("design.pingReceived"), "info");
+    if ((data as { from?: string } | undefined)?.from !== clientId) toast(t("live.pingReceived"), "info");
   });
   return null;
 }

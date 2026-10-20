@@ -158,7 +158,7 @@ export function ReviewPage() {
           icon="checkCircle"
           title={t("review.caughtUpTitle")}
           text={t("review.caughtUpText")}
-          action={<ButtonLink to="/">{t("notFound.action")}</ButtonLink>}
+          action={<ButtonLink to="/">{t("common.backHome")}</ButtonLink>}
         />
       )}
     </div>

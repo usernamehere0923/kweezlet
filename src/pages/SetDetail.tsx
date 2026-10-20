@@ -67,7 +67,7 @@ export function SetDetailPage() {
         text={t("notFound.text")}
         action={
           <ButtonLink to="/" icon="chevronLeft">
-            {t("notFound.action")}
+            {t("common.backHome")}
           </ButtonLink>
         }
       />

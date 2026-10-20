@@ -220,7 +220,7 @@ if (!data) return <PageLoading label={t("common.loading")} />;   // whole page l
           <Modal
             open={modal}
             onClose={() => setModal(false)}
-            title={t("design.modalTitle")}
+            title={t("sets.deleteTitle")}
             actions={
               <>
                 <Button variant="ghost" onClick={() => setModal(false)}>
@@ -232,7 +232,7 @@ if (!data) return <PageLoading label={t("common.loading")} />;   // whole page l
               </>
             }
           >
-            {t("design.modalText")}
+            {t("sets.deleteText")}
           </Modal>
         </Section>
       </Chapter>

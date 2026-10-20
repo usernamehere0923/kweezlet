@@ -246,7 +246,7 @@ export function TestPage() {
                 {t("test.matching")}
               </Text>
               <Text variant="muted" className="mb-4">
-                {t("test.matchingHint")}
+                {t("study.matchingHint")}
               </Text>
               <div className="grid grid-cols-2 gap-3">
                 {tiles.map((tile) => (
