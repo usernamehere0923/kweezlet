@@ -5,6 +5,7 @@ import { liveRoutes } from "./live";
 import { matchRoutes } from "./match";
 import { reviewRoutes } from "./review";
 import { setRoutes } from "./sets";
+import { streakRoutes } from "./streak";
 import { studyRoutes } from "./study";
 import type { AppEnv } from "./types";
 
@@ -19,6 +20,7 @@ const app = new Hono<AppEnv>()
   .route("/api", matchRoutes)
   .route("/api", reviewRoutes)
   .route("/api", studyRoutes)
+  .route("/api", streakRoutes)
   .all("/api/*", (c) => c.json({ error: "not_found" as const }, 404));
 
 app.onError((err, c) => {
