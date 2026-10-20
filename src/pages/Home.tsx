@@ -5,7 +5,7 @@ import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
 import { useUser } from "../lib/session";
-import { localDay } from "../lib/study";
+import { localDay } from "../lib/studyDay";
 import {
   ButtonLink,
   Card,
@@ -59,7 +59,7 @@ export function HomePage() {
   );
   useEffect(() => void loadDue(), [loadDue]);
 
-  // Days studied in a row, shown before studying (worker/study.ts).
+  // Days studied in a row, shown before studying (worker/streak.ts).
   const loadStreak = useCallback(
     () =>
       api.study.streak.$get({ query: { day: localDay() } }).then(async (res) => {
@@ -99,7 +99,7 @@ export function HomePage() {
       )}
 
       {sets === null ? (
-        <PageLoading label={t("common.loading")} />
+        <PageLoading />
       ) : sets.length === 0 && !query && !q ? (
         <EmptyState
           icon="folderPlus"

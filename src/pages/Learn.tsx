@@ -1,25 +1,15 @@
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { MASTERY, termProgress } from "../../worker/shared";
+import { MASTERY, termProgress } from "../../worker/progress";
 import type { SetTerm } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useStudySet } from "../lib/studySet";
-import { useQuestionRound } from "../lib/questionRound";
-import { buildQuestion } from "../lib/quiz";
-import { shuffle, useStudyDay } from "../lib/study";
-import {
-  Button,
-  ButtonLink,
-  EmptyState,
-  Heading,
-  PageLoading,
-  QuestionCard,
-  ResultSummary,
-  SlideSwap,
-  StreakBadge,
-  Tag,
-} from "../ui";
+import { useQuestionRound, type Answered } from "../lib/questionRound";
+import { buildQuestion, shuffle } from "../lib/quiz";
+import { useStudyDay } from "../lib/studyDay";
+import { Button, EmptyState, Heading, PageLoadFailed, PageLoading, ResultSummary, StudyHeader, Tag } from "../ui";
+import { RoundQuestion } from "./RoundQuestion";
 
 export function LearnPage() {
   const { t } = useT();
@@ -51,30 +41,21 @@ export function LearnPage() {
   }
 
   // Another device answered or renamed something: catch up, keep the question.
-  const [set, setSet] = useStudySet(id, ["sets", "study"], (data, first) => {
-    if (first) begin(data.terms);
+  const { set, updateTerm, failed, retry } = useStudySet(id, ["sets", "study"], {
+    onLoad: (data, first) => {
+      if (first) begin(data.terms);
+    },
   });
 
   async function postAnswer(termId: number, correct: boolean) {
     const res = await api.terms[":id"].answer.$post({ param: { id: String(termId) }, json: { correct } });
     if (res.ok) {
       const saved = await res.json();
-      setSet((s) =>
-        s
-          ? {
-              ...s,
-              terms: s.terms.map((term) =>
-                term.id === termId ? { ...term, streak: saved.streak, status: saved.status } : term,
-              ),
-            }
-          : s,
-      );
+      updateTerm(termId, { streak: saved.streak, status: saved.status });
     }
   }
 
-  function onAnswer(answered: { termId: number; correct: boolean } | null) {
-    if (!answered) return;
-    const { termId, correct } = answered;
+  function onAnswer({ termId, correct }: Answered) {
     const count = (inRound.current.get(termId) ?? 0) + (correct ? 1 : 0);
     inRound.current.set(termId, correct ? count : 0);
     // Mistakes and half-learned terms come back later in this round.
@@ -82,21 +63,18 @@ export function LearnPage() {
     void postAnswer(termId, correct);
   }
 
+  if (failed) {
+    return <PageLoadFailed title={t("sets.loadFailed")} onRetry={retry} />;
+  }
   if (!set) {
-    return <PageLoading label={t("common.loading")} />;
+    return <PageLoading />;
   }
 
   const count = (progress: string) => set.terms.filter((term) => termProgress(term) === progress).length;
-  const question = round.question;
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <ButtonLink to={`/sets/${id}`} variant="ghost" icon="chevronLeft" className="-ml-3">
-          {t("study.backToSet")}
-        </ButtonLink>
-        {streak > 0 && <StreakBadge days={streak} />}
-      </div>
+      <StudyHeader backTo={`/sets/${id}`} backLabel={t("study.backToSet")} streak={streak} />
 
       <Heading level={3} className="mb-3">
         {set.title}
@@ -129,27 +107,12 @@ export function LearnPage() {
           onDone={() => navigate(`/sets/${id}`)}
         />
       ) : (
-        question && (
-          <SlideSwap id={question}>
-            <QuestionCard
-              label={t(question.label)}
-              prompt={question.prompt}
-              answer={question.answer}
-              options={question.options}
-              typed={round.typed}
-              onTyped={round.setTyped}
-              picked={round.picked}
-              feedback={round.feedback}
-              onPick={(option) => onAnswer(round.pick(option))}
-              onSubmitTyped={() => onAnswer(round.submitTyped())}
-              onContinue={() => round.next(askFrom(set.terms))}
-              speak={{
-                text: question.prompt,
-                lang: question.promptSide === "term" ? set.termLang : set.defLang,
-              }}
-            />
-          </SlideSwap>
-        )
+        <RoundQuestion
+          round={round}
+          langs={set}
+          onAnswer={onAnswer}
+          onContinue={() => round.next(askFrom(set.terms))}
+        />
       )}
     </div>
   );

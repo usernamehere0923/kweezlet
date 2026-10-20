@@ -3,7 +3,6 @@ import type { en } from "./en";
 // Swiss German: always "ss", never the sharp s (U+00DF). No gendered forms (der Nutzer, not die Nutzer:innen).
 // TypeScript fails the build if a key is missing here or does not exist in en.ts.
 export const deCH: Record<keyof typeof en, string> = {
-  "app.name": "kweezlet",
   "app.tagline": "Lerne alles, Karte für Karte.",
 
   "nav.home": "Start",
@@ -18,6 +17,8 @@ export const deCH: Record<keyof typeof en, string> = {
   "dev.ribbon": "Test",
   "common.saved": "Gespeichert",
   "common.clear": "Leeren",
+  "common.backHome": "Zurück zum Start",
+  "common.retry": "Nochmals versuchen",
 
   "errors.server": "Etwas ist schiefgelaufen. Bitte versuch es nochmals.",
   "errors.offline": "Keine Verbindung zum Server.",
@@ -45,6 +46,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "home.greeting": "Hoi {name}",
 
   "sets.new": "Set erstellen",
+  "sets.loadFailed": "Dieses Set konnte nicht geladen werden.",
   "sets.emptyTitle": "Noch keine Sets",
   "sets.emptyText": "Erstelle dein erstes Set und fang an zu lernen.",
   "sets.emptyAction": "Erstes Set erstellen",
@@ -90,7 +92,6 @@ export const deCH: Record<keyof typeof en, string> = {
   "test.trueFalse": "Richtig oder falsch",
   "test.written": "Schreiben",
   "test.matching": "Zuordnen",
-  "test.matchingHint": "Tippe auf einen Begriff und dann auf seine Definition.",
   "test.timer": "Timer",
   "test.timerOff": "Kein Timer",
   "test.minutes_one": "{count} Minute",
@@ -118,7 +119,6 @@ export const deCH: Record<keyof typeof en, string> = {
 
   "notFound.title": "Seite nicht gefunden",
   "notFound.text": "Diese Seite gibt es (noch) nicht.",
-  "notFound.action": "Zurück zum Start",
 
   "settings.title": "Einstellungen",
   "settings.account": "Konto",
@@ -163,9 +163,6 @@ export const deCH: Record<keyof typeof en, string> = {
     "Öffne kweezlet auf einem zweiten Gerät und drück den Button. Das andere Gerät zeigt eine Meldung.",
   "design.ping": "Meine anderen Geräte anpingen",
   "design.pingSent": "Ping gesendet",
-  "design.pingReceived": "Ping von deinem anderen Gerät!",
-  "design.modalTitle": "Dieses Set löschen?",
-  "design.modalText": "Das kann nicht rückgängig gemacht werden.",
   "design.openModal": "Modal öffnen",
   "design.showToast": "Toast zeigen",
   "design.progressMotion": "Fortschritt in Bewegung",
@@ -176,6 +173,8 @@ export const deCH: Record<keyof typeof en, string> = {
     "Erfolge bekommen ihren Moment: eine richtige Antwort springt kurz auf, eine gute Runde füllt den Ring und wirft Konfetti. Karten gleiten zur nächsten, Buttons geben beim Drücken nach. Tippe auf Nochmals abspielen, dreh die Karte, geh weiter.",
   "design.replay": "Nochmals abspielen",
   "design.toastText": "Das ist ein Toast",
+
+  "live.pingReceived": "Ping von deinem anderen Gerät!",
 
   "search.placeholder": "Suchen",
 
@@ -195,6 +194,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "study.mode.learn": "Lernen",
   "study.mode.test": "Test",
   "study.mode.match": "Zuordnen",
+  "study.matchingHint": "Tippe auf einen Begriff und dann auf seine Definition.",
   "study.addTerm": "Begriff hinzufügen",
   "study.deleteTerm": "Begriff löschen",
   "study.yourAnswer": "Deine Antwort",

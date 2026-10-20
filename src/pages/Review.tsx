@@ -2,22 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import type { ReviewCard } from "../../worker/review";
 import { useT } from "../i18n";
-import { api } from "../lib/api";
+import { api, offline } from "../lib/api";
 import { useLive } from "../lib/live";
-import { useQuestionRound } from "../lib/questionRound";
-import { buildQuestion } from "../lib/quiz";
-import { shuffle, useStudyDay } from "../lib/study";
-import {
-  ButtonLink,
-  EmptyState,
-  Heading,
-  PageLoading,
-  QuestionCard,
-  ResultSummary,
-  SlideSwap,
-  StreakBadge,
-  Tag,
-} from "../ui";
+import { useQuestionRound, type Answered } from "../lib/questionRound";
+import { buildQuestion, shuffle } from "../lib/quiz";
+import { useStudyDay } from "../lib/studyDay";
+import { ButtonLink, EmptyState, Heading, PageLoading, ResultSummary, StudyHeader, Tag } from "../ui";
+import { RoundQuestion } from "./RoundQuestion";
 
 /** Due cards fetched when another device answers: enough to see which of ours are still due. */
 const REFRESH_LIMIT = 100;
@@ -81,24 +72,21 @@ export function ReviewPage() {
   });
 
   async function save(termId: number, correct: boolean) {
-    const res = await api.terms[":id"].answer
-      .$post({ param: { id: String(termId) }, json: { correct } })
-      .catch(() => null);
+    const res = await api.terms[":id"].answer.$post({ param: { id: String(termId) }, json: { correct } });
     // Not saved (offline, server error; api.ts shows the toast): ask it again
     // so the answer gets another try. A 404 means the term is gone.
-    if (!res || res.status >= 500) round.askAgain(termId);
+    if (offline(res) || res.status >= 500) round.askAgain(termId);
   }
 
-  function onAnswer(answered: { termId: number; correct: boolean } | null) {
-    if (!answered) return;
-    answeredHere.current.add(answered.termId);
+  function onAnswer({ termId, correct }: Answered) {
+    answeredHere.current.add(termId);
     // A mistake comes back later in this round.
-    if (!answered.correct) round.askAgain(answered.termId);
-    void save(answered.termId, answered.correct);
+    if (!correct) round.askAgain(termId);
+    void save(termId, correct);
   }
 
   if (!cards) {
-    return <PageLoading label={t("common.loading")} />;
+    return <PageLoading />;
   }
 
   const question = round.question;
@@ -107,12 +95,7 @@ export function ReviewPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <ButtonLink to="/" variant="ghost" icon="chevronLeft" className="-ml-3">
-          {t("sets.back")}
-        </ButtonLink>
-        {streak > 0 && <StreakBadge days={streak} />}
-      </div>
+      <StudyHeader backTo="/" backLabel={t("sets.back")} streak={streak} />
 
       <Heading level={3} className="mb-3">
         {t("review.title")}
@@ -133,32 +116,14 @@ export function ReviewPage() {
               {t("learn.remaining")} {round.left}
             </Tag>
           </div>
-          <SlideSwap id={question}>
-            <QuestionCard
-              label={t(question.label)}
-              prompt={question.prompt}
-              answer={question.answer}
-              options={question.options}
-              typed={round.typed}
-              onTyped={round.setTyped}
-              picked={round.picked}
-              feedback={round.feedback}
-              onPick={(option) => onAnswer(round.pick(option))}
-              onSubmitTyped={() => onAnswer(round.submitTyped())}
-              onContinue={() => round.next(askFrom(cards))}
-              speak={{
-                text: question.prompt,
-                lang: card ? (question.promptSide === "term" ? card.termLang : card.defLang) : null,
-              }}
-            />
-          </SlideSwap>
+          <RoundQuestion round={round} langs={card} onAnswer={onAnswer} onContinue={() => round.next(askFrom(cards))} />
         </>
       ) : (
         <EmptyState
           icon="checkCircle"
           title={t("review.caughtUpTitle")}
           text={t("review.caughtUpText")}
-          action={<ButtonLink to="/">{t("notFound.action")}</ButtonLink>}
+          action={<ButtonLink to="/">{t("common.backHome")}</ButtonLink>}
         />
       )}
     </div>

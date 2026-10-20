@@ -42,14 +42,18 @@ export class UserChannel extends DurableObject<Env> {
   }
 }
 
+/** The user's UserChannel. */
+function channel(env: Env, userId: number) {
+  return env.USER_CHANNEL.get(env.USER_CHANNEL.idFromName(String(userId)));
+}
+
 /**
  * Tell every open tab/device of this user that something changed.
  * The UI listens with useLive(topic, callback) and usually just refetches.
  * Routes use notifyLater() so the response does not wait for the broadcast.
  */
 export async function notify(env: Env, userId: number, topic: string, data?: unknown): Promise<void> {
-  const stub = env.USER_CHANNEL.get(env.USER_CHANNEL.idFromName(String(userId)));
-  await stub.broadcast(JSON.stringify({ topic, data }));
+  await channel(env, userId).broadcast(JSON.stringify({ topic, data }));
 }
 
 /**
@@ -66,8 +70,7 @@ export const liveRoutes = new Hono<AppEnv>()
     if (c.req.header("Upgrade") !== "websocket") {
       return c.json({ error: "expected_websocket" as const }, 426);
     }
-    const ns = c.env.USER_CHANNEL;
-    return ns.get(ns.idFromName(String(c.get("user").id))).fetch(c.req.raw);
+    return channel(c.env, c.get("user").id).fetch(c.req.raw);
   })
   // Demo for /design: shows a toast on the user's other devices.
   .post("/live/ping", validate("json", z.object({ from: z.string().max(64) })), async (c) => {

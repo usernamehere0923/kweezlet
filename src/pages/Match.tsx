@@ -5,8 +5,20 @@ import { api } from "../lib/api";
 import { useStudySet } from "../lib/studySet";
 import { useMatchBoard } from "../lib/matchBoard";
 import { buildMatchRound, MATCH_PAIRS, MIN_MATCH_TERMS, type MatchTileData } from "../lib/quiz";
-import { formatTime, useStudyDay } from "../lib/study";
-import { ButtonLink, EmptyState, Heading, MatchResult, MatchTile, PageLoading, StreakBadge, Tag, Text } from "../ui";
+import { formatTime } from "../lib/formatTime";
+import { useStudyDay } from "../lib/studyDay";
+import {
+  ButtonLink,
+  EmptyState,
+  Heading,
+  MatchResult,
+  MatchTile,
+  PageLoadFailed,
+  PageLoading,
+  StudyHeader,
+  Tag,
+  Text,
+} from "../ui";
 
 type RoundResult = { seconds: number; best: number; isNewBest: boolean };
 
@@ -28,13 +40,15 @@ export function MatchPage() {
   const [now, setNow] = useState(() => Date.now());
 
   // A new best time comes in on "match", from this device or another one.
-  const [set, setSet] = useStudySet(id, ["sets", "match"], (detail) => {
-    // The first round starts here; later reloads leave a running one alone.
-    setTiles((current) =>
-      current.length > 0 || detail.terms.length < MIN_MATCH_TERMS
-        ? current
-        : buildMatchRound(detail.terms, MATCH_PAIRS),
-    );
+  const { set, setSet, failed, retry } = useStudySet(id, ["sets", "match"], {
+    onLoad: (detail) => {
+      // The first round starts here; later reloads leave a running one alone.
+      setTiles((current) =>
+        current.length > 0 || detail.terms.length < MIN_MATCH_TERMS
+          ? current
+          : buildMatchRound(detail.terms, MATCH_PAIRS),
+      );
+    },
   });
 
   // The clock: only ticks while a round is running.
@@ -60,17 +74,12 @@ export function MatchPage() {
     setNow(end);
     // Floored like the clock, so the result shows the time the clock stopped at.
     const seconds = Math.max(1, Math.floor((end - started) / 1000));
-    void api.sets[":id"].match
-      .$post({ param: { id }, json: { seconds } })
-      .then(async (res) => {
-        const { best, isNewBest } = res.ok ? await res.json() : { best: set?.bestSeconds ?? seconds, isNewBest: false };
-        setResult({ seconds, best, isNewBest });
-        if (res.ok) setSet((s) => (s ? { ...s, bestSeconds: best } : s));
-      })
-      .catch(() => {
-        // The api layer reports the failure; show the time, claim no record.
-        setResult({ seconds, best: set?.bestSeconds ?? seconds, isNewBest: false });
-      });
+    void api.sets[":id"].match.$post({ param: { id }, json: { seconds } }).then(async (res) => {
+      // Not saved (api.ts reports why): show the time, claim no record.
+      const { best, isNewBest } = res.ok ? await res.json() : { best: set?.bestSeconds ?? seconds, isNewBest: false };
+      setResult({ seconds, best, isNewBest });
+      if (res.ok) setSet((s) => (s ? { ...s, bestSeconds: best } : s));
+    });
   }
 
   /** `at` is the tap's timestamp, read in the click handler (react purity). */
@@ -85,8 +94,11 @@ export function MatchPage() {
     if (pairs === tiles.length / 2) finish(started, at);
   }
 
+  if (failed) {
+    return <PageLoadFailed title={t("sets.loadFailed")} onRetry={retry} />;
+  }
   if (!set) {
-    return <PageLoading label={t("common.loading")} />;
+    return <PageLoading />;
   }
 
   const elapsed = startedAt === null ? 0 : Math.floor(((finishedAt ?? now) - startedAt) / 1000);
@@ -94,12 +106,7 @@ export function MatchPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <ButtonLink to={`/sets/${id}`} variant="ghost" icon="chevronLeft" className="-ml-3">
-          {t("study.backToSet")}
-        </ButtonLink>
-        {streak > 0 && <StreakBadge days={streak} />}
-      </div>
+      <StudyHeader backTo={`/sets/${id}`} backLabel={t("study.backToSet")} streak={streak} />
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <Heading level={3}>{set.title}</Heading>
@@ -133,7 +140,7 @@ export function MatchPage() {
       ) : (
         <>
           <Text variant="small" className="mb-3">
-            {t("test.matchingHint")}
+            {t("study.matchingHint")}
           </Text>
           <div className="grid grid-cols-2 gap-2">
             {tiles.map((tile) => {

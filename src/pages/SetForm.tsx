@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router";
-import { LANGUAGES, type Language } from "../../worker/shared";
-import { isTKey, useT, type TKey } from "../i18n";
+import { LANGUAGES, type Language } from "../../worker/languages";
+import { useT, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
+import { checkSetForm, termsError, useTermRows } from "../lib/setForm";
 import {
   Button,
   ButtonLink,
@@ -11,16 +12,14 @@ import {
   Heading,
   PageTitle,
   Select,
+  PageLoadFailed,
   PageLoading,
   TermEditorRow,
   Text,
   TextField,
   useToast,
   type Option,
-  type TermEditorHandle,
 } from "../ui";
-
-type Row = { id?: number; term: string; definition: string };
 
 const LANG_KEY: Record<Language, TKey> = {
   en: "lang.en",
@@ -29,16 +28,6 @@ const LANG_KEY: Record<Language, TKey> = {
   it: "lang.it",
   es: "lang.es",
 };
-
-/** The message for the server's errors on the terms, or null when there are none. */
-function termsError(errors: Record<string, string>): TKey | null {
-  // "invalid_value" on the list means a term id went stale (changed on another device).
-  if (errors.terms === "validation.invalid_value") return "sets.termsChanged";
-  if (errors.terms === "validation.too_big") return "sets.termsTooMany";
-  const rowCodes = Object.entries(errors).flatMap(([field, code]) => (field.startsWith("terms.") ? [code] : []));
-  if (rowCodes.includes("validation.too_big")) return "sets.termTooLong";
-  return rowCodes.length > 0 ? "sets.termsIncomplete" : null;
-}
 
 /** Create (no id) or edit (id in the URL) a study set. */
 export function SetFormPage() {
@@ -52,64 +41,49 @@ export function SetFormPage() {
   const [description, setDescription] = useState("");
   const [termLang, setTermLang] = useState<Language | "">("");
   const [defLang, setDefLang] = useState<Language | "">("");
-  const [rows, setRows] = useState<Row[]>([{ term: "", definition: "" }]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [formError, setFormError] = useState<string | null>(null);
+  const { rows, setRows, rowRefs, update, next, remove, add } = useTermRows();
+  const [errors, setErrors] = useState<Record<string, TKey>>({});
+  const [formError, setFormError] = useState<TKey | null>(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(editing);
-  const rowRefs = useRef<(TermEditorHandle | null)[]>([]);
+
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  // Only a set that is gone leaves; any other failure offers to try again.
+  const load = useCallback(
+    () =>
+      api.sets[":id"].$get({ param: { id } }).then(async (res) => {
+        if (!res.ok) {
+          if (res.status === 404) navigate("/");
+          else setLoadFailed(true);
+          return;
+        }
+        const set = await res.json();
+        setTitle(set.title);
+        setDescription(set.description);
+        setTermLang(set.termLang ?? "");
+        setDefLang(set.defLang ?? "");
+        setRows(set.terms.map((term) => ({ id: term.id, term: term.term, definition: term.definition })));
+        setLoading(false);
+      }),
+    [id, navigate, setRows],
+  );
 
   useEffect(() => {
-    if (!editing) return;
-    void api.sets[":id"].$get({ param: { id } }).then(async (res) => {
-      if (!res.ok) {
-        navigate("/");
-        return;
-      }
-      const set = await res.json();
-      setTitle(set.title);
-      setDescription(set.description);
-      setTermLang(set.termLang ?? "");
-      setDefLang(set.defLang ?? "");
-      setRows(set.terms.map((term) => ({ id: term.id, term: term.term, definition: term.definition })));
-      setLoading(false);
-    });
-  }, [editing, id, navigate]);
+    if (editing) void load();
+  }, [editing, load]);
 
-  function update(i: number, term: string, definition: string) {
-    setRows((list) => list.map((row, j) => (j === i ? { ...row, term, definition } : row)));
-  }
-
-  function next(i: number) {
-    if (rows[i + 1]) rowRefs.current[i + 1]?.focus();
-    else {
-      setRows((list) => [...list, { term: "", definition: "" }]);
-      setTimeout(() => rowRefs.current[i + 1]?.focus());
-    }
-  }
-
-  function removeRow(i: number) {
-    setRows((list) => (list.length > 1 ? list.filter((_, j) => j !== i) : list));
+  function retry() {
+    setLoadFailed(false);
+    void load();
   }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    // Rows still completely empty simply disappear; half-filled ones are errors.
-    const kept = rows.filter((row) => row.term.trim() || row.definition.trim());
-    setErrors({});
-    setFormError(null);
-    if (!title.trim()) {
-      setErrors({ title: "validation.too_small" });
-      return;
-    }
-    if (kept.length === 0) {
-      setFormError(t("sets.termsNeeded"));
-      return;
-    }
-    if (kept.some((row) => !row.term.trim() || !row.definition.trim())) {
-      setFormError(t("sets.termsIncomplete"));
-      return;
-    }
+    const { kept, titleError, formError } = checkSetForm(title, rows);
+    setErrors(titleError ? { title: titleError } : {});
+    setFormError(formError);
+    if (titleError || formError) return;
     setBusy(true);
     try {
       const json = {
@@ -130,25 +104,22 @@ export function SetFormPage() {
       } else {
         const serverErrors = await fieldErrors(res);
         setErrors(serverErrors);
-        const key = termsError(serverErrors);
-        setFormError(key && t(key));
+        setFormError(termsError(serverErrors));
       }
     } finally {
       setBusy(false);
     }
   }
 
-  const err = (field: string) => {
-    const key = errors[field];
-    return key ? t(isTKey(key) ? key : "validation.invalid") : undefined;
-  };
-
+  if (loadFailed) {
+    return <PageLoadFailed title={t("sets.loadFailed")} onRetry={retry} />;
+  }
   if (loading) {
-    return <PageLoading label={t("common.loading")} />;
+    return <PageLoading />;
   }
 
-  const languageOptions = (placeholder: string): Option<Language | "">[] => [
-    { value: "", label: placeholder },
+  const languageOptions: Option<Language | "">[] = [
+    { value: "", label: t("lang.none") },
     ...LANGUAGES.map((lang) => ({ value: lang, label: t(LANG_KEY[lang]) })),
   ];
 
@@ -161,7 +132,7 @@ export function SetFormPage() {
             label={t("sets.fieldTitle")}
             value={title}
             onChange={setTitle}
-            error={err("title")}
+            error={errors.title && t(errors.title)}
             maxLength={200}
             required
           />
@@ -180,18 +151,8 @@ export function SetFormPage() {
             {t("sets.languages")}
           </Heading>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Select
-              label={t("sets.langTerms")}
-              value={termLang}
-              onChange={setTermLang}
-              options={languageOptions(t("lang.none"))}
-            />
-            <Select
-              label={t("sets.langDefs")}
-              value={defLang}
-              onChange={setDefLang}
-              options={languageOptions(t("lang.none"))}
-            />
+            <Select label={t("sets.langTerms")} value={termLang} onChange={setTermLang} options={languageOptions} />
+            <Select label={t("sets.langDefs")} value={defLang} onChange={setDefLang} options={languageOptions} />
           </div>
           <Text variant="small" className="mt-3">
             {t("sets.langHint")}
@@ -212,18 +173,14 @@ export function SetFormPage() {
                 definition={row.definition}
                 onChange={(term, definition) => update(i, term, definition)}
                 onNext={() => next(i)}
-                onDelete={rows.length > 1 ? () => removeRow(i) : undefined}
+                onDelete={rows.length > 1 ? () => remove(i) : undefined}
               />
             ))}
-            <Button
-              variant="secondary"
-              icon="plus"
-              onClick={() => setRows((list) => [...list, { term: "", definition: "" }])}
-            >
+            <Button variant="secondary" icon="plus" onClick={add}>
               {t("study.addTerm")}
             </Button>
           </div>
-          {formError && <FormError className="mt-3">{formError}</FormError>}
+          {formError && <FormError className="mt-3">{t(formError)}</FormError>}
         </section>
 
         <div className="flex items-center gap-2">

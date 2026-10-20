@@ -1,49 +1,22 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { notifyLater } from "./live";
-import { INTERVAL_DAYS, intervalSql, MASTERY } from "./shared";
+import { MASTERY } from "./progress";
+import { INTERVAL_DAYS, intervalSql } from "./schedule";
 import type { AppEnv } from "./types";
 import { idParam, validate } from "./validate";
 
-/** How a term can be marked. No row yet = "unseen" (see worker/sets.ts). */
-export const STATUSES = ["still_learning", "know_it"] as const;
+/** How a term can be marked. */
+const STATUSES = ["still_learning", "know_it"] as const;
 export type Status = (typeof STATUSES)[number];
+/** What the API answers: "unseen" = the term has no mark yet. */
+export type TermStatus = "unseen" | Status;
 
 const stateBody = z.object({
   status: z.enum(STATUSES).nullish(),
   starred: z.boolean().nullish(),
 });
 const answerBody = z.object({ correct: z.boolean() });
-/**
- * A local day, YYYY-MM-DD. The client computes it in the user's timezone.
- * Not just the shape: 2026-02-31 would poison the streak (see streakOf).
- */
-const dayBody = z.object({
-  day: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .refine((day) => {
-      const time = new Date(`${day}T00:00:00Z`).getTime();
-      return !Number.isNaN(time) && new Date(time).toISOString().slice(0, 10) === day;
-    }),
-});
-
-function previousDay(day: string): string {
-  return new Date(new Date(`${day}T00:00:00Z`).getTime() - 86_400_000).toISOString().slice(0, 10);
-}
-
-/** Days in a row, counting back from `today` (which must be in the list). */
-function streakOf(days: string[], today: string): number {
-  let count = 0;
-  let expected = today;
-  for (const day of days) {
-    if (day !== expected) break;
-    count += 1;
-    expected = previousDay(expected);
-  }
-  return count;
-}
-
 export const studyRoutes = new Hono<AppEnv>()
   // Mark a term "still learning" / "know it" and/or star it. Both are kept
   // when only one is sent, so starring never undoes a mark.
@@ -76,7 +49,7 @@ export const studyRoutes = new Hono<AppEnv>()
       .run();
     notifyLater(c, "study");
     // Annotated so the status keeps its literal type for the UI's typed client.
-    const result: { termId: number; status: "unseen" | Status; starred: boolean } = {
+    const result: { termId: number; status: TermStatus; starred: boolean } = {
       termId: id,
       status: status ?? "unseen",
       starred,
@@ -95,7 +68,7 @@ export const studyRoutes = new Hono<AppEnv>()
     // Counted in SQL, not read-then-written: two answers in flight at once
     // (fast tapping, two devices) must both count. The insert reads the term
     // itself, so a term that isn't the user's writes nothing and returns no row.
-    // The review schedule (worker/shared.ts) only moves when the term is due:
+    // The review schedule (worker/schedule.ts) only moves when the term is due:
     // correct goes one step up and waits that step's interval, wrong starts
     // over. A first answer, right or wrong, brings the term back tomorrow.
     // SQLite evaluates every SET expression on the old row.
@@ -134,51 +107,10 @@ export const studyRoutes = new Hono<AppEnv>()
     if (!next) return c.json({ error: "not_found" as const }, 404);
     const status = (marked!.results[0] as { status: Status | null } | undefined)?.status ?? null;
     notifyLater(c, "study");
-    const result: { termId: number; correct: number; wrong: number; streak: number; status: "unseen" | Status } = {
+    const result: { termId: number; correct: number; wrong: number; streak: number; status: TermStatus } = {
       termId: id,
       ...next,
       status: status ?? "unseen",
     };
     return c.json(result, 200);
-  })
-
-  // The streak for Home, before studying. Today not studied yet still shows
-  // the run up to yesterday: it only breaks when today ends without study.
-  .get("/study/streak", validate("query", dayBody), async (c) => {
-    const user = c.get("user");
-    const { day } = c.req.valid("query");
-    const { results } = await c.env.DB.prepare(
-      "SELECT day FROM study_days WHERE user_id = ? AND day <= ? ORDER BY day DESC",
-    )
-      .bind(user.id, day)
-      .all<{ day: string }>();
-    const days = results.map((row) => row.day);
-    const studiedToday = days[0] === day;
-    return c.json({ streak: streakOf(days, studiedToday ? day : previousDay(day)), studiedToday }, 200);
-  })
-
-  // "I studied today": remember the day and answer the new streak length.
-  .post("/study/day", validate("json", dayBody), async (c) => {
-    const user = c.get("user");
-    const { day } = c.req.valid("json");
-    const db = c.env.DB;
-    // No notifyLater here: it would reload the study page that sent this in
-    // the middle of the first flip. The mark or answer that follows notifies.
-    await db
-      .prepare("INSERT INTO study_days (user_id, day) VALUES (?, ?) ON CONFLICT DO NOTHING")
-      .bind(user.id, day)
-      .run();
-    const { results } = await db
-      .prepare("SELECT day FROM study_days WHERE user_id = ? ORDER BY day DESC")
-      .bind(user.id)
-      .all<{ day: string }>();
-    return c.json(
-      {
-        streak: streakOf(
-          results.map((row) => row.day),
-          day,
-        ),
-      },
-      200,
-    );
   });

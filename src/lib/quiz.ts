@@ -1,11 +1,21 @@
 import type { SetTerm } from "../../worker/sets";
 import type { TKey } from "../i18n";
-import { gradeAnswer, shuffle } from "./study";
+import { gradeAnswer } from "./grading";
+
+/** Fisher-Yates, returns a new list. */
+export function shuffle<T>(list: T[]): T[] {
+  const mixed = [...list];
+  for (let i = mixed.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [mixed[i], mixed[j]] = [mixed[j], mixed[i]];
+  }
+  return mixed;
+}
 
 export type QuestionKind = "choice" | "truefalse" | "written";
 
 /** The bits of a term a question needs. SetTerm has them all. */
-export type QuestionTerm = Pick<SetTerm, "id" | "term" | "definition" | "streak">;
+type QuestionTerm = Pick<SetTerm, "id" | "term" | "definition" | "streak">;
 
 export type TestQuestion = {
   kind: QuestionKind;
@@ -55,15 +65,15 @@ export type TestPaper = {
   matching: MatchPair[];
 };
 
-export type TestSettings = {
+type TestSettings = {
   /** How many questions; clamped to the size of the set. */
   count: number;
   types: QuestionKind[];
   matching: boolean;
 };
 
-/** One question on `term`; the wrong options come from `pool`. Learn uses it too. */
-export function makeQuestion(term: QuestionTerm, pool: QuestionTerm[], kind: QuestionKind): TestQuestion {
+/** One question on `term`; the wrong options come from `pool`. Test picks the kind, Learn and Review go through buildQuestion. */
+function makeQuestion(term: QuestionTerm, pool: QuestionTerm[], kind: QuestionKind): TestQuestion {
   // Written and multiple choice questions ask both ways round.
   const askTerm = kind === "truefalse" ? false : Math.random() < 0.5;
   const answer = askTerm ? term.term : term.definition;

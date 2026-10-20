@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import type { Language } from "./shared";
+import type { Language } from "./languages";
 import type { AppEnv } from "./types";
 import { validate } from "./validate";
 
@@ -15,12 +15,12 @@ export type ReviewCard = {
   streak: number;
   setId: number;
   setTitle: string;
-  /** The set's languages, so the card can be spoken (worker/shared.ts). */
+  /** The set's languages, so the card can be spoken (worker/languages.ts). */
   termLang: Language | null;
   defLang: Language | null;
 };
 
-export type ReviewOverview = {
+type ReviewOverview = {
   /** Due terms across all sets, longest overdue first, at most `limit` of them. */
   cards: ReviewCard[];
   /** How many terms are due altogether, before the cap. */

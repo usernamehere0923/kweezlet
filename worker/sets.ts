@@ -1,12 +1,13 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import { notifyLater } from "./live";
-import { LANGUAGES, type Language, termProgress, type TermProgress } from "./shared";
-import type { Status } from "./study";
+import { LANGUAGES, type Language } from "./languages";
+import { termProgress } from "./progress";
+import { allIdsOwned, ownedTermIds, termStatements } from "./setTerms";
+import type { Status, TermStatus } from "./study";
 import type { AppEnv } from "./types";
-import { idParam, validate } from "./validate";
+import { idParam, validate, validationError } from "./validate";
 
-export type { Language };
 const languageSchema = z.enum(LANGUAGES);
 
 const searchQuery = z.object({ q: z.string().trim().max(200).optional() });
@@ -43,19 +44,29 @@ type TermRow = {
   streak: number;
 };
 
+/** The columns of SetRow, from the set row `s`. */
+const SET_COLUMNS = "s.id, s.title, s.description, s.term_lang, s.def_lang, s.created_at, s.updated_at";
+
+/** Joins a term `t` to the user's mark (ts) and answer stats (st) for it. */
+const TERM_PROGRESS_JOINS = `LEFT JOIN term_state ts ON ts.term_id = t.id AND ts.user_id = t.user_id
+      LEFT JOIN term_stats st ON st.term_id = t.id AND st.user_id = t.user_id`;
+
 /**
  * Per set: how many terms are known / learning. The same rule as
- * termProgress() in worker/shared.ts, in SQL. `s` is the set row.
+ * termProgress() in worker/progress.ts, in SQL. `s` is the set row.
  */
 const progressCount = (where: string) =>
   `(SELECT COUNT(*) FROM terms t
-      LEFT JOIN term_state ts ON ts.term_id = t.id AND ts.user_id = t.user_id
-      LEFT JOIN term_stats st ON st.term_id = t.id AND st.user_id = t.user_id
+      ${TERM_PROGRESS_JOINS}
      WHERE t.set_id = s.id AND t.user_id = s.user_id AND (${where}))`;
 const KNOWN_COUNT = progressCount("ts.status = 'know_it'");
 const LEARNING_COUNT = progressCount("ts.status = 'still_learning' OR (ts.status IS NULL AND st.streak > 0)");
 
-type CountRow = { term_count?: number; known_count?: number; learning_count?: number };
+/** The columns of CountRow, for the set row `s`. */
+const COUNT_COLUMNS = `(SELECT COUNT(*) FROM terms t WHERE t.set_id = s.id AND t.user_id = s.user_id) AS term_count,
+       ${KNOWN_COUNT} AS known_count, ${LEARNING_COUNT} AS learning_count`;
+
+type CountRow = { term_count: number; known_count: number; learning_count: number };
 
 function toSetJson(row: SetRow & CountRow) {
   return {
@@ -65,13 +76,18 @@ function toSetJson(row: SetRow & CountRow) {
     // Written through languageSchema, so the text is a known language or null.
     termLang: row.term_lang as Language | null,
     defLang: row.def_lang as Language | null,
-    termCount: row.term_count ?? 0,
+    termCount: row.term_count,
     /** Terms known / learning (termProgress); the rest are new. */
-    knownCount: row.known_count ?? 0,
-    learningCount: row.learning_count ?? 0,
+    knownCount: row.known_count,
+    learningCount: row.learning_count,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+}
+
+/** title, description, term_lang, def_lang from a request body, in that order. */
+function setFields(body: z.infer<typeof setBody>) {
+  return [body.title, body.description ?? "", body.termLang ?? null, body.defLang ?? null] as const;
 }
 
 /** Turns a search word into a LIKE pattern that treats % _ \ as plain text. */
@@ -81,8 +97,6 @@ function likePattern(q: string): string {
 
 // The JSON shapes of the routes below. The UI imports these as types.
 export type SetSummary = ReturnType<typeof toSetJson>;
-/** "unseen" = the term has no mark yet (worker/study.ts stores the rest). */
-export type TermStatus = "unseen" | Status;
 export type SetTerm = {
   id: number;
   term: string;
@@ -104,8 +118,7 @@ async function loadSetDetail(db: D1Database, userId: number, id: number): Promis
   const [setRows, termRows] = await db.batch([
     db
       .prepare(
-        `SELECT s.id, s.title, s.description, s.term_lang, s.def_lang, s.created_at, s.updated_at,
-                mb.seconds AS best_seconds
+        `SELECT ${SET_COLUMNS}, mb.seconds AS best_seconds
            FROM sets s
            LEFT JOIN match_best mb ON mb.set_id = s.id AND mb.user_id = s.user_id
           WHERE s.id = ? AND s.user_id = ?`,
@@ -116,8 +129,7 @@ async function loadSetDetail(db: D1Database, userId: number, id: number): Promis
         `SELECT t.id, t.term, t.definition, t.position, ts.status, COALESCE(ts.starred, 0) AS starred,
                 COALESCE(st.streak, 0) AS streak
            FROM terms t
-           LEFT JOIN term_state ts ON ts.term_id = t.id AND ts.user_id = t.user_id
-           LEFT JOIN term_stats st ON st.term_id = t.id AND st.user_id = t.user_id
+           ${TERM_PROGRESS_JOINS}
           WHERE t.set_id = ? AND t.user_id = ?
           ORDER BY t.position`,
       )
@@ -126,68 +138,18 @@ async function loadSetDetail(db: D1Database, userId: number, id: number): Promis
   const set = setRows!.results[0] as (SetRow & { best_seconds: number | null }) | undefined;
   if (!set) return null;
   const terms = termRows!.results as TermRow[];
-  const count = (progress: TermProgress) => terms.filter((row) => termProgress(row) === progress).length;
+  // The terms are here already: count them instead of asking SQL again.
+  const counts: CountRow = { term_count: terms.length, known_count: 0, learning_count: 0 };
+  for (const term of terms) {
+    const progress = termProgress(term);
+    if (progress === "known") counts.known_count++;
+    else if (progress === "learning") counts.learning_count++;
+  }
   return {
-    ...toSetJson({
-      ...set,
-      term_count: terms.length,
-      known_count: count("known"),
-      learning_count: count("learning"),
-    }),
+    ...toSetJson({ ...set, ...counts }),
     terms: terms.map((row) => ({ ...row, status: row.status ?? "unseen", starred: !!row.starred })),
     bestSeconds: set.best_seconds,
   };
-}
-
-/** The ids of this user's terms in this set, or null when the set is not theirs. One query. */
-async function ownedTermIds(db: D1Database, userId: number, setId: number): Promise<Set<number> | null> {
-  const { results } = await db
-    .prepare(
-      `SELECT t.id FROM sets s LEFT JOIN terms t ON t.set_id = s.id AND t.user_id = s.user_id
-        WHERE s.id = ? AND s.user_id = ?`,
-    )
-    .bind(setId, userId)
-    .all<{ id: number | null }>();
-  if (results.length === 0) return null;
-  return new Set(results.flatMap((row) => (row.id === null ? [] : [row.id])));
-}
-
-/**
- * The statements that make the stored terms exactly the given list: new ones
- * are inserted, given ids are updated in place (their id survives, so study
- * progress sticks to the term), ids that disappear are deleted. `known` must
- * be the set's owned term ids; every given id must be in it.
- */
-function termStatements(
-  db: D1Database,
-  userId: number,
-  setId: number,
-  terms: z.infer<typeof termShape>[],
-  known: Set<number>,
-): D1PreparedStatement[] {
-  const keep = new Set(terms.flatMap((t) => (t.id === undefined ? [] : [t.id])));
-  const statements: D1PreparedStatement[] = [...known]
-    .filter((termId) => !keep.has(termId))
-    .map((termId) => db.prepare("DELETE FROM terms WHERE id = ? AND user_id = ?").bind(termId, userId));
-  terms.forEach((t, position) => {
-    statements.push(
-      t.id === undefined
-        ? db
-            .prepare("INSERT INTO terms (user_id, set_id, term, definition, position) VALUES (?, ?, ?, ?, ?)")
-            .bind(userId, setId, t.term, t.definition, position)
-        : db
-            .prepare(
-              "UPDATE terms SET term = ?, definition = ?, position = ? WHERE id = ? AND set_id = ? AND user_id = ?",
-            )
-            .bind(t.term, t.definition, position, t.id, setId, userId),
-    );
-  });
-  return statements;
-}
-
-/** True when every given term id is one of this user's terms in this set. */
-function allIdsOwned(terms: z.infer<typeof termShape>[], known: Set<number>): boolean {
-  return terms.every((t) => t.id === undefined || known.has(t.id));
 }
 
 export const setRoutes = new Hono<AppEnv>()
@@ -203,9 +165,7 @@ export const setRoutes = new Hono<AppEnv>()
                            AND (t.term LIKE ? ESCAPE '\\' OR t.definition LIKE ? ESCAPE '\\')))`
       : "";
     const { results } = await c.env.DB.prepare(
-      `SELECT s.id, s.title, s.description, s.term_lang, s.def_lang, s.created_at, s.updated_at,
-              (SELECT COUNT(*) FROM terms t WHERE t.set_id = s.id AND t.user_id = s.user_id) AS term_count,
-              ${KNOWN_COUNT} AS known_count, ${LEARNING_COUNT} AS learning_count
+      `SELECT ${SET_COLUMNS}, ${COUNT_COLUMNS}
          FROM sets s
         WHERE s.user_id = ? ${search}
         ORDER BY s.updated_at DESC, s.id DESC`,
@@ -229,7 +189,7 @@ export const setRoutes = new Hono<AppEnv>()
     const db = c.env.DB;
     // A new set's terms are new terms; it cannot adopt existing ones.
     if (body.terms.some((t) => t.id !== undefined)) {
-      return c.json({ error: "validation" as const, fields: { terms: "invalid_value" } }, 400);
+      return validationError(c, { terms: "invalid_value" });
     }
     // One batch: a failed term insert must not leave an empty set behind. Inside
     // the batch the new set is the user's highest id, so the terms find it.
@@ -238,7 +198,7 @@ export const setRoutes = new Hono<AppEnv>()
         .prepare(
           "INSERT INTO sets (user_id, title, description, term_lang, def_lang) VALUES (?, ?, ?, ?, ?) RETURNING id",
         )
-        .bind(user.id, body.title, body.description ?? "", body.termLang ?? null, body.defLang ?? null),
+        .bind(user.id, ...setFields(body)),
       ...body.terms.map((t, position) =>
         db
           .prepare(
@@ -260,10 +220,10 @@ export const setRoutes = new Hono<AppEnv>()
     const { id } = c.req.valid("param");
     const body = c.req.valid("json");
     const db = c.env.DB;
-    const known = await ownedTermIds(db, user.id, id);
-    if (!known) return c.json({ error: "not_found" as const }, 404);
-    if (!allIdsOwned(body.terms, known)) {
-      return c.json({ error: "validation" as const, fields: { terms: "invalid_value" } }, 400);
+    const ownedIds = await ownedTermIds(db, user.id, id);
+    if (!ownedIds) return c.json({ error: "not_found" as const }, 404);
+    if (!allIdsOwned(body.terms, ownedIds)) {
+      return validationError(c, { terms: "invalid_value" });
     }
     // One batch: the set and its terms change together or not at all.
     await db.batch([
@@ -271,8 +231,8 @@ export const setRoutes = new Hono<AppEnv>()
         .prepare(
           "UPDATE sets SET title = ?, description = ?, term_lang = ?, def_lang = ?, updated_at = unixepoch() WHERE id = ? AND user_id = ?",
         )
-        .bind(body.title, body.description ?? "", body.termLang ?? null, body.defLang ?? null, id, user.id),
-      ...termStatements(db, user.id, id, body.terms, known),
+        .bind(...setFields(body), id, user.id),
+      ...termStatements(db, user.id, id, body.terms, ownedIds),
     ]);
     notifyLater(c, "sets");
     // The set exists (checked above), so the reload cannot miss it.

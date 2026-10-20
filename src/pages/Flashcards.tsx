@@ -1,89 +1,43 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useParams } from "react-router";
-import type { SetTerm } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useStudySet } from "../lib/studySet";
-import { shuffle, useStudyDay } from "../lib/study";
+import { inDeck, useDeck, type DeckFilter } from "../lib/deck";
+import { useStudyDay } from "../lib/studyDay";
 import {
-  ButtonLink,
   CardNav,
   EmptyState,
   FlipCard,
   Heading,
   IconButton,
   KnowItButtons,
+  PageLoadFailed,
+  PageLoading,
   ProgressBar,
   SegmentedControl,
-  PageLoading,
   SlideSwap,
-  StreakBadge,
+  StudyHeader,
 } from "../ui";
 
 type Side = "term" | "definition";
-type Filter = "all" | "still_learning" | "know_it" | "starred";
-
-function matches(filter: Filter, term: SetTerm): boolean {
-  if (filter === "all") return true;
-  if (filter === "starred") return term.starred;
-  return term.status === filter;
-}
-
 export function FlashcardsPage() {
   const { t } = useT();
   const { id = "" } = useParams();
   const [side, setSide] = useState<Side>("term");
-  const [filter, setFilter] = useState<Filter>("all");
-  const [order, setOrder] = useState<number[]>([]);
-  const [index, setIndex] = useState(0);
+  const [filter, setFilter] = useState<DeckFilter>("all");
   const [flipped, setFlipped] = useState(false);
-  /** The last move went to an earlier card: slide the other way. */
-  const [back, setBack] = useState(false);
   const [started, setStarted] = useState(false);
   const streak = useStudyDay(started);
 
   // Another device marked or renamed something: catch up, keep the position.
-  const [set, setSet] = useStudySet(id, ["sets", "study"], (data) => {
-    // Surviving terms keep their shuffled place; new ones go to the end.
-    setOrder((prev) => {
-      const had = new Set(prev);
-      const seen = new Set(data.terms.map((term) => term.id));
-      return [
-        ...prev.filter((termId) => seen.has(termId)),
-        ...data.terms.map((term) => term.id).filter((termId) => !had.has(termId)),
-      ];
-    });
-  });
+  const { set, updateTerm, failed, retry } = useStudySet(id, ["sets", "study"]);
+  const { deck, at, current, back, goTo: moveTo, reshuffle } = useDeck(set?.terms, filter);
 
-  // The deck is the shuffled order, cut down to the chosen filter. Marking a
-  // card can pull it out of the deck; the index clamps when that happens.
-  const deck = useMemo(() => {
-    if (!set) return [];
-    const byId = new Map(set.terms.map((term) => [term.id, term]));
-    return order.flatMap((termId) => {
-      const term = byId.get(termId);
-      return term && matches(filter, term) ? [term] : [];
-    });
-  }, [set, order, filter]);
-  const at = deck.length === 0 ? 0 : Math.min(Math.max(index, 0), deck.length - 1);
-  const current = deck[at] ?? null;
-
-  function updateTerm(termId: number, state: Partial<SetTerm>) {
-    setSet((s) =>
-      s ? { ...s, terms: s.terms.map((term) => (term.id === termId ? { ...term, ...state } : term)) } : s,
-    );
-  }
-
-  /** `back`: slide as if going to an earlier card. A new order or filter goes forward. */
-  function goTo(next: number, back = next < at) {
-    setBack(back);
-    setIndex(next);
+  /** Every move shows the next card's front. */
+  function goTo(next: number, back?: boolean) {
+    moveTo(next, back);
     setFlipped(false);
-  }
-
-  function reshuffle() {
-    setOrder((cards) => shuffle(cards));
-    goTo(0, false);
   }
 
   async function saveState(termId: number, state: { status?: "still_learning" | "know_it"; starred?: boolean }) {
@@ -100,7 +54,7 @@ export function FlashcardsPage() {
     setStarted(true);
     // A card that no longer matches the filter leaves the deck and the next
     // one slides into its place: stay put instead of jumping over it.
-    const keeps = matches(filter, { ...current, status });
+    const keeps = inDeck(filter, { ...current, status });
     if (await saveState(current.id, { status })) goTo(keeps ? at + 1 : at);
   }
 
@@ -109,8 +63,11 @@ export function FlashcardsPage() {
     await saveState(current.id, { starred: !current.starred });
   }
 
+  if (failed) {
+    return <PageLoadFailed title={t("sets.loadFailed")} onRetry={retry} />;
+  }
   if (!set) {
-    return <PageLoading label={t("common.loading")} />;
+    return <PageLoading />;
   }
 
   const known = set.terms.filter((term) => term.status === "know_it").length;
@@ -123,12 +80,7 @@ export function FlashcardsPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <ButtonLink to={`/sets/${id}`} variant="ghost" icon="chevronLeft" className="-ml-3">
-          {t("study.backToSet")}
-        </ButtonLink>
-        {streak > 0 && <StreakBadge days={streak} />}
-      </div>
+      <StudyHeader backTo={`/sets/${id}`} backLabel={t("study.backToSet")} streak={streak} />
 
       <div className="mb-3 flex items-center justify-between gap-3">
         <Heading level={3}>{set.title}</Heading>
@@ -155,7 +107,7 @@ export function FlashcardsPage() {
             { value: "definition", label: t("study.definitionFirst") },
           ]}
         />
-        <SegmentedControl<Filter>
+        <SegmentedControl<DeckFilter>
           label={t("study.filterLabel")}
           value={filter}
           onChange={(f) => {
@@ -196,7 +148,10 @@ export function FlashcardsPage() {
               total={deck.length}
               onPrev={() => goTo(at - 1)}
               onNext={() => goTo(at + 1)}
-              onShuffle={reshuffle}
+              onShuffle={() => {
+                reshuffle();
+                setFlipped(false);
+              }}
             />
           </div>
 

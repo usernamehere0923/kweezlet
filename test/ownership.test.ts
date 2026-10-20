@@ -8,7 +8,7 @@ import { requireUser } from "../worker/auth";
 import { exportTables, exportUserData, privateTables } from "../worker/export";
 import app from "../worker/index";
 import type { AppEnv } from "../worker/types";
-import { addUser, api, BASE, login } from "./helpers";
+import { addUser, api, BASE, signedIn } from "./helpers";
 
 async function createNotes() {
   await env.DB.exec(
@@ -28,13 +28,12 @@ const withNotes = new Hono<AppEnv>()
 describe("data ownership", () => {
   it("a user only ever sees their own rows", async () => {
     await createNotes();
-    const anna = await addUser("anna", "secret-pw");
+    const { id: anna, cookie } = await signedIn("anna");
     const ben = await addUser("ben", "secret-pw");
     await env.DB.batch([
       env.DB.prepare("INSERT INTO notes (user_id, text) VALUES (?, ?)").bind(anna, "anna's note"),
       env.DB.prepare("INSERT INTO notes (user_id, text) VALUES (?, ?)").bind(ben, "ben's note"),
     ]);
-    const cookie = await login("anna", "secret-pw");
     const res = await withNotes.request(BASE + "/api/notes", { headers: { Cookie: cookie } }, env);
     expect(await res.json()).toEqual([{ id: 1, text: "anna's note" }]);
   });
@@ -51,8 +50,7 @@ describe("data ownership", () => {
 
 describe("export", () => {
   it("downloads as an attachment and holds no secrets", async () => {
-    await addUser("anna", "secret-pw");
-    const cookie = await login("anna", "secret-pw");
+    const { cookie } = await signedIn("anna");
     const res = await api("/api/me/export", { cookie });
     expect(res.status).toBe(200);
     expect(res.headers.get("Content-Disposition")).toMatch(

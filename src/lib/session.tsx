@@ -3,7 +3,7 @@ import type { PublicUser } from "../../worker/types";
 import { useT } from "../i18n";
 import { api, UNAUTHORIZED_EVENT } from "./api";
 
-export type Me = PublicUser;
+type Me = PublicUser;
 
 type Session =
   { status: "loading"; user: null } | { status: "anonymous"; user: null } | { status: "loggedIn"; user: Me };
@@ -15,6 +15,8 @@ type SessionApi = Session & {
   /** Reloads the user from the server (e.g. after another device changed a setting). */
   refresh: () => Promise<void>;
 };
+
+const ANONYMOUS: Session = { status: "anonymous", user: null };
 
 const SessionContext = createContext<SessionApi | null>(null);
 
@@ -30,30 +32,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     [setLocale],
   );
 
-  const refresh = useCallback(async () => {
-    try {
-      const res = await api.me.$get();
-      if (res.ok) signedIn(await res.json());
-      else setSession({ status: "anonymous", user: null });
-    } catch {
-      setSession((s) => (s.status === "loading" ? { status: "anonymous", user: null } : s));
-    }
+  const refresh = useCallback(() => {
+    // Only a 401 means logged out, and api.ts reports that (UNAUTHORIZED_EVENT,
+    // below). A server error or no connection keeps the session as it is; on
+    // the first load there is none yet, so: the login.
+    const failed = () => setSession((s) => (s.status === "loading" ? ANONYMOUS : s));
+    return api.me.$get().then(async (res) => (res.ok ? signedIn(await res.json()) : failed()));
   }, [signedIn]);
 
   const logout = useCallback(async () => {
-    await api.logout.$post().catch(() => undefined);
-    setSession({ status: "anonymous", user: null });
+    await api.logout.$post();
+    setSession(ANONYMOUS);
   }, []);
 
+  useEffect(() => void refresh(), [refresh]);
   useEffect(() => {
-    api.me
-      .$get()
-      .then(async (res) => (res.ok ? signedIn(await res.json()) : setSession({ status: "anonymous", user: null })))
-      .catch(() => setSession({ status: "anonymous", user: null }));
-    const onUnauthorized = () => setSession({ status: "anonymous", user: null });
+    const onUnauthorized = () => setSession(ANONYMOUS);
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
-  }, [signedIn]);
+  }, []);
 
   const value = useMemo(() => ({ ...session, signedIn, logout, refresh }), [session, signedIn, logout, refresh]);
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

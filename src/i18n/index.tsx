@@ -1,12 +1,12 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { LOCALES, type Locale } from "../../worker/languages";
 import { deCH } from "./de-CH";
 import { en } from "./en";
 
-export const LOCALES = ["en", "de-CH"] as const;
-export type Locale = (typeof LOCALES)[number];
+export { LOCALES, type Locale };
 export type TKey = keyof typeof en;
 /** Keys that come as a _one/_other pair, without the suffix: "study.terms". */
-export type TPluralKey = TKey extends infer K ? (K extends `${infer B}_one` ? B : never) : never;
+type TPluralKey = TKey extends infer K ? (K extends `${infer B}_one` ? B : never) : never;
 type Vars = Record<string, string | number>;
 
 const dictionaries: Record<Locale, Record<TKey, string>> = { en, "de-CH": deCH };
@@ -39,7 +39,6 @@ type I18n = {
   /** tn("study.terms", 3) -> "3 terms" (picks _one or _other) */
   tn: (key: TPluralKey, count: number, vars?: Vars) => string;
   formatNumber: (n: number, options?: Intl.NumberFormatOptions) => string;
-  formatDate: (d: Date | number, options?: Intl.DateTimeFormatOptions) => string;
 };
 
 const I18nContext = createContext<I18n | null>(null);
@@ -69,7 +68,6 @@ export function I18nProvider({ children }: { children: ReactNode }) {
         return fill(dict[`${key}_${form}` as TKey], { count, ...vars });
       },
       formatNumber: (n, options) => new Intl.NumberFormat(locale, options).format(n),
-      formatDate: (d, options) => new Intl.DateTimeFormat(locale, options).format(d),
     };
   }, [locale, setLocale]);
 

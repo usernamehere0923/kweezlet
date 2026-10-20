@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { termProgress } from "../../worker/shared";
-import type { SetDetail as SetDetailData } from "../../worker/sets";
+import { termProgress } from "../../worker/progress";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
-import { useLive } from "../lib/live";
 import { MIN_MATCH_TERMS } from "../lib/quiz";
-import { formatTime } from "../lib/study";
+import { useStudySet } from "../lib/studySet";
+import { formatTime } from "../lib/formatTime";
 import {
   Button,
   ButtonLink,
@@ -14,6 +13,7 @@ import {
   Heading,
   Modal,
   PageTitle,
+  PageLoadFailed,
   PageLoading,
   ProgressBar,
   StudyModeTile,
@@ -27,32 +27,19 @@ export function SetDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const toast = useToast();
-  const [set, setSet] = useState<SetDetailData | null>(null);
   const [missing, setMissing] = useState(false);
   const [confirming, setConfirming] = useState(false);
-
-  const reload = useCallback(
-    () =>
-      api.sets[":id"].$get({ param: { id } }).then(async (res) => {
-        if (res.ok) {
-          setSet(await res.json());
-          setMissing(false);
-        } else if (res.status === 404) {
-          setMissing(true);
-        }
-      }),
-    [id],
-  );
-
-  useEffect(() => void reload(), [reload]);
-  useLive("sets", () => void reload());
-  useLive("match", () => void reload());
   // Marks and answers on another device move the progress bar and the dots.
-  useLive("study", () => void reload());
+  // A set that is gone says so here instead of leaving.
+  const { set, failed, retry } = useStudySet(id, ["sets", "match", "study"], {
+    onLoad: () => setMissing(false),
+    onMissing: () => setMissing(true),
+  });
 
   async function remove() {
-    const res = await api.sets[":id"].$delete({ param: { id } });
     setConfirming(false);
+    // Not deleted (api.ts shows why): the set stays.
+    const res = await api.sets[":id"].$delete({ param: { id } });
     if (res.ok) {
       toast(t("sets.deleted"), "success");
       navigate("/");
@@ -67,14 +54,17 @@ export function SetDetailPage() {
         text={t("notFound.text")}
         action={
           <ButtonLink to="/" icon="chevronLeft">
-            {t("notFound.action")}
+            {t("common.backHome")}
           </ButtonLink>
         }
       />
     );
   }
+  if (failed) {
+    return <PageLoadFailed title={t("sets.loadFailed")} onRetry={retry} />;
+  }
   if (!set) {
-    return <PageLoading label={t("common.loading")} />;
+    return <PageLoading />;
   }
 
   return (

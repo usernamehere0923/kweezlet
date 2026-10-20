@@ -580,8 +580,9 @@ Answer with JSON only, no prose, no code fences:
             error, source_name, kind, title, term_lang, def_lang, instructions, set_id NULL REFERENCES sets ON DELETE
             SET NULL, pages_json, cards_json</code
           >) and <code>ai_usage</code>, plus <code>exportTables</code> and the seed. <code>worker/ai/verify.ts</code> +
-          its tests in the same step. <code>normalizeAnswer</code> moves from <code>src/lib/study.ts</code> to
-          <code>worker/shared.ts</code> so the worker can dedup with it.
+          its tests in the same step. <code>normalizeAnswer</code> moves from <code>src/lib/grading.ts</code> to an
+          import-free <code>worker/grading.ts</code> (like <code>worker/progress.ts</code>) so the worker can dedup with
+          it.
         </li>
         <li>
           **Routes <code>worker/ai.ts</code>.** Every query scoped to <code>c.get(&quot;user&quot;).id</code>, validated

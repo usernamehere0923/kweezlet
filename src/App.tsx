@@ -4,7 +4,7 @@ import { I18nProvider, useT } from "./i18n";
 import { SERVER_ERROR_EVENT } from "./lib/api";
 import { clientId, LiveProvider, useLive } from "./lib/live";
 import { SessionProvider, useSession } from "./lib/session";
-import { DesignSystemPage } from "./pages/DesignSystem";
+import { DesignSystemPage } from "./pages/design";
 import { HomePage } from "./pages/Home";
 import { LoginPage } from "./pages/Login";
 import { NotFoundPage } from "./pages/NotFound";
@@ -16,7 +16,7 @@ import { FlashcardsPage } from "./pages/Flashcards";
 import { LearnPage } from "./pages/Learn";
 import { MatchPage } from "./pages/Match";
 import { TestPage } from "./pages/Test";
-import { AppShell, DevRibbon, ErrorBoundary, Spinner, ToastProvider, useToast, type NavItem } from "./ui";
+import { AppShell, DevRibbon, ErrorBoundary, PageLoading, ToastProvider, useToast, type NavItem } from "./ui";
 
 export function App() {
   return (
@@ -45,11 +45,7 @@ function Root() {
   }, [t, toast]);
 
   if (session.status === "loading") {
-    return (
-      <div className="flex min-h-dvh items-center justify-center text-muted">
-        <Spinner size={28} label={t("common.loading")} />
-      </div>
-    );
+    return <PageLoading fullScreen />;
   }
   if (session.status === "anonymous") return <LoginPage />;
 
@@ -68,7 +64,7 @@ function LiveSync() {
   const toast = useToast();
   useLive("settings", () => void refresh());
   useLive("ping", (data) => {
-    if ((data as { from?: string } | undefined)?.from !== clientId) toast(t("design.pingReceived"), "info");
+    if ((data as { from?: string } | undefined)?.from !== clientId) toast(t("live.pingReceived"), "info");
   });
   return null;
 }

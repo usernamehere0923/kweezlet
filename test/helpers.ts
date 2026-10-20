@@ -1,12 +1,12 @@
 import { env, exports } from "cloudflare:workers";
-import { hashPassword, randomHex } from "../worker/crypto";
+import { newPasswordHash } from "../worker/crypto";
 
 export const BASE = "http://kweezlet.test";
 
 export async function addUser(username: string, password: string): Promise<number> {
-  const salt = randomHex(16);
+  const { salt, hash } = await newPasswordHash(password);
   const row = await env.DB.prepare("INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?) RETURNING id")
-    .bind(username, await hashPassword(password, salt), salt)
+    .bind(username, hash, salt)
     .first<{ id: number }>();
   return row!.id;
 }
@@ -29,4 +29,10 @@ export async function login(username: string, password: string): Promise<string>
   const res = await api("/api/login", { method: "POST", json: { username, password } });
   if (res.status !== 200) throw new Error(`login failed: ${res.status}`);
   return res.headers.get("Set-Cookie")!.split(";")[0];
+}
+
+/** A new user, logged in: their id and Cookie header value. */
+export async function signedIn(username: string, password = "secret-pw"): Promise<{ id: number; cookie: string }> {
+  const id = await addUser(username, password);
+  return { id, cookie: await login(username, password) };
 }

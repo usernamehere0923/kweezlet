@@ -52,10 +52,6 @@ const statements: string[] = [
   `INSERT INTO study_days (user_id, day) VALUES (${demo}, '${day(0)}'), (${demo}, '${day(1)}'), (${demo}, '${day(2)}')`,
 ];
 
-if (statements.length === 0) {
-  console.log("seed: no sample data yet");
-} else {
-  execFileSync("npx", ["wrangler", "d1", "execute", "DB", "--local", "--command", statements.join(";\n")], {
-    stdio: "inherit",
-  });
-}
+execFileSync("npx", ["wrangler", "d1", "execute", "DB", "--local", "--command", statements.join(";\n")], {
+  stdio: "inherit",
+});

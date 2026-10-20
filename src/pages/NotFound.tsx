@@ -10,7 +10,7 @@ export function NotFoundPage() {
       text={t("notFound.text")}
       action={
         <ButtonLink to="/" variant="secondary">
-          {t("notFound.action")}
+          {t("common.backHome")}
         </ButtonLink>
       }
     />

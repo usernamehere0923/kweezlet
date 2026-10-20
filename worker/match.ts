@@ -15,28 +15,24 @@ export const matchRoutes = new Hono<AppEnv>()
     const { id } = c.req.valid("param");
     const { seconds } = c.req.valid("json");
     const db = c.env.DB;
-    const set = await db
-      .prepare("SELECT id FROM sets WHERE id = ? AND user_id = ?")
-      .bind(id, user.id)
-      .first<{ id: number }>();
-    if (!set) return c.json({ error: "not_found" as const }, 404);
     // One conditional upsert: two rounds finishing at once cannot let the
-    // slower one overwrite the faster.
+    // slower one overwrite the faster. The insert reads the set itself, so a
+    // set that isn't the user's writes nothing and has no best time to read.
     const [saved, best] = await db.batch([
       db
         .prepare(
-          `INSERT INTO match_best (user_id, set_id, seconds, achieved_at) VALUES (?, ?, ?, unixepoch())
+          `INSERT INTO match_best (user_id, set_id, seconds, achieved_at)
+             SELECT user_id, id, ?, unixepoch() FROM sets WHERE id = ? AND user_id = ?
            ON CONFLICT (user_id, set_id) DO UPDATE SET seconds = excluded.seconds, achieved_at = unixepoch()
              WHERE excluded.seconds < match_best.seconds`,
         )
-        .bind(user.id, id, seconds),
+        .bind(seconds, id, user.id),
       db.prepare("SELECT seconds FROM match_best WHERE user_id = ? AND set_id = ?").bind(user.id, id),
     ]);
+    const row = best!.results[0] as { seconds: number } | undefined;
+    if (!row) return c.json({ error: "not_found" as const }, 404);
     const isNewBest = saved!.meta.changes > 0;
     if (isNewBest) notifyLater(c, "match");
-    const result: { best: number; isNewBest: boolean } = {
-      best: (best!.results[0] as { seconds: number }).seconds,
-      isNewBest,
-    };
+    const result: { best: number; isNewBest: boolean } = { best: row.seconds, isNewBest };
     return c.json(result, 200);
   });

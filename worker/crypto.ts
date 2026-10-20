@@ -4,7 +4,7 @@
 const ITERATIONS = 100_000; // the most PBKDF2 iterations Workers allow
 const encoder = new TextEncoder();
 
-export function toHex(bytes: ArrayBuffer | Uint8Array): string {
+function toHex(bytes: ArrayBuffer | Uint8Array): string {
   return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
@@ -20,6 +20,12 @@ export async function hashPassword(password: string, saltHex: string): Promise<s
     256,
   );
   return toHex(bits);
+}
+
+/** A fresh salt and the password's hash with it, ready to store. */
+export async function newPasswordHash(password: string): Promise<{ salt: string; hash: string }> {
+  const salt = randomHex(16);
+  return { salt, hash: await hashPassword(password, salt) };
 }
 
 export async function sha256Hex(value: string): Promise<string> {

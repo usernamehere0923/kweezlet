@@ -1,7 +1,6 @@
 // Every text the user can see lives here, and in de-CH.ts with the same keys.
 // Placeholders: {name}. Plurals: a key pair ending in _one / _other, used with tn().
 export const en = {
-  "app.name": "kweezlet",
   "app.tagline": "Learn anything, card by card.",
 
   "nav.home": "Home",
@@ -16,6 +15,8 @@ export const en = {
   "dev.ribbon": "Test",
   "common.saved": "Saved",
   "common.clear": "Clear",
+  "common.backHome": "Back home",
+  "common.retry": "Try again",
 
   "errors.server": "Something went wrong. Please try again.",
   "errors.offline": "No connection to the server.",
@@ -43,6 +44,7 @@ export const en = {
   "home.greeting": "Hi {name}",
 
   "sets.new": "Create a set",
+  "sets.loadFailed": "Couldn't load this set.",
   "sets.emptyTitle": "No sets yet",
   "sets.emptyText": "Create your first set and start learning.",
   "sets.emptyAction": "Create your first set",
@@ -87,7 +89,6 @@ export const en = {
   "test.trueFalse": "True or false",
   "test.written": "Written",
   "test.matching": "Matching",
-  "test.matchingHint": "Tap a term and then its definition.",
   "test.timer": "Timer",
   "test.timerOff": "No timer",
   "test.minutes_one": "{count} minute",
@@ -115,7 +116,6 @@ export const en = {
 
   "notFound.title": "Page not found",
   "notFound.text": "This page does not exist (yet).",
-  "notFound.action": "Back home",
 
   "settings.title": "Settings",
   "settings.account": "Account",
@@ -159,9 +159,6 @@ export const en = {
   "design.liveText": "Open kweezlet on a second device, then press the button. The other device shows a message.",
   "design.ping": "Ping my other devices",
   "design.pingSent": "Ping sent",
-  "design.pingReceived": "Ping from your other device!",
-  "design.modalTitle": "Delete this set?",
-  "design.modalText": "This cannot be undone.",
   "design.openModal": "Open modal",
   "design.showToast": "Show toast",
   "design.progressMotion": "Progress motion",
@@ -172,6 +169,8 @@ export const en = {
     "Wins get a moment: a correct answer pops, a good round fills the ring and throws confetti. Cards slide to the next one, buttons press in. Tap Replay, flip the card, go next.",
   "design.replay": "Replay",
   "design.toastText": "This is a toast",
+
+  "live.pingReceived": "Ping from your other device!",
 
   "search.placeholder": "Search",
 
@@ -191,6 +190,7 @@ export const en = {
   "study.mode.learn": "Learn",
   "study.mode.test": "Test",
   "study.mode.match": "Match",
+  "study.matchingHint": "Tap a term and then its definition.",
   "study.addTerm": "Add a term",
   "study.deleteTerm": "Delete term",
   "study.yourAnswer": "Your answer",

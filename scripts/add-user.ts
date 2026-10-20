@@ -2,7 +2,7 @@
 //   npm run user:add -- anna 'some password'            (local dev database)
 //   npm run user:add -- anna 'some password' --remote   (the live database)
 import { execFileSync } from "node:child_process";
-import { hashPassword, randomHex } from "../worker/crypto";
+import { newPasswordHash } from "../worker/crypto";
 
 const args = process.argv.slice(2);
 const remote = args.includes("--remote");
@@ -18,8 +18,7 @@ if (!/^[a-zA-Z0-9_.-]{2,32}$/.test(username)) {
 }
 if (password.length < 8) console.warn("warning: password is shorter than 8 characters");
 
-const salt = randomHex(16);
-const hash = await hashPassword(password, salt);
+const { salt, hash } = await newPasswordHash(password);
 // username is checked above, salt and hash are hex: nothing here needs escaping.
 const sql =
   `INSERT INTO users (username, password_hash, salt) VALUES ('${username}', '${hash}', '${salt}') ` +

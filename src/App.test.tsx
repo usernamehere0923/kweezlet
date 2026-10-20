@@ -34,12 +34,35 @@ describe("login", () => {
     expect((await screen.findByRole("alert")).textContent).toContain(message);
   });
 
+  test("logging in offline does not claim a wrong password", async () => {
+    mockApi({
+      "GET /api/me": () => ({ status: 401 }),
+      "POST /api/login": () => {
+        throw new TypeError("Failed to fetch");
+      },
+    });
+    renderApp();
+    const user = userEvent.setup();
+    await user.type(await screen.findByLabelText("Username"), "demo");
+    await user.type(screen.getByLabelText("Password"), "demo");
+    await user.click(screen.getByRole("button", { name: "Log in" }));
+    expect(await screen.findByText("No connection to the server.")).toBeTruthy();
+    expect(screen.queryByText("Wrong username or password.")).toBeNull();
+    expect(screen.getByRole("button", { name: "Log in" })).toHaveProperty("disabled", false);
+  });
+
   test("switching the language on the login page", async () => {
     mockApi({ "GET /api/me": () => ({ status: 401 }) });
     renderApp();
     await userEvent.setup().click(await screen.findByRole("radio", { name: "Deutsch" }));
     expect(await screen.findByLabelText("Benutzername")).toBeTruthy();
     expect(localStorage.getItem("kz_locale")).toBe("de-CH");
+  });
+
+  test("a server error at start falls back to the login page", async () => {
+    mockApi({ "GET /api/me": () => ({ status: 500 }) });
+    renderApp();
+    expect(await screen.findByLabelText("Username")).toBeTruthy();
   });
 
   test("offline at start falls back to the login page", async () => {
@@ -62,6 +85,23 @@ describe("logged in", () => {
     renderApp("/settings");
     await userEvent.setup().click(await screen.findByRole("radio", { name: "Deutsch" }));
     expect(await screen.findByLabelText("Benutzername")).toBeTruthy();
+  });
+
+  test("a server error while reloading the user keeps the session", async () => {
+    let me: () => { status?: number; json?: unknown } = () => ({ json: ME });
+    mockApi({ "GET /api/me": () => me() });
+    renderApp("/settings");
+    expect(await screen.findByText("Logged in as demo")).toBeTruthy();
+
+    // Another device changed a setting, and the reload hits a broken server.
+    me = () => ({ status: 500 });
+    await waitFor(() => expect(FakeSocket.instances.length).toBeGreaterThan(0));
+    await act(async () => {
+      FakeSocket.last.receive(JSON.stringify({ topic: "settings" }));
+    });
+    expect(await screen.findByText("Something went wrong. Please try again.")).toBeTruthy();
+    expect(screen.getByText("Logged in as demo")).toBeTruthy();
+    expect(screen.queryByLabelText("Username")).toBeNull();
   });
 
   test("server errors show a toast", async () => {
