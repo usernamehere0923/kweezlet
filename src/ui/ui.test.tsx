@@ -30,7 +30,7 @@ describe("fields", () => {
         error="Pick one"
         options={[
           { value: "es", label: "Spanish" },
-          { value: "fr", label: <b>French</b> },
+          { value: "fr", label: "French" },
         ]}
       />,
     );
