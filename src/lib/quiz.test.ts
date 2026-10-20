@@ -96,6 +96,12 @@ describe("buildTest", () => {
     expect(telling.promptSide).toBe("term");
   });
 
+  test("a true/false statement has no side: it mixes both languages", () => {
+    const statement = buildTest(TERMS, { count: 1, types: ["truefalse"], matching: false }).questions[0];
+    expect(statement.kind).toBe("truefalse");
+    expect(statement.promptSide).toBeNull();
+  });
+
   test("no question types means a matching-only paper", () => {
     const paper = buildTest(TERMS, { count: 3, types: [], matching: true });
     expect(paper.questions).toEqual([]);
@@ -169,7 +175,7 @@ const statement: TestQuestion = {
   kind: "truefalse",
   termId: 1,
   prompt: "el perro — the cat",
-  promptSide: "term",
+  promptSide: null,
   label: "test.statement",
   answer: "false",
   options: ["true", "false"],

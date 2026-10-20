@@ -22,8 +22,11 @@ export type TestQuestion = {
   termId: number;
   /** Everything the user reads. True/false statements are "term — definition". */
   prompt: string;
-  /** Which side of the pair the prompt is: it decides the speech language. */
-  promptSide: "term" | "definition";
+  /**
+   * Which side of the pair the prompt is: it decides the speech language. Null
+   * for true/false: the statement mixes both languages, so it isn't spoken.
+   */
+  promptSide: "term" | "definition" | null;
   label: TKey;
   /** The right option, the expected typed text, or "true"/"false". */
   answer: string;
@@ -89,7 +92,7 @@ function makeQuestion(term: QuestionTerm, pool: QuestionTerm[], kind: QuestionKi
       termId: term.id,
       label: "test.statement",
       prompt: `${term.term} — ${shown}`,
-      promptSide: "term",
+      promptSide: null,
       answer: wrong ? "false" : "true",
       options: ["true", "false"],
     };

@@ -37,10 +37,14 @@ export function RoundQuestion({
         onPick={(option) => answered(round.pick(option))}
         onSubmitTyped={() => answered(round.submitTyped())}
         onContinue={onContinue}
-        speak={{
-          text: question.prompt,
-          lang: langs ? (question.promptSide === "term" ? langs.termLang : langs.defLang) : null,
-        }}
+        speak={
+          question.promptSide
+            ? {
+                text: question.prompt,
+                lang: langs ? (question.promptSide === "term" ? langs.termLang : langs.defLang) : null,
+              }
+            : undefined
+        }
       />
     </SlideSwap>
   );
