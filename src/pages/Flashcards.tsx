@@ -6,7 +6,6 @@ import { useStudySet } from "../lib/studySet";
 import { inDeck, useDeck, type DeckFilter } from "../lib/deck";
 import { useStudyDay } from "../lib/studyDay";
 import {
-  ButtonLink,
   CardNav,
   EmptyState,
   FlipCard,
@@ -17,7 +16,7 @@ import {
   SegmentedControl,
   PageLoading,
   SlideSwap,
-  StreakBadge,
+  StudyHeader,
 } from "../ui";
 
 type Side = "term" | "definition";
@@ -77,12 +76,7 @@ export function FlashcardsPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <ButtonLink to={`/sets/${id}`} variant="ghost" icon="chevronLeft" className="-ml-3">
-          {t("study.backToSet")}
-        </ButtonLink>
-        {streak > 0 && <StreakBadge days={streak} />}
-      </div>
+      <StudyHeader backTo={`/sets/${id}`} backLabel={t("study.backToSet")} streak={streak} />
 
       <div className="mb-3 flex items-center justify-between gap-3">
         <Heading level={3}>{set.title}</Heading>

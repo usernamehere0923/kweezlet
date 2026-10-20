@@ -5,7 +5,7 @@ import { useMatchBoard } from "../lib/matchBoard";
 import { buildMatchRound, buildTest, scoreTest, type TestPaper } from "../lib/quiz";
 import { useStudyDay } from "../lib/studyDay";
 import { useStudySet } from "../lib/studySet";
-import { ButtonLink, EmptyState, Heading, PageLoading, ResultSummary, StreakBadge } from "../ui";
+import { EmptyState, Heading, PageLoading, ResultSummary, StudyHeader } from "../ui";
 import { TestPaperView } from "./test/TestPaperView";
 import { TestSetup, type TestChoices } from "./test/TestSetup";
 
@@ -60,12 +60,7 @@ export function TestPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <ButtonLink to={`/sets/${id}`} variant="ghost" icon="chevronLeft" className="-ml-3">
-          {t("study.backToSet")}
-        </ButtonLink>
-        {streak > 0 && <StreakBadge days={streak} />}
-      </div>
+      <StudyHeader backTo={`/sets/${id}`} backLabel={t("study.backToSet")} streak={streak} />
 
       <Heading level={3} className="mb-4">
         {set.title}

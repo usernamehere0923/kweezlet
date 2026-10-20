@@ -8,7 +8,7 @@ import { useStudySet } from "../lib/studySet";
 import { useQuestionRound, type Answered } from "../lib/questionRound";
 import { buildQuestion, shuffle } from "../lib/quiz";
 import { useStudyDay } from "../lib/studyDay";
-import { Button, ButtonLink, EmptyState, Heading, PageLoading, ResultSummary, StreakBadge, Tag } from "../ui";
+import { Button, EmptyState, Heading, PageLoading, ResultSummary, StudyHeader, Tag } from "../ui";
 import { RoundQuestion } from "./RoundQuestion";
 
 export function LearnPage() {
@@ -71,12 +71,7 @@ export function LearnPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <ButtonLink to={`/sets/${id}`} variant="ghost" icon="chevronLeft" className="-ml-3">
-          {t("study.backToSet")}
-        </ButtonLink>
-        {streak > 0 && <StreakBadge days={streak} />}
-      </div>
+      <StudyHeader backTo={`/sets/${id}`} backLabel={t("study.backToSet")} streak={streak} />
 
       <Heading level={3} className="mb-3">
         {set.title}

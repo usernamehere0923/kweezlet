@@ -7,7 +7,7 @@ import { useLive } from "../lib/live";
 import { useQuestionRound, type Answered } from "../lib/questionRound";
 import { buildQuestion, shuffle } from "../lib/quiz";
 import { useStudyDay } from "../lib/studyDay";
-import { ButtonLink, EmptyState, Heading, PageLoading, ResultSummary, StreakBadge, Tag } from "../ui";
+import { ButtonLink, EmptyState, Heading, PageLoading, ResultSummary, StudyHeader, Tag } from "../ui";
 import { RoundQuestion } from "./RoundQuestion";
 
 /** Due cards fetched when another device answers: enough to see which of ours are still due. */
@@ -95,12 +95,7 @@ export function ReviewPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <ButtonLink to="/" variant="ghost" icon="chevronLeft" className="-ml-3">
-          {t("sets.back")}
-        </ButtonLink>
-        {streak > 0 && <StreakBadge days={streak} />}
-      </div>
+      <StudyHeader backTo="/" backLabel={t("sets.back")} streak={streak} />
 
       <Heading level={3} className="mb-3">
         {t("review.title")}

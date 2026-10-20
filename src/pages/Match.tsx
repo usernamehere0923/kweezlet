@@ -7,7 +7,7 @@ import { useMatchBoard } from "../lib/matchBoard";
 import { buildMatchRound, MATCH_PAIRS, MIN_MATCH_TERMS, type MatchTileData } from "../lib/quiz";
 import { formatTime } from "../lib/formatTime";
 import { useStudyDay } from "../lib/studyDay";
-import { ButtonLink, EmptyState, Heading, MatchResult, MatchTile, PageLoading, StreakBadge, Tag, Text } from "../ui";
+import { ButtonLink, EmptyState, Heading, MatchResult, MatchTile, PageLoading, StudyHeader, Tag, Text } from "../ui";
 
 type RoundResult = { seconds: number; best: number; isNewBest: boolean };
 
@@ -92,12 +92,7 @@ export function MatchPage() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <ButtonLink to={`/sets/${id}`} variant="ghost" icon="chevronLeft" className="-ml-3">
-          {t("study.backToSet")}
-        </ButtonLink>
-        {streak > 0 && <StreakBadge days={streak} />}
-      </div>
+      <StudyHeader backTo={`/sets/${id}`} backLabel={t("study.backToSet")} streak={streak} />
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <Heading level={3}>{set.title}</Heading>
