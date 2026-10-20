@@ -6,7 +6,7 @@ import { en } from "./en";
 export { LOCALES, type Locale };
 export type TKey = keyof typeof en;
 /** Keys that come as a _one/_other pair, without the suffix: "study.terms". */
-export type TPluralKey = TKey extends infer K ? (K extends `${infer B}_one` ? B : never) : never;
+type TPluralKey = TKey extends infer K ? (K extends `${infer B}_one` ? B : never) : never;
 type Vars = Record<string, string | number>;
 
 const dictionaries: Record<Locale, Record<TKey, string>> = { en, "de-CH": deCH };

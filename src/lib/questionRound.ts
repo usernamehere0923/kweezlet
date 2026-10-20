@@ -3,7 +3,7 @@ import type { TestQuestion } from "./quiz";
 import { gradeAnswer } from "./grading";
 
 /** The question for a term id, or null when the term is gone (deleted, answered elsewhere). */
-export type AskTerm = (termId: number) => TestQuestion | null;
+type AskTerm = (termId: number) => TestQuestion | null;
 
 /**
  * One Learn-style round, the part Learn and Review share: a queue of term ids
