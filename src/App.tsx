@@ -16,16 +16,27 @@ import { FlashcardsPage } from "./pages/Flashcards";
 import { LearnPage } from "./pages/Learn";
 import { MatchPage } from "./pages/Match";
 import { TestPage } from "./pages/Test";
-import { AppShell, DevRibbon, ErrorBoundary, PageLoading, ToastProvider, useToast, type NavItem } from "./ui";
+import {
+  AppShell,
+  DevRibbon,
+  ErrorBoundary,
+  HotkeyInput,
+  PageLoading,
+  ToastProvider,
+  useToast,
+  type NavItem,
+} from "./ui";
 
 export function App() {
   return (
     <I18nProvider>
-      <ToastProvider>
-        <SessionProvider>
-          <Root />
-        </SessionProvider>
-      </ToastProvider>
+      <HotkeyInput>
+        <ToastProvider>
+          <SessionProvider>
+            <Root />
+          </SessionProvider>
+        </ToastProvider>
+      </HotkeyInput>
       {/* Only on `npm run dev`; the live app never shows it. */}
       {import.meta.env.DEV && <DevRibbon />}
     </I18nProvider>

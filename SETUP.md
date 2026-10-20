@@ -87,31 +87,25 @@ You can close Terminal now. You won't need it every day.
 
 Try it on your iPhone (same wifi): ask OpenCode _"start the app for my iPhone"_.
 
-## Part 4: Your first task
+## Part 4: What kweezlet can do, and what's next
 
-Right now kweezlet can log you in and show its building blocks, but you can't make any cards yet. Your first task: **your own study sets**.
+kweezlet already does a lot. Start the app (Part 3) and look around:
 
-1. Start the app (Part 3) and click **Design** once. That's what your screens will be built from.
-2. In OpenCode, paste this:
+- **Sets:** create, edit and delete your own study sets, with a language for the terms and one for the definitions.
+- **Flashcards:** tap or press Space to flip, arrows for next and previous, Know it / Still learning.
+- **Learn, Test, Match:** practice until you know every term, take a test with a score, race against the clock.
+- **Review:** the terms that are due again, so you don't forget what you learned.
+- **Audio:** the speaker button reads a card out loud in its language.
+- **Account levels:** admin, pro and standard.
 
-   > I want to create my own study sets. A set has a title and a list of terms; each term has a word and its meaning.
-   > On the home page I want to see all my sets and a button to create a new one. When I create a set, I type a title and add terms one by one. When I tap a set, I see all its terms.
-   > Also add three sample sets for demo, like Spanish animals, colours and numbers.
-   > Build the screens only from the building blocks on the Design page (`src/ui`), so everything looks like the rest of kweezlet. If a piece is missing, add it to `src/ui` and show it on the Design page. Follow all rules in `AGENTS.md`: both languages, phone first, tests.
-   > First show me your plan in short steps and wait until I say go. Then build one step at a time and tell me in simple words what each part does.
+**What next:** the plan for the next big step (phase 8, sets made by AI) is in `PLAN.md`. Ask OpenCode _"explain PLAN.md to me in simple words"_. Your own ideas go through OpenCode the same way. Write what you want, then add:
 
-3. Read the plan. Anything unclear? Ask: _"What is a migration?"_, _"Why does every table need user_id?"_. Then say **go**.
-4. After each step, try it in the browser. On the phone too: _"start the app for my iPhone"_.
-5. Works? OpenCode saves it with a commit and pushes it to GitHub. You will see it in the chat.
+> Build the screens only from the building blocks on the Design page (`src/ui`). Follow all rules in `AGENTS.md`.
+> First show me your plan in short steps and wait until I say go. Then build one step at a time and tell me in simple words what each part does.
 
-Done when you can create a set, see it on the home page, open it, and it's still there after closing and restarting the app.
+Read the plan, ask about anything unclear, then say **go**. After each step, try it in the browser (and on the phone). Works? OpenCode saves it with a commit and pushes it to GitHub.
 
-**What next** (one at a time, same way):
-
-- _"When I open a set, I want to study it with flashcards: tap to flip, arrows for next and previous, and Know it / Still learning."_
-- _"I want to edit and delete my sets."_
-- _"Add a Test mode: 4 possible answers per term, a score at the end."_
-- Put it online: ask _"help me deploy kweezlet for the first time"_ (needs the Cloudflare account from Part 1).
+Put it online: ask _"help me deploy kweezlet"_ (needs the Cloudflare account from Part 1).
 
 ## When something is stuck
 

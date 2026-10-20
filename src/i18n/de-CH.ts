@@ -67,7 +67,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "sets.languages": "Sprachen",
   "sets.langTerms": "Sprache der Begriffe",
   "sets.langDefs": "Sprache der Definitionen",
-  "sets.langHint": "Optional. Wird später für Audio und zum Prüfen verwendet.",
+  "sets.langHint": "Optional. Wird für Audio verwendet.",
   "sets.termsNeeded": "Füge mindestens einen Begriff hinzu.",
   "sets.termsIncomplete": "Fülle beide Felder eines Begriffs aus, oder lösche die Zeile.",
   "sets.termsTooMany": "Ein Set kann höchstens 500 Begriffe haben.",

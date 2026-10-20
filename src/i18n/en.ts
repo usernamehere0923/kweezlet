@@ -65,7 +65,7 @@ export const en = {
   "sets.languages": "Languages",
   "sets.langTerms": "Language of the terms",
   "sets.langDefs": "Language of the definitions",
-  "sets.langHint": "Optional. Used for audio and grading later.",
+  "sets.langHint": "Optional. Used for audio.",
   "sets.termsNeeded": "Add at least one term.",
   "sets.termsIncomplete": "Fill in both fields of a term, or delete the row.",
   "sets.termsTooMany": "A set can have at most 500 terms.",
