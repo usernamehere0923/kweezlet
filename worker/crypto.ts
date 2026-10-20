@@ -22,6 +22,12 @@ export async function hashPassword(password: string, saltHex: string): Promise<s
   return toHex(bits);
 }
 
+/** A fresh salt and the password's hash with it, ready to store. */
+export async function newPasswordHash(password: string): Promise<{ salt: string; hash: string }> {
+  const salt = randomHex(16);
+  return { salt, hash: await hashPassword(password, salt) };
+}
+
 export async function sha256Hex(value: string): Promise<string> {
   return toHex(await crypto.subtle.digest("SHA-256", encoder.encode(value)));
 }

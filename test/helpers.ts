@@ -1,12 +1,12 @@
 import { env, exports } from "cloudflare:workers";
-import { hashPassword, randomHex } from "../worker/crypto";
+import { newPasswordHash } from "../worker/crypto";
 
 export const BASE = "http://kweezlet.test";
 
 export async function addUser(username: string, password: string): Promise<number> {
-  const salt = randomHex(16);
+  const { salt, hash } = await newPasswordHash(password);
   const row = await env.DB.prepare("INSERT INTO users (username, password_hash, salt) VALUES (?, ?, ?) RETURNING id")
-    .bind(username, await hashPassword(password, salt), salt)
+    .bind(username, hash, salt)
     .first<{ id: number }>();
   return row!.id;
 }

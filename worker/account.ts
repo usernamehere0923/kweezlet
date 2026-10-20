@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
-import { constantTimeEqual, hashPassword, randomHex } from "./crypto";
+import { constantTimeEqual, hashPassword, newPasswordHash } from "./crypto";
 import { exportUserData } from "./export";
 import { notifyLater } from "./live";
 import { localeSchema, publicUser, type AppEnv } from "./types";
@@ -33,11 +33,9 @@ export const accountRoutes = new Hono<AppEnv>()
       if (!row || !constantTimeEqual(await hashPassword(current, row.salt), row.password_hash)) {
         return c.json({ error: "validation" as const, fields: { current: "wrong_password" } }, 400);
       }
-      const salt = randomHex(16);
+      const { salt, hash } = await newPasswordHash(next);
       await db.batch([
-        db
-          .prepare("UPDATE users SET password_hash = ?, salt = ? WHERE id = ?")
-          .bind(await hashPassword(next, salt), salt, user.id),
+        db.prepare("UPDATE users SET password_hash = ?, salt = ? WHERE id = ?").bind(hash, salt, user.id),
         // Log out every other device; this one stays logged in.
         db
           .prepare("DELETE FROM sessions WHERE user_id = ? AND token_hash != ?")
