@@ -6,34 +6,31 @@ import { Wordmark } from "./Logo";
 
 export type NavItem = { to: string; label: string; icon: IconName };
 
+const navStyles = {
+  top: {
+    link: "inline-flex h-9 items-center gap-2 rounded-ui px-3 text-[15px] font-medium transition-colors",
+    active: "bg-sunken text-ink",
+    idle: "text-muted hover:text-ink",
+    iconSize: "1.05rem",
+  },
+  tab: {
+    link: "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium",
+    active: "text-accent-strong",
+    idle: "text-muted",
+    iconSize: "1.4rem",
+  },
+};
+
 /** A nav entry that styles itself as active when its page is open. */
-export function NavLink({ to, label, icon, variant = "top" }: NavItem & { variant?: "top" | "tab" }) {
-  return variant === "top" ? (
+export function NavLink({ to, label, icon, variant = "top" }: NavItem & { variant?: keyof typeof navStyles }) {
+  const style = navStyles[variant];
+  return (
     <RouterNavLink
       to={to}
       end={to === "/"}
-      className={({ isActive }) =>
-        cx(
-          "inline-flex h-9 items-center gap-2 rounded-ui px-3 text-[15px] font-medium transition-colors",
-          isActive ? "bg-sunken text-ink" : "text-muted hover:text-ink",
-        )
-      }
+      className={({ isActive }) => cx(style.link, isActive ? style.active : style.idle)}
     >
-      <Icon name={icon} size="1.05rem" />
-      {label}
-    </RouterNavLink>
-  ) : (
-    <RouterNavLink
-      to={to}
-      end={to === "/"}
-      className={({ isActive }) =>
-        cx(
-          "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 text-[11px] font-medium",
-          isActive ? "text-accent-strong" : "text-muted",
-        )
-      }
-    >
-      <Icon name={icon} size="1.4rem" />
+      <Icon name={icon} size={style.iconSize} />
       {label}
     </RouterNavLink>
   );
