@@ -14,6 +14,10 @@ export function speechAvailable(): boolean {
   return typeof window !== "undefined" && Boolean(window.speechSynthesis);
 }
 
+// The utterance talking right now, from any speaker. cancel() is global, so a
+// speaker checks this before stopping: a voice that took over is not its own.
+let current: SpeechSynthesisUtterance | null = null;
+
 /**
  * Say `speech` out loud, replacing whatever is still talking. `onDone` runs
  * when the voice stops (finished, or cut off by the next one).
@@ -30,14 +34,22 @@ export function speak(speech: Speech, onDone?: () => void): SpeechSynthesisUtter
       .find((candidate) => candidate.lang.toLowerCase().replace("_", "-").startsWith(speech.lang!.toLowerCase()));
     if (voice) utterance.voice = voice;
   }
-  utterance.onend = () => onDone?.();
-  utterance.onerror = () => onDone?.();
+  const done = () => {
+    if (current === utterance) current = null;
+    onDone?.();
+  };
+  utterance.onend = done;
+  utterance.onerror = done;
+  current = utterance;
   window.speechSynthesis.speak(utterance);
   return utterance;
 }
 
-export function stopSpeaking(): void {
-  if (speechAvailable()) window.speechSynthesis.cancel();
+/** Fall silent. With `only`: just when that utterance is still the one talking. */
+export function stopSpeaking(only?: SpeechSynthesisUtterance): void {
+  if (!speechAvailable() || (only && only !== current)) return;
+  current = null;
+  window.speechSynthesis.cancel();
 }
 
 /**
@@ -46,24 +58,37 @@ export function stopSpeaking(): void {
  */
 export function useSpeech(): { speaking: boolean; say: (speech: Speech) => void; stop: () => void } {
   const [speaking, setSpeaking] = useState(false);
-  // Which say() is the current one; older onDone callbacks must not clear it.
-  const turn = useRef(0);
+  // This hook's latest utterance, null when silent. Older onDone callbacks must
+  // not clear it. Holding it keeps Chrome from garbage-collecting it
+  // mid-sentence, which loses its onend.
+  const talking = useRef<SpeechSynthesisUtterance | null>(null);
 
-  useEffect(() => () => stopSpeaking(), []);
+  // Only this hook's own voice: another speaker on the screen keeps talking.
+  useEffect(
+    () => () => {
+      if (talking.current) stopSpeaking(talking.current);
+    },
+    [],
+  );
 
   const say = useCallback((speech: Speech) => {
     if (!speechAvailable()) return;
-    const mine = ++turn.current;
     setSpeaking(true);
-    speak(speech, () => {
-      if (turn.current === mine) setSpeaking(false);
+    // Cleared first: the old voice's onDone may fire inside speak()'s cancel().
+    talking.current = null;
+    const utterance = speak(speech, () => {
+      if (talking.current !== utterance) return;
+      talking.current = null;
+      setSpeaking(false);
     });
+    talking.current = utterance;
   }, []);
 
   const stop = useCallback(() => {
-    turn.current += 1;
+    const mine = talking.current;
+    talking.current = null;
     setSpeaking(false);
-    stopSpeaking();
+    if (mine) stopSpeaking(mine);
   }, []);
 
   return { speaking, say, stop };
