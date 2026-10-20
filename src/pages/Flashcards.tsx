@@ -4,7 +4,8 @@ import type { SetTerm } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useStudySet } from "../lib/studySet";
-import { shuffle, useStudyDay } from "../lib/study";
+import { shuffle } from "../lib/quiz";
+import { useStudyDay } from "../lib/studyDay";
 import {
   ButtonLink,
   CardNav,

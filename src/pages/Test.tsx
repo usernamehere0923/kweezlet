@@ -4,7 +4,8 @@ import { useT } from "../i18n";
 import { useStudySet } from "../lib/studySet";
 import { useMatchBoard } from "../lib/matchBoard";
 import { buildMatchRound, buildTest, scoreTest, type QuestionKind, type TestPaper } from "../lib/quiz";
-import { formatTime, useStudyDay } from "../lib/study";
+import { formatTime } from "../lib/formatTime";
+import { useStudyDay } from "../lib/studyDay";
 import {
   AnswerOption,
   Button,

@@ -1,6 +1,14 @@
 import { describe, expect, test, vi } from "vitest";
 import type { SetTerm } from "../../worker/sets";
-import { buildMatchRound, buildTest, gradeQuestion, scoreTest, type MatchPair, type TestQuestion } from "./quiz";
+import {
+  buildMatchRound,
+  buildTest,
+  gradeQuestion,
+  scoreTest,
+  shuffle,
+  type MatchPair,
+  type TestQuestion,
+} from "./quiz";
 
 const TERMS: SetTerm[] = [
   {
@@ -194,5 +202,12 @@ describe("scoreTest", () => {
     expect(scoreTest(paper, ["the dog", "the dig", "true"], 1)).toEqual({ correct: 3, total: 4 });
     expect(scoreTest(paper, [null, null, null], 0)).toEqual({ correct: 0, total: 4 });
     expect(scoreTest(paper, ["the dog", "the dog", "false"], 1)).toEqual({ correct: 4, total: 4 });
+  });
+});
+
+describe("shuffle", () => {
+  test("keeps every item exactly once", () => {
+    const mixed = shuffle([1, 2, 3, 4, 5]);
+    expect([...mixed].sort()).toEqual([1, 2, 3, 4, 5]);
   });
 });

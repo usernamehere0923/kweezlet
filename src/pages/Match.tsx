@@ -5,7 +5,8 @@ import { api } from "../lib/api";
 import { useStudySet } from "../lib/studySet";
 import { useMatchBoard } from "../lib/matchBoard";
 import { buildMatchRound, MATCH_PAIRS, MIN_MATCH_TERMS, type MatchTileData } from "../lib/quiz";
-import { formatTime, useStudyDay } from "../lib/study";
+import { formatTime } from "../lib/formatTime";
+import { useStudyDay } from "../lib/studyDay";
 import { ButtonLink, EmptyState, Heading, MatchResult, MatchTile, PageLoading, StreakBadge, Tag, Text } from "../ui";
 
 type RoundResult = { seconds: number; best: number; isNewBest: boolean };

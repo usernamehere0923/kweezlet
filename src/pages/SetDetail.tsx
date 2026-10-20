@@ -6,7 +6,7 @@ import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useLive } from "../lib/live";
 import { MIN_MATCH_TERMS } from "../lib/quiz";
-import { formatTime } from "../lib/study";
+import { formatTime } from "../lib/formatTime";
 import {
   Button,
   ButtonLink,

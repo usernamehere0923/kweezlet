@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import type { TestQuestion } from "./quiz";
-import { gradeAnswer } from "./study";
+import { gradeAnswer } from "./grading";
 
 /** The question for a term id, or null when the term is gone (deleted, answered elsewhere). */
 export type AskTerm = (termId: number) => TestQuestion | null;

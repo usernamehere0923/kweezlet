@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { formatTime, gradeAnswer, normalizeAnswer, shuffle } from "./study";
+import { gradeAnswer, normalizeAnswer } from "./grading";
 
 describe("normalizeAnswer", () => {
   test("ignores case, spaces, accents and punctuation", () => {
@@ -75,20 +75,5 @@ describe("gradeAnswer", () => {
   test("numbers inside text have to be exact", () => {
     expect(gradeAnswer("year 1292", "Year 1291")).toBe(false);
     expect(gradeAnswer("yeer 1291", "Year 1291")).toBe(true);
-  });
-});
-
-describe("shuffle", () => {
-  test("keeps every item exactly once", () => {
-    const mixed = shuffle([1, 2, 3, 4, 5]);
-    expect([...mixed].sort()).toEqual([1, 2, 3, 4, 5]);
-  });
-});
-
-describe("formatTime", () => {
-  test("shows m:ss with a padded zero", () => {
-    expect(formatTime(0)).toBe("0:00");
-    expect(formatTime(23)).toBe("0:23");
-    expect(formatTime(61)).toBe("1:01");
   });
 });

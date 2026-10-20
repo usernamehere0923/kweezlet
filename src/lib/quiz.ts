@@ -1,6 +1,16 @@
 import type { SetTerm } from "../../worker/sets";
 import type { TKey } from "../i18n";
-import { gradeAnswer, shuffle } from "./study";
+import { gradeAnswer } from "./grading";
+
+/** Fisher-Yates, returns a new list. */
+export function shuffle<T>(list: T[]): T[] {
+  const mixed = [...list];
+  for (let i = mixed.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [mixed[i], mixed[j]] = [mixed[j], mixed[i]];
+  }
+  return mixed;
+}
 
 export type QuestionKind = "choice" | "truefalse" | "written";
 

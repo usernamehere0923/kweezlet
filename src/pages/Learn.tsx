@@ -6,8 +6,8 @@ import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useStudySet } from "../lib/studySet";
 import { useQuestionRound } from "../lib/questionRound";
-import { buildQuestion } from "../lib/quiz";
-import { shuffle, useStudyDay } from "../lib/study";
+import { buildQuestion, shuffle } from "../lib/quiz";
+import { useStudyDay } from "../lib/studyDay";
 import {
   Button,
   ButtonLink,
