@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { notifyLater } from "./live";
 import { LANGUAGES, type Language } from "./languages";
+import { termProgress } from "./progress";
 import { allIdsOwned, ownedTermIds, termStatements } from "./setTerms";
 import type { Status, TermStatus } from "./study";
 import type { AppEnv } from "./types";
@@ -117,7 +118,7 @@ async function loadSetDetail(db: D1Database, userId: number, id: number): Promis
   const [setRows, termRows] = await db.batch([
     db
       .prepare(
-        `SELECT ${SET_COLUMNS}, ${COUNT_COLUMNS}, mb.seconds AS best_seconds
+        `SELECT ${SET_COLUMNS}, mb.seconds AS best_seconds
            FROM sets s
            LEFT JOIN match_best mb ON mb.set_id = s.id AND mb.user_id = s.user_id
           WHERE s.id = ? AND s.user_id = ?`,
@@ -134,11 +135,18 @@ async function loadSetDetail(db: D1Database, userId: number, id: number): Promis
       )
       .bind(id, userId),
   ]);
-  const set = setRows!.results[0] as (SetRow & CountRow & { best_seconds: number | null }) | undefined;
+  const set = setRows!.results[0] as (SetRow & { best_seconds: number | null }) | undefined;
   if (!set) return null;
   const terms = termRows!.results as TermRow[];
+  // The terms are here already: count them instead of asking SQL again.
+  const counts: CountRow = { term_count: terms.length, known_count: 0, learning_count: 0 };
+  for (const term of terms) {
+    const progress = termProgress(term);
+    if (progress === "known") counts.known_count++;
+    else if (progress === "learning") counts.learning_count++;
+  }
   return {
-    ...toSetJson(set),
+    ...toSetJson({ ...set, ...counts }),
     terms: terms.map((row) => ({ ...row, status: row.status ?? "unseen", starred: !!row.starred })),
     bestSeconds: set.best_seconds,
   };
