@@ -6,16 +6,20 @@ import { QuestionCard, SlideSwap } from "../ui";
 /**
  * The current question of a Learn-style round (Learn, Review) on a
  * <QuestionCard>. `onAnswer` gets every answer once; `langs` are the
- * languages of the question's set, for the speaker.
+ * languages of the question's set, for the speaker. `images` (term id ->
+ * data URL) shows the asked term's picture under the prompt — only when the
+ * prompt IS the term: a picture would give the answer away otherwise.
  */
 export function RoundQuestion({
   round,
   langs,
+  images,
   onAnswer,
   onContinue,
 }: {
   round: QuestionRound;
   langs: SetLangs | undefined;
+  images?: Record<number, string>;
   onAnswer: (answered: Answered) => void;
   onContinue: () => void;
 }) {
@@ -28,6 +32,7 @@ export function RoundQuestion({
       <QuestionCard
         label={t(question.label)}
         prompt={question.prompt}
+        image={question.promptSide === "term" ? images?.[question.termId] : undefined}
         answer={question.answer}
         options={question.options}
         typed={round.typed}

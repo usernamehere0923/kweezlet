@@ -7,6 +7,7 @@ import { SpeakButton, type Speech } from "../speech";
 import { Card } from "../surfaces";
 import { Heading, Text } from "../Text";
 import { useHotkey } from "../useHotkey";
+import { TermImage } from "./images";
 
 export type AnswerState = "idle" | "selected" | "correct" | "wrong";
 
@@ -158,6 +159,7 @@ export function FeedbackBanner({
 export function QuestionCard({
   label,
   prompt,
+  image,
   answer,
   options,
   typed,
@@ -172,6 +174,8 @@ export function QuestionCard({
   /** Already translated, e.g. "Give the definition". */
   label: ReactNode;
   prompt: ReactNode;
+  /** The asked term's picture (a data URL), when the prompt shows the term. */
+  image?: string | null;
   /** The right option or the expected text, shown when the answer was wrong. */
   answer: string;
   options: string[];
@@ -196,6 +200,11 @@ export function QuestionCard({
           {speak && <SpeakButton speech={speak} />}
         </div>
         <Heading className="mt-1">{prompt}</Heading>
+        {image && (
+          <div className="mt-3 flex justify-center">
+            <TermImage src={image} alt="" />
+          </div>
+        )}
       </Card>
 
       {options.length === 0 ? (

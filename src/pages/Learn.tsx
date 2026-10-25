@@ -41,7 +41,7 @@ export function LearnPage() {
   }
 
   // Another device answered or renamed something: catch up, keep the question.
-  const { set, updateTerm, failed, retry } = useStudySet(id, ["sets", "study"], {
+  const { set, images, updateTerm, failed, retry } = useStudySet(id, ["sets", "study"], {
     onLoad: (data, first) => {
       if (first) begin(data.terms);
     },
@@ -110,6 +110,7 @@ export function LearnPage() {
         <RoundQuestion
           round={round}
           langs={set}
+          images={images}
           onAnswer={onAnswer}
           onContinue={() => round.next(askFrom(set.terms))}
         />

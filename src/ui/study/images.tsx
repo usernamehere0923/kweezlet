@@ -20,7 +20,8 @@ export function TermImage({ src, alt, variant = "card" }: { src: string; alt: st
         "shrink-0 border border-line bg-sunken",
         variant === "thumb"
           ? "size-12 rounded-md object-cover"
-          : "max-h-56 w-auto max-w-full rounded-ui-lg object-contain",
+          : // Fits a flashcard at 390px (fixed 4:3 face) with room for the word.
+            "max-h-40 w-auto max-w-full rounded-ui-lg object-contain md:max-h-56",
       )}
     />
   );

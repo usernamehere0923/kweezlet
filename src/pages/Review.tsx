@@ -85,13 +85,27 @@ export function ReviewPage() {
     void save(termId, correct);
   }
 
+  const question = round.question;
+  // The card behind the question carries its set's languages (worker/review.ts).
+  const card = (cards ?? []).find((candidate) => candidate.id === question?.termId);
+
+  // The pictures of the sets that come up: one request per set, kept for the round.
+  const [images, setImages] = useState<Record<number, string>>({});
+  const askedSets = useRef(new Set<number>());
+  useEffect(() => {
+    const setId = card?.setId;
+    if (setId === undefined || askedSets.current.has(setId)) return;
+    askedSets.current.add(setId);
+    void api.sets[":id"].images.$get({ param: { id: String(setId) } }).then(async (res) => {
+      if (!res.ok) return;
+      const body = await res.json();
+      setImages((all) => ({ ...all, ...body.images }));
+    });
+  }, [card]);
+
   if (!cards) {
     return <PageLoading />;
   }
-
-  const question = round.question;
-  // The card behind the question carries its set's languages (worker/review.ts).
-  const card = cards.find((candidate) => candidate.id === question?.termId);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -116,7 +130,13 @@ export function ReviewPage() {
               {t("learn.remaining")} {round.left}
             </Tag>
           </div>
-          <RoundQuestion round={round} langs={card} onAnswer={onAnswer} onContinue={() => round.next(askFrom(cards))} />
+          <RoundQuestion
+            round={round}
+            langs={card}
+            images={images}
+            onAnswer={onAnswer}
+            onContinue={() => round.next(askFrom(cards))}
+          />
         </>
       ) : (
         <EmptyState

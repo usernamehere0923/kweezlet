@@ -3,7 +3,7 @@ import { useT } from "../../i18n";
 import { formatTime } from "../../lib/formatTime";
 import type { MatchBoard } from "../../lib/matchBoard";
 import type { MatchTileData, TestPaper } from "../../lib/quiz";
-import { AnswerOption, Button, Card, Heading, MatchTile, Tag, Text, TextField } from "../../ui";
+import { AnswerOption, Button, Card, Heading, MatchTile, Tag, TermImage, Text, TextField } from "../../ui";
 
 /** The countdown on the paper. It ticks on its own, so the paper itself does not re-render. */
 function TimeLeft({ deadline, onUp }: { deadline: number; onUp: () => void }) {
@@ -28,6 +28,7 @@ function TimeLeft({ deadline, onUp }: { deadline: number; onUp: () => void }) {
 export function TestPaperView({
   paper,
   answers,
+  images,
   onAnswer,
   tiles,
   board,
@@ -37,6 +38,8 @@ export function TestPaperView({
 }: {
   paper: TestPaper;
   answers: (string | null)[];
+  /** Term id -> data URL; shown only on questions whose prompt is the term. */
+  images?: Record<number, string>;
   onAnswer: (questionIndex: number, given: string) => void;
   tiles: MatchTileData[];
   board: MatchBoard;
@@ -65,6 +68,12 @@ export function TestPaperView({
             {i + 1}. {t(question.label)}
           </Text>
           <Heading className="mb-4">{question.prompt}</Heading>
+          {/* The picture only on questions that show the term: never one that asks for it. */}
+          {question.promptSide === "term" && images?.[question.termId] && (
+            <div className="mb-4 flex justify-center">
+              <TermImage src={images[question.termId]} alt="" />
+            </div>
+          )}
           {question.kind === "written" ? (
             <TextField
               label={t("study.yourAnswer")}

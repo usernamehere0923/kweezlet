@@ -18,6 +18,7 @@ import {
   SegmentedControl,
   SlideSwap,
   StudyHeader,
+  TermImage,
 } from "../ui";
 
 type Side = "term" | "definition";
@@ -31,7 +32,7 @@ export function FlashcardsPage() {
   const streak = useStudyDay(started);
 
   // Another device marked or renamed something: catch up, keep the position.
-  const { set, updateTerm, failed, retry } = useStudySet(id, ["sets", "study"]);
+  const { set, images, updateTerm, failed, retry } = useStudySet(id, ["sets", "study"]);
   const { deck, at, current, back, goTo: moveTo, reshuffle } = useDeck(set?.terms, filter);
 
   /** Every move shows the next card's front. */
@@ -76,6 +77,17 @@ export function FlashcardsPage() {
   const speak = current
     ? { text: showingTerm ? current.term : current.definition, lang: showingTerm ? set.termLang : set.defLang }
     : undefined;
+  // The picture belongs to the term's face only: on the other one it would
+  // answer the question before it is asked.
+  const termFace = (text: string) =>
+    current && images[current.id] ? (
+      <span className="flex flex-col items-center gap-3">
+        <TermImage src={images[current.id]} alt="" />
+        <span>{text}</span>
+      </span>
+    ) : (
+      text
+    );
   const learning = set.terms.filter((term) => term.status === "still_learning").length;
 
   return (
@@ -129,8 +141,8 @@ export function FlashcardsPage() {
           {/* The old card slides away as it was, flipped or not: its answer never shows on the next one. */}
           <SlideSwap id={current.id} back={back}>
             <FlipCard
-              front={side === "term" ? current.term : current.definition}
-              back={side === "term" ? current.definition : current.term}
+              front={side === "term" ? termFace(current.term) : current.definition}
+              back={side === "term" ? current.definition : termFace(current.term)}
               frontLabel={t(side === "term" ? "study.term" : "study.definition")}
               backLabel={t(side === "term" ? "study.definition" : "study.term")}
               flipped={flipped}

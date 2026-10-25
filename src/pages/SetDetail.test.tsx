@@ -23,6 +23,17 @@ describe("set detail", () => {
     expect(screen.getByRole("button", { name: "Flashcards" })).toBeTruthy();
   });
 
+  test("a term's picture shows as a thumbnail in the term list", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets/7": () => ({ json: SPANISH_DETAIL }),
+      "GET /api/sets/7/images": () => ({ json: { images: { 70: "data:image/png;base64,DOG" } } }),
+    });
+    renderApp("/sets/7");
+    await screen.findByText("el perro");
+    expect(document.querySelector('img[src="data:image/png;base64,DOG"]')).not.toBeNull();
+  });
+
   test("the Match tile shows the best time and opens the game", async () => {
     mockApi(studyRoutes({ ...LEARN_DETAIL, bestSeconds: 23 }));
     renderApp("/sets/7");
