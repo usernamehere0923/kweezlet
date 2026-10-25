@@ -20,6 +20,27 @@ function reviewApi(overview: { cards: unknown[]; dueCount: number }, sets: unkno
   };
 }
 describe("review", () => {
+  test("the asked term's picture comes with its set, once", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.9); // questions show the term
+    const { calls } = mockApi({
+      ...reviewApi({ cards: REVIEW_CARDS, dueCount: 2 }),
+      "GET /api/sets/7/images": () => ({
+        json: { images: { 70: "data:image/png;base64,DOG", 71: "data:image/png;base64,CAT" } },
+      }),
+    });
+    renderApp("/review");
+
+    expect(await screen.findByRole("heading", { name: "el perro" })).toBeTruthy();
+    await waitFor(() => expect(document.querySelector('img[src="data:image/png;base64,DOG"]')).not.toBeNull());
+
+    await userEvent.click(screen.getByText("the dog"));
+    await userEvent.click(await screen.findByRole("button", { name: "Continue" }));
+    expect(await screen.findByRole("heading", { name: "el gato" })).toBeTruthy();
+    await waitFor(() => expect(document.querySelector('img[src="data:image/png;base64,CAT"]')).not.toBeNull());
+    // Both cards are from set 7: its pictures are fetched only once.
+    expect(calls.filter((c) => c.path.endsWith("/images"))).toHaveLength(1);
+  });
+
   test("home shows the due card and the session runs to the end", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
     const { calls } = mockApi(reviewApi({ cards: REVIEW_CARDS, dueCount: 2 }));

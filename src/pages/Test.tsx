@@ -26,7 +26,7 @@ export function TestPage() {
   const streak = useStudyDay(handedIn || answers.some((answer) => answer !== null));
   const [deadline, setDeadline] = useState<number | null>(null);
 
-  const { set, failed, retry } = useStudySet(id, ["sets"]);
+  const { set, images, failed, retry } = useStudySet(id, ["sets"]);
   // Time is up: hand in the paper.
   const timeUp = useCallback(() => setView("result"), []);
 
@@ -77,6 +77,7 @@ export function TestPage() {
         <TestPaperView
           paper={paper}
           answers={answers}
+          images={images}
           onAnswer={answer}
           tiles={tiles}
           board={board}

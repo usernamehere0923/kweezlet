@@ -31,7 +31,7 @@ export function SetDetailPage() {
   const [confirming, setConfirming] = useState(false);
   // Marks and answers on another device move the progress bar and the dots.
   // A set that is gone says so here instead of leaving.
-  const { set, failed, retry } = useStudySet(id, ["sets", "match", "study"], {
+  const { set, images, failed, retry } = useStudySet(id, ["sets", "match", "study"], {
     onLoad: () => setMissing(false),
     onMissing: () => setMissing(true),
   });
@@ -116,7 +116,7 @@ export function SetDetailPage() {
           {tn("study.terms", set.termCount)}
         </Text>
         <TermList
-          terms={set.terms.map((term) => ({ ...term, progress: termProgress(term) }))}
+          terms={set.terms.map((term) => ({ ...term, progress: termProgress(term), image: images[term.id] }))}
           speak={{ termLang: set.termLang, defLang: set.defLang }}
         />
       </section>

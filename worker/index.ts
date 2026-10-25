@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { accountRoutes } from "./account";
 import { authRoutes, requireUser } from "./auth";
+import { imageRoutes } from "./images";
 import { liveRoutes } from "./live";
 import { matchRoutes } from "./match";
 import { reviewRoutes } from "./review";
@@ -17,6 +18,7 @@ const app = new Hono<AppEnv>()
   .route("/api/me", accountRoutes)
   .route("/api", liveRoutes)
   .route("/api", setRoutes)
+  .route("/api", imageRoutes)
   .route("/api", matchRoutes)
   .route("/api", reviewRoutes)
   .route("/api", studyRoutes)

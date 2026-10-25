@@ -40,6 +40,20 @@ describe("flashcards", () => {
     expect(screen.getByRole("link", { name: "Back to the set" })).toBeTruthy();
   });
 
+  test("the term's face carries its picture; the definition's face stays clean", async () => {
+    mockApi({
+      ...flashcardsApi(),
+      "GET /api/sets/7/images": () => ({ json: { images: { 70: "data:image/png;base64,DOG" } } }),
+    });
+    renderApp("/sets/7/flashcards");
+    await screen.findByText("el perro");
+
+    const image = document.querySelector('img[src="data:image/png;base64,DOG"]');
+    expect(image).not.toBeNull();
+    // On the visible (term) side of the card only.
+    expect(image!.closest("[aria-hidden]")?.getAttribute("aria-hidden")).toBe("false");
+  });
+
   test("records the study day with the local date, but only after a flip", async () => {
     const { calls } = mockApi(flashcardsApi());
     renderApp("/sets/7/flashcards");

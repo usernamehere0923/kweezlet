@@ -5,6 +5,7 @@ import { cx } from "../cx";
 import { IconButton } from "../Button";
 import { SpeakButton } from "../speech";
 import { surface } from "../surfaces";
+import { TermImage, TermImagePicker } from "./images";
 
 export type TermEditorHandle = { focus: () => void };
 
@@ -48,6 +49,7 @@ function Cell({
  * One term/definition pair while creating a set. Side by side on a wide
  * screen, stacked on the phone. Enter in "term" jumps to "definition";
  * Enter in "definition" calls onNext (usually: focus or add the next row).
+ * `image` + `onImage` add the picture slot (TermImagePicker) under the cells.
  *
  *   <TermEditorRow ref={rowRef} index={0} term={t} definition={d} onChange={...} onNext={...} onDelete={...} />
  *   rowRef.current?.focus();
@@ -57,17 +59,23 @@ export function TermEditorRow({
   index,
   term,
   definition,
+  image,
   onChange,
   onNext,
   onDelete,
+  onImage,
 }: {
   ref?: Ref<TermEditorHandle>;
   index: number;
   term: string;
   definition: string;
+  /** The row's picture as a data URL (or a plain URL in the design demo). */
+  image?: string | null;
   onChange: (term: string, definition: string) => void;
   onNext?: () => void;
   onDelete?: () => void;
+  /** Leave out for a row without an image slot. */
+  onImage?: (image: string | null) => void;
 }) {
   const { t } = useT();
   const termRef = useRef<HTMLInputElement>(null);
@@ -96,6 +104,11 @@ export function TermEditorRow({
           onEnter={() => onNext?.()}
         />
       </div>
+      {onImage && (
+        <div className="mt-4">
+          <TermImagePicker image={image ?? null} onChange={onImage} />
+        </div>
+      )}
     </div>
   );
 }
@@ -117,12 +130,13 @@ export function TermProgressDot({ progress }: { progress: TermProgress }) {
 }
 
 /** The terms of a set, read-only. `progress` adds a status dot before each term;
- * `speak` adds a speaker per term and definition (the set's languages). */
+ * `image` shows the term's picture as a thumbnail; `speak` adds a speaker per
+ * term and definition (the set's languages). */
 export function TermList({
   terms,
   speak,
 }: {
-  terms: { term: string; definition: string; progress?: TermProgress }[];
+  terms: { term: string; definition: string; progress?: TermProgress; image?: string }[];
   speak?: { termLang: string | null; defLang: string | null };
 }) {
   return (
@@ -130,6 +144,7 @@ export function TermList({
       {terms.map((item, i) => (
         <li key={i} className="grid gap-1 px-5 py-4 md:grid-cols-[1fr_2fr] md:gap-8">
           <span className="flex items-center gap-2.5 font-medium text-ink">
+            {item.image && <TermImage src={item.image} alt="" variant="thumb" />}
             {item.progress && <TermProgressDot progress={item.progress} />}
             <span className="flex-1">{item.term}</span>
             {speak && <SpeakButton speech={{ text: item.term, lang: speak.termLang }} />}

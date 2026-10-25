@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import type { SetImages } from "../../worker/images";
 import type { SetDetail, SetTerm } from "../../worker/sets";
 import { api } from "./api";
 import { useLive } from "./live";
@@ -15,14 +16,16 @@ type Options = {
 
 /**
  * The set a page works on, kept fresh: refetched when another device changes
- * one of `topics`. A set that is gone sends the user back to it, unless
- * `onMissing` decides otherwise. Any other failure keeps what is shown (api.ts
- * already says why); when nothing is shown yet, `failed` turns true and
- * `retry()` loads again.
+ * one of `topics`, together with the images of its terms (term id -> data
+ * URL; terms without one are missing). A set that is gone sends the user back
+ * to it, unless `onMissing` decides otherwise. Any other failure keeps what is
+ * shown (api.ts already says why); when nothing is shown yet, `failed` turns
+ * true and `retry()` loads again.
  */
 export function useStudySet(id: string, topics: Topic[], options: Options = {}) {
   const navigate = useNavigate();
   const [set, setSet] = useState<SetDetail | null>(null);
+  const [images, setImages] = useState<SetImages["images"]>({});
   const [failed, setFailed] = useState(false);
   const request = useRef(0);
   const loaded = useRef(false);
@@ -33,26 +36,30 @@ export function useStudySet(id: string, topics: Topic[], options: Options = {}) 
 
   const load = useCallback(() => {
     const mine = ++request.current;
-    return api.sets[":id"].$get({ param: { id } }).then(async (res) => {
-      // An older answer must not overwrite a newer one.
-      if (!res.ok) {
-        if (mine !== request.current) return;
-        if (res.status === 404) {
-          if (latest.current.onMissing) latest.current.onMissing();
-          else navigate(`/sets/${id}`);
-        } else if (!loaded.current) {
-          setFailed(true);
+    return Promise.all([api.sets[":id"].$get({ param: { id } }), api.sets[":id"].images.$get({ param: { id } })]).then(
+      async ([res, imagesRes]) => {
+        // An older answer must not overwrite a newer one.
+        if (!res.ok) {
+          if (mine !== request.current) return;
+          if (res.status === 404) {
+            if (latest.current.onMissing) latest.current.onMissing();
+            else navigate(`/sets/${id}`);
+          } else if (!loaded.current) {
+            setFailed(true);
+          }
+          return;
         }
-        return;
-      }
-      const data = await res.json();
-      if (mine !== request.current) return;
-      const first = !loaded.current;
-      loaded.current = true;
-      setFailed(false);
-      setSet(data);
-      latest.current.onLoad?.(data, first);
-    });
+        const data = await res.json();
+        if (mine !== request.current) return;
+        const first = !loaded.current;
+        loaded.current = true;
+        setFailed(false);
+        setSet(data);
+        // Pictures that fail to load leave their terms without one.
+        setImages(imagesRes.ok ? (await imagesRes.json()).images : {});
+        latest.current.onLoad?.(data, first);
+      },
+    );
   }, [id, navigate]);
 
   // A new id starts over: its first load is a first one again.
@@ -76,5 +83,5 @@ export function useStudySet(id: string, topics: Topic[], options: Options = {}) 
     setSet((s) => s && { ...s, terms: s.terms.map((term) => (term.id === termId ? { ...term, ...patch } : term)) });
   }, []);
 
-  return { set, setSet, updateTerm, failed, retry };
+  return { set, setSet, images, updateTerm, failed, retry };
 }
