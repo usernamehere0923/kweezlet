@@ -7,7 +7,9 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 
 const demo = "(SELECT id FROM users WHERE username = 'demo')";
+const student = "(SELECT id FROM users WHERE username = 'student')";
 const set = (title: string) => `(SELECT id FROM sets WHERE title = '${title}' AND user_id = ${demo})`;
+const draft = (user: string) => `(SELECT id FROM ai_drafts WHERE user_id = ${user} ORDER BY id LIMIT 1)`;
 const term = (title: string, text: string) =>
   `(SELECT id FROM terms WHERE term = '${text}' AND set_id = ${set(title)})`;
 /** A data URL of one of the app's icons: the stand-in photo on a demo card. */
@@ -57,6 +59,19 @@ const statements: string[] = [
   `INSERT INTO term_images (user_id, term_id, image) VALUES
      (${demo}, ${term("Spanish animals", "el gato")}, '${photo("icon-192.png")}'),
      (${demo}, ${term("Spanish animals", "el perro")}, '${photo("apple-touch-icon.png")}')`,
+  // An unfinished AI draft: ready to review, one card unverified and unchecked.
+  `INSERT INTO ai_drafts (user_id, status, source_name, kind, max_cards, title, term_lang, def_lang, instructions, pages_json, cards_json) VALUES
+     (${demo}, 'ready', 'Vokabeln Kapitel 2.pdf', 'auto', 25, 'Spanish animals', 'es', 'en', '',
+      '[{"n":1,"text":"Vokabeln Kapitel 2"},{"n":2,"text":"el perro — the dog\\nel gato — the cat"}]',
+      '[{"term":"el perro","definition":"the dog","source":"el perro — the dog","page":2,"verified":true,"checked":true},{"term":"el gato","definition":"the cat","source":"el gato","page":2,"verified":true,"checked":true},{"term":"el caballo","definition":"the horse","source":"","page":null,"verified":false,"checked":false}]')`,
+  // What the AI has cost so far: one create run on that draft, an older "more
+  // cards" run whose draft is gone (the cost row stays).
+  `INSERT INTO ai_usage (user_id, created_at, action, model, calls, input_tokens, cached_tokens, output_tokens, cost_nanos, duration_ms, draft_id) VALUES
+     (${demo}, unixepoch() - 3600, 'create', 'glm-5.3-flash', 1, 8400, 0, 2100, 2310000, 38000, ${draft(demo)}),
+     (${demo}, unixepoch() - 2 * 86400, 'more', 'glm-5.3-flash', 2, 11200, 4000, 3300, 2450000, 71000, NULL)`,
+  // A second, normal account (student / student) for trying the monthly cap.
+  `INSERT INTO ai_usage (user_id, created_at, action, model, calls, input_tokens, cached_tokens, output_tokens, cost_nanos, duration_ms, draft_id) VALUES
+     (${student}, unixepoch() - 86400, 'create', 'glm-5.3-flash', 1, 5200, 0, 1400, 1480000, 29000, NULL)`,
 ];
 
 execFileSync("npx", ["wrangler", "d1", "execute", "DB", "--local", "--command", statements.join(";\n")], {

@@ -33,6 +33,12 @@ export const resultSchema = z.object({
 export type AiCard = z.infer<typeof cardSchema>;
 export type AiCardResult = z.infer<typeof resultSchema>;
 
+/**
+ * A card as kept in a draft (cards_json): the AI's card plus the quote check
+ * (`verified`, `page`) and the keep checkbox of the review screen.
+ */
+export type DraftCard = AiCard & { verified: boolean; checked: boolean };
+
 /** Why an answer was unreadable. Its message goes into the repair retry. */
 export class ExtractError extends Error {
   constructor(message: string) {

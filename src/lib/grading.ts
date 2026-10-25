@@ -1,18 +1,4 @@
-/**
- * How written answers are compared: " The  Dog " and "the dog" are equal.
- * Accents and punctuation do not matter either: "café" answers "cafe".
- */
-export function normalizeAnswer(text: string): string {
-  return text
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .toLowerCase()
-    .replace(/ß/g, "ss")
-    .replace(/['’ʼ]/g, "")
-    .replace(/[^\p{L}\p{N}]+/gu, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-}
+import { normalizeAnswer } from "../../worker/grading";
 
 /**
  * Smart grading: a small typo still counts, and a " / " (with spaces) in the
