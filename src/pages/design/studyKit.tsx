@@ -19,6 +19,8 @@ import {
   StudyModeTile,
   StudySetCard,
   TermEditorRow,
+  TermImage,
+  TermImagePicker,
   TermList,
   Text,
   type AnswerState,
@@ -41,6 +43,7 @@ export function StudyKit() {
   const [typedState, setTypedState] = useState<"idle" | "correct" | "wrong">("idle");
   const termRows = useTermRows(ANIMALS.slice(0, 2));
   const [replays, setReplays] = useState(0);
+  const [demoImage, setDemoImage] = useState<string | null>("icon-192.png");
 
   const go = (i: number) => {
     setCard(i);
@@ -279,9 +282,24 @@ export function StudyKit() {
           <TermList
             terms={ANIMALS.slice(0, 3).map((item, i) => ({
               ...item,
+              ...(i === 0 ? { image: "icon-192.png" } : {}),
               progress: (["known", "learning", "new"] as const)[i],
             }))}
           />
+        </div>
+      </Section>
+
+      <Section
+        title="TermImage · TermImagePicker"
+        code={`<TermImage src={dataUrl} alt="" />                      // on a card: whole picture, never taller than 224px
+<TermImage src={dataUrl} alt="" variant="thumb" />     // the small square in a list or a form row
+<TermImagePicker image={image} onChange={setImage} />  // add / replace / remove; a picked file arrives shrunk (src/lib/images.ts)`}
+      >
+        <div className="flex max-w-md flex-col gap-4">
+          <Card className="flex justify-center">
+            <TermImage src="icon-192.png" alt="" />
+          </Card>
+          <TermImagePicker image={demoImage} onChange={setDemoImage} />
         </div>
       </Section>
 
