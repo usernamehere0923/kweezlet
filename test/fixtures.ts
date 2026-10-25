@@ -48,3 +48,10 @@ async function insertTerm(userId: number, setId: number, term: string, definitio
     .first<{ id: number }>();
   return row!.id;
 }
+
+/** The image on a term, as the API stores it: a data URL (png/jpeg/webp). */
+export async function addImage(userId: number, termId: number, image = "data:image/png;base64,AAAA"): Promise<void> {
+  await env.DB.prepare("INSERT INTO term_images (user_id, term_id, image) VALUES (?, ?, ?)")
+    .bind(userId, termId, image)
+    .run();
+}

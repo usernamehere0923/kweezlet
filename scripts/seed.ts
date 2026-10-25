@@ -4,11 +4,14 @@
 // New table with user data → add a few rows here. Get demo's id with a subquery:
 //   `INSERT INTO sets (user_id, title) VALUES ((SELECT id FROM users WHERE username = 'demo'), 'Spanish animals')`
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 const demo = "(SELECT id FROM users WHERE username = 'demo')";
 const set = (title: string) => `(SELECT id FROM sets WHERE title = '${title}' AND user_id = ${demo})`;
 const term = (title: string, text: string) =>
   `(SELECT id FROM terms WHERE term = '${text}' AND set_id = ${set(title)})`;
+/** A data URL of one of the app's icons: the stand-in photo on a demo card. */
+const photo = (file: string) => `data:image/png;base64,${readFileSync(`public/${file}`).toString("base64")}`;
 
 /** YYYY-MM-DD, `offset` days ago, in the local timezone. */
 const day = (offset: number) => {
@@ -50,6 +53,10 @@ const statements: string[] = [
      (${demo}, ${set("Swiss history")}, 27, unixepoch() - 3 * 86400)`,
   // Studied today and on the two days before: a three day streak.
   `INSERT INTO study_days (user_id, day) VALUES (${demo}, '${day(0)}'), (${demo}, '${day(1)}'), (${demo}, '${day(2)}')`,
+  // Two cards carry an image ("media on cards").
+  `INSERT INTO term_images (user_id, term_id, image) VALUES
+     (${demo}, ${term("Spanish animals", "el gato")}, '${photo("icon-192.png")}'),
+     (${demo}, ${term("Spanish animals", "el perro")}, '${photo("apple-touch-icon.png")}')`,
 ];
 
 execFileSync("npx", ["wrangler", "d1", "execute", "DB", "--local", "--command", statements.join(";\n")], {
