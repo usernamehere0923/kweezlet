@@ -25,7 +25,10 @@ npm install
 npx playwright install chromium # browser for checking screens
 npm run db:migrate              # create the local database
 npm run user:add -- demo demo   # create the demo user
+echo 'ZAI_API_KEY=<your key>' > .dev.vars   # z.ai key for the AI features
 ```
+
+The z.ai key comes from <https://z.ai/manage-apikey/apikey-list>. Without it everything works except "From material" (it fails with "the AI key is missing"). The key is only in `.dev.vars` on this machine and in a Cloudflare secret when deployed; never in the code.
 
 Every day:
 
@@ -69,11 +72,15 @@ Free plan, no credit card. Everything runs with `wrangler`, which `npm install` 
    npm run db:migrate:remote
    npm run user:add -- <you> '<password>' --remote
    ```
-4. Deploy, then put the printed URL into `.env.production` as `PUBLIC_URL` (link previews need it), commit it to `master`, push and deploy again:
+4. Give the live Worker the z.ai API key for the AI features (from <https://z.ai/manage-apikey/apikey-list>). The monthly spending cap is the `AI_MONTHLY_CAP_USD` var in `wrangler.jsonc` (default 2 dollars):
+   ```sh
+   npx wrangler secret put ZAI_API_KEY
+   ```
+5. Deploy, then put the printed URL into `.env.production` as `PUBLIC_URL` (link previews need it), commit it to `master`, push and deploy again:
    ```sh
    npm run deploy
    ```
-5. On the iPhone: open the URL in Safari, Share, "Add to Home Screen".
+6. On the iPhone: open the URL in Safari, Share, "Add to Home Screen".
 
 ### Every update
 

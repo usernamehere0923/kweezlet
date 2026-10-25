@@ -13,6 +13,10 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"],
   },
+  // AI-made sets: a monthly spending cap in USD (checked before every AI call;
+  // admins are exempt). The z.ai key itself is the ZAI_API_KEY secret, never
+  // here: .dev.vars locally, `wrangler secret put ZAI_API_KEY` for live.
+  "vars": { "AI_MONTHLY_CAP_USD": "2" },
   "d1_databases": [
     {
       "binding": "DB",
