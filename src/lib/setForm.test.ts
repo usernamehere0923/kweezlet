@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { checkSetForm, emptyRow } from "./setForm";
+import { mockApi } from "../test/server";
+import { checkSetForm, emptyRow, saveImageChanges } from "./setForm";
 
 const row = (term: string, definition: string) => ({ term, definition });
 
@@ -19,5 +20,42 @@ describe("checkSetForm", () => {
   test("a set needs a term, and no half-filled row", () => {
     expect(checkSetForm("Animals", [emptyRow]).formError).toBe("sets.termsNeeded");
     expect(checkSetForm("Animals", [row("el gato", "")]).formError).toBe("sets.termsIncomplete");
+  });
+
+  test("a row whose image was touched is kept, and still needs its text", () => {
+    const imageRow = { term: "", definition: "", image: "data:image/png;base64,AA", imageChanged: true };
+    expect(checkSetForm("Animals", [imageRow]).formError).toBe("sets.termsIncomplete");
+    expect(checkSetForm("Animals", [row("el gato", "the cat"), imageRow]).kept).toEqual([
+      row("el gato", "the cat"),
+      imageRow,
+    ]);
+  });
+});
+
+describe("saveImageChanges", () => {
+  test("only rows whose image changed are sent, each to its saved term", async () => {
+    const { calls } = mockApi({
+      "PUT /api/terms/70/image": () => ({ json: { ok: true } }),
+      "PUT /api/terms/72/image": () => ({ json: { ok: true } }),
+    });
+    const kept = [
+      { term: "a", definition: "b", image: "data:image/png;base64,AA", imageChanged: true },
+      { term: "c", definition: "d" },
+      { term: "e", definition: "f", image: null, imageChanged: true },
+    ];
+
+    await expect(saveImageChanges(kept, [{ id: 70 }, { id: 71 }, { id: 72 }])).resolves.toBe(0);
+    expect(calls.filter((c) => c.method === "PUT").map((c) => [c.path, c.body])).toEqual([
+      ["/api/terms/70/image", { image: "data:image/png;base64,AA" }],
+      ["/api/terms/72/image", { image: null }],
+    ]);
+  });
+
+  test("a failed image is counted, never thrown", async () => {
+    mockApi({ "PUT /api/terms/70/image": () => ({ status: 400, json: { error: "validation" } }) });
+    const kept = [{ term: "a", definition: "b", image: "x", imageChanged: true }];
+
+    await expect(saveImageChanges(kept, [{ id: 70 }])).resolves.toBe(1);
+    await expect(saveImageChanges(kept, [])).resolves.toBe(0); // the row never made it to the server
   });
 });

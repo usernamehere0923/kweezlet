@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router";
 import { LANGUAGES, type Language } from "../../worker/languages";
 import { useT, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
-import { checkSetForm, termsError, useTermRows } from "../lib/setForm";
+import { checkSetForm, saveImageChanges, termsError, useTermRows } from "../lib/setForm";
 import {
   Button,
   ButtonLink,
@@ -41,7 +41,7 @@ export function SetFormPage() {
   const [description, setDescription] = useState("");
   const [termLang, setTermLang] = useState<Language | "">("");
   const [defLang, setDefLang] = useState<Language | "">("");
-  const { rows, setRows, rowRefs, update, next, remove, add } = useTermRows();
+  const { rows, setRows, rowRefs, update, updateImage, next, remove, add } = useTermRows();
   const [errors, setErrors] = useState<Record<string, TKey>>({});
   const [formError, setFormError] = useState<TKey | null>(null);
   const [busy, setBusy] = useState(false);
@@ -52,20 +52,31 @@ export function SetFormPage() {
   // Only a set that is gone leaves; any other failure offers to try again.
   const load = useCallback(
     () =>
-      api.sets[":id"].$get({ param: { id } }).then(async (res) => {
-        if (!res.ok) {
-          if (res.status === 404) navigate("/");
-          else setLoadFailed(true);
-          return;
-        }
-        const set = await res.json();
-        setTitle(set.title);
-        setDescription(set.description);
-        setTermLang(set.termLang ?? "");
-        setDefLang(set.defLang ?? "");
-        setRows(set.terms.map((term) => ({ id: term.id, term: term.term, definition: term.definition })));
-        setLoading(false);
-      }),
+      Promise.all([api.sets[":id"].$get({ param: { id } }), api.sets[":id"].images.$get({ param: { id } })]).then(
+        async ([setRes, imagesRes]) => {
+          if (!setRes.ok) {
+            if (setRes.status === 404) navigate("/");
+            else setLoadFailed(true);
+            return;
+          }
+          const set = await setRes.json();
+          // Pictures that fail to load just leave their rows without one.
+          const images = imagesRes.ok ? (await imagesRes.json()).images : {};
+          setTitle(set.title);
+          setDescription(set.description);
+          setTermLang(set.termLang ?? "");
+          setDefLang(set.defLang ?? "");
+          setRows(
+            set.terms.map((term) => ({
+              id: term.id,
+              term: term.term,
+              definition: term.definition,
+              image: images[term.id] ?? null,
+            })),
+          );
+          setLoading(false);
+        },
+      ),
     [id, navigate, setRows],
   );
 
@@ -99,7 +110,9 @@ export function SetFormPage() {
       const res = editing ? await api.sets[":id"].$patch({ param: { id }, json }) : await api.sets.$post({ json });
       if (res.ok) {
         const saved = await res.json();
-        toast(t("common.saved"), "success");
+        // The text is saved; now the rows' pictures follow, one call each.
+        const failed = await saveImageChanges(kept, saved.terms);
+        toast(t(failed > 0 ? "sets.imagesFailed" : "common.saved"), failed > 0 ? "error" : "success");
         navigate(`/sets/${saved.id}`);
       } else {
         const serverErrors = await fieldErrors(res);
@@ -171,9 +184,11 @@ export function SetFormPage() {
                 index={i}
                 term={row.term}
                 definition={row.definition}
+                image={row.image}
                 onChange={(term, definition) => update(i, term, definition)}
                 onNext={() => next(i)}
                 onDelete={rows.length > 1 ? () => remove(i) : undefined}
+                onImage={(image) => updateImage(i, image)}
               />
             ))}
             <Button variant="secondary" icon="plus" onClick={add}>

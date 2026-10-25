@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 import { SPANISH_DETAIL } from "../test/fixtures";
@@ -71,6 +71,52 @@ describe("set form", () => {
     await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
     const body = calls.find((c) => c.method === "PATCH")?.body as { terms: { id: number }[] };
     expect(body.terms.map((term) => term.id)).toEqual([70, 71]);
+  });
+
+  test("the rows show their images, and removing one is saved after the set", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets/7": () => ({ json: SPANISH_DETAIL }),
+      "GET /api/sets/7/images": () => ({ json: { images: { 70: "data:image/png;base64,CAT" } } }),
+      "PATCH /api/sets/7": () => ({ json: SPANISH_DETAIL }),
+      "PUT /api/terms/70/image": () => ({ json: { ok: true } }),
+    });
+    renderApp("/sets/7/edit");
+    const thumb = await screen.findByRole("img", { name: "Image" });
+    expect(thumb.getAttribute("src")).toBe("data:image/png;base64,CAT");
+
+    await userEvent.click(screen.getByRole("button", { name: "Remove image" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT")).toBe(true));
+    expect(calls.find((c) => c.method === "PUT")).toMatchObject({
+      path: "/api/terms/70/image",
+      body: { image: null },
+    });
+  });
+
+  test("a picked image follows the new set to its term", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "POST /api/sets": () => ({ status: 201, json: { ...SPANISH_DETAIL, id: 9 } }),
+      "GET /api/sets/9": () => ({ json: { ...SPANISH_DETAIL, id: 9 } }),
+      "PUT /api/terms/70/image": () => ({ json: { ok: true } }),
+    });
+    const { container } = renderApp("/sets/new");
+    await userEvent.type(await screen.findByLabelText("Title"), "Spanish animals");
+    await userEvent.type(screen.getByLabelText("Term"), "el perro");
+    await userEvent.type(screen.getByLabelText("Definition"), "the dog");
+    fireEvent.change(container.querySelector('input[type="file"]') as HTMLInputElement, {
+      target: { files: [new File(["hello"], "cat.png", { type: "image/png" })] },
+    });
+    await waitFor(() => expect(screen.getByRole("img", { name: "Image" })).toBeTruthy());
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT")).toBe(true));
+    const put = calls.find((c) => c.method === "PUT");
+    expect(put?.path).toBe("/api/terms/70/image");
+    expect(put?.body).toMatchObject({ image: expect.stringMatching(/^data:image\/png;base64,/) });
   });
 
   test("server field errors show under the field", async () => {

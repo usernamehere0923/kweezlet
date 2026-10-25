@@ -70,6 +70,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "sets.langHint": "Optional. Wird für Audio verwendet.",
   "sets.termsNeeded": "Füge mindestens einen Begriff hinzu.",
   "sets.termsIncomplete": "Fülle beide Felder eines Begriffs aus, oder lösche die Zeile.",
+  "sets.imagesFailed": "Einige Bilder konnten nicht gespeichert werden. Füge sie erneut hinzu.",
   "sets.termsTooMany": "Ein Set kann höchstens 500 Begriffe haben.",
   "sets.termTooLong": "Ein Begriff oder eine Definition ist zu lang (höchstens 1000 Zeichen).",
   "sets.termsChanged":

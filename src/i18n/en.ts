@@ -68,6 +68,7 @@ export const en = {
   "sets.langHint": "Optional. Used for audio.",
   "sets.termsNeeded": "Add at least one term.",
   "sets.termsIncomplete": "Fill in both fields of a term, or delete the row.",
+  "sets.imagesFailed": "Some images could not be saved. Add them again.",
   "sets.termsTooMany": "A set can have at most 500 terms.",
   "sets.termTooLong": "A term or definition is too long (at most 1000 characters).",
   "sets.termsChanged": "These terms were changed on another device. Reload the page and try again.",
