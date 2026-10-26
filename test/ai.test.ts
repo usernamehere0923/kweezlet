@@ -102,6 +102,11 @@ describe("extractJsonObject", () => {
   test("a brace or a fence in the prose does not hide the real object", () => {
     expect(extractJsonObject('Kind {vocabulary} detected:\n{"a":1}')).toBe('{"a":1}');
     expect(extractJsonObject('Like this: ```x``` and here:\n```json\n{"a":1}\n```')).toBe('{"a":1}');
+    // A brace after the object, and braces inside its strings.
+    expect(extractJsonObject('{"kind":"terms","n":{"b":2}}\n\nNote: skipped {page 3}')).toBe(
+      '{"kind":"terms","n":{"b":2}}',
+    );
+    expect(extractJsonObject('{"t":"a } b \\" { c"} done}')).toBe('{"t":"a } b \\" { c"}');
   });
 
   test("hands back the text when there is no object", () => {

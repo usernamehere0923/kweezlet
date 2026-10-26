@@ -77,15 +77,17 @@ export class ExtractError extends Error {
 /**
  * Pulls the JSON object out of an answer that wraps it: code fences, a line of
  * prose before or after. The model is asked for "JSON only" but not trusted:
- * prose may hold a brace ("kind {vocabulary}") or a fence of its own, so every
- * fence and every "{" is tried until one parses. Nothing parses: the best guess.
+ * prose may hold a brace ("kind {vocabulary}", "skipped {page 3}") or a fence
+ * of its own, so every fence and every "{" up to its matching "}" is tried
+ * until one parses. Nothing parses: the best guess.
  */
 export function extractJsonObject(text: string): string {
   const bodies = [...text.matchAll(/```(?:json)?\s*([\s\S]*?)```/gi)].map((m) => m[1]!);
   bodies.push(text);
   for (const body of bodies) {
-    const end = body.lastIndexOf("}");
-    for (let start = body.indexOf("{"); start >= 0 && start < end; start = body.indexOf("{", start + 1)) {
+    for (let start = body.indexOf("{"); start >= 0; start = body.indexOf("{", start + 1)) {
+      const end = matchingBrace(body, start);
+      if (end < 0) continue;
       const candidate = body.slice(start, end + 1);
       try {
         JSON.parse(candidate);
@@ -99,6 +101,22 @@ export function extractJsonObject(text: string): string {
   const start = body.indexOf("{");
   const end = body.lastIndexOf("}");
   return start >= 0 && end > start ? body.slice(start, end + 1) : body.trim();
+}
+
+/** The index of the "}" that closes the "{" at `start` (braces inside JSON strings do not count), or -1. */
+function matchingBrace(text: string, start: number): number {
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < text.length; i++) {
+    const char = text[i];
+    if (inString) {
+      if (char === "\\") i++;
+      else if (char === '"') inString = false;
+    } else if (char === '"') inString = true;
+    else if (char === "{") depth++;
+    else if (char === "}" && --depth === 0) return i;
+  }
+  return -1;
 }
 
 /** Parses and validates one answer. Throws ExtractError with what was wrong. */

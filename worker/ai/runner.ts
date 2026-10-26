@@ -76,26 +76,40 @@ export class AiRunner extends DurableObject<Env> {
   }
 
   /**
-   * Never throws: the runtime retries a throwing alarm, and a retry after the
-   * z.ai call would pay twice. So "called" is stored before the call; a retry
-   * that finds it fails the draft instead of calling again.
+   * The runtime retries a throwing alarm (up to 6 times). A retry must never
+   * call z.ai again, and must not lose what was already paid for. So:
+   * - "called" is stored before the first call: a retry never calls again.
+   * - the cost so far ("spend") is stored after every call, and the finished
+   *   run ("end") before it is written to D1.
+   * - a failed D1 write throws, the job stays, and the retry writes the stored
+   *   end again. A retry with only "called" (the alarm died mid-call) fails the
+   *   draft with the cost known so far.
+   * The job is cleared only once D1 has the result.
    */
   async alarm(): Promise<void> {
-    const job = await this.ctx.storage.get<AiJob>("job");
+    const storage = this.ctx.storage;
+    const job = await storage.get<AiJob>("job");
     if (!job) return;
-    try {
-      if (await this.ctx.storage.get("called")) {
-        await finishRun(this.env.DB, job, { kind: "ai_server" }, NO_SPEND);
-      } else {
-        await this.ctx.storage.put("called", true);
-        const call = job.fake ? (c: ZaiCall) => fakeZai(c) : (c: ZaiCall) => callZai(this.env.ZAI_API_KEY, c);
-        await runJob(this.env.DB, job, call);
-      }
-    } catch (err) {
-      console.error("AI run failed", err);
-    } finally {
-      await this.ctx.storage.deleteAll();
+    const db = this.env.DB;
+    let end = await storage.get<RunEnd>("end");
+    if (!end && (await storage.get("called"))) {
+      end = { outcome: { kind: "ai_server" }, spend: (await storage.get<Spend>("spend")) ?? NO_SPEND };
     }
+    if (!end) {
+      await storage.put("called", true);
+      const call = job.fake ? (c: ZaiCall) => fakeZai(c) : (c: ZaiCall) => callZai(this.env.ZAI_API_KEY, c);
+      end = (await runRun(db, job, call, (spend) => storage.put("spend", spend))) ?? undefined;
+      if (end) await storage.put("end", end);
+    }
+    if (end) {
+      try {
+        await finishRun(db, job, end.outcome, end.spend);
+      } catch (err) {
+        console.error("AI run: writing the result failed, the alarm retries", err);
+        throw err;
+      }
+    }
+    await storage.deleteAll();
     await notify(this.env, job.userId, "ai", { draftId: job.draftId }).catch(() => {});
   }
 }
@@ -113,13 +127,27 @@ type DraftRow = {
 };
 type PageRow = { n: number; text: string | null; image: string | null };
 
-/**
- * One run, start to end: options and material from D1, the call (plus one
- * repair retry when the answer is unreadable), the quote check, and for "More
- * cards" the dedup against the draft and its target set. Writes the outcome
- * and the usage row, whatever happens; throws only when D1 itself fails.
- */
+/** How a run ended and what it cost: everything finishRun writes. */
+type RunEnd = { outcome: Outcome; spend: Spend };
+
+/** One run, start to end, written to D1 (runRun plus finishRun). */
 export async function runJob(db: D1Database, job: AiJob, call: (c: ZaiCall) => Promise<ZaiResult>): Promise<void> {
+  const end = await runRun(db, job, call);
+  if (end) await finishRun(db, job, end.outcome, end.spend);
+}
+
+/**
+ * One run, without writing it: options and material from D1, the call (plus
+ * one repair retry when the answer is unreadable), the quote check, and for
+ * "More cards" the dedup against the draft and its target set. Null when the
+ * draft is gone. `onSpend` hears the cost after every call that went out.
+ */
+async function runRun(
+  db: D1Database,
+  job: AiJob,
+  call: (c: ZaiCall) => Promise<ZaiResult>,
+  onSpend: (spend: Spend) => Promise<void> = async () => {},
+): Promise<RunEnd | null> {
   const more = job.action === "more";
   // Every page's text (the quote check may find a quote anywhere), but images
   // only of the pages this run sends: six photos are megabytes.
@@ -134,7 +162,7 @@ export async function runJob(db: D1Database, job: AiJob, call: (c: ZaiCall) => P
       .bind(...runPages, job.draftId, job.userId),
   ]);
   const draft = draftRes!.results[0] as DraftRow | undefined;
-  if (!draft) return; // deleted while it waited
+  if (!draft) return null; // deleted while it waited
   const pages = pagesRes!.results as PageRow[];
   const current = JSON.parse(draft.cards_json) as DraftCard[];
 
@@ -151,37 +179,37 @@ export async function runJob(db: D1Database, job: AiJob, call: (c: ZaiCall) => P
     .map((page) => (page.text !== null ? { n: page.n, text: page.text } : { n: page.n, image: page.image! }));
 
   let spend = NO_SPEND;
-  const count = (result: ZaiResult) => {
+  const count = async (result: ZaiResult) => {
     spend = {
       calls: spend.calls + 1,
       usage: addUsage(spend.usage, result.usage),
       costNanos: spend.costNanos + result.costNanos,
       durationMs: spend.durationMs + result.durationMs,
     };
+    await onSpend(spend);
   };
   let result: AiCardResult;
   try {
     const messages = runMessages(options, { kind: "pages", pages: material });
     const first = await call({ messages, maxTokens: MAX_OUTPUT_TOKENS });
-    count(first);
+    await count(first);
     try {
       result = parseResult(first.content);
     } catch (err) {
       if (!(err instanceof ExtractError)) throw err;
       const repair = repairMessages(messages, first.content, err.message);
       const second = await call({ messages: repair, maxTokens: MAX_OUTPUT_TOKENS });
-      count(second);
+      await count(second);
       result = parseResult(second.content);
     }
   } catch (err) {
     // A call that went out counts, even a failed one: z.ai may have billed it.
     if (err instanceof ZaiError && err.sent) {
-      count({ content: "", usage: err.usage, costNanos: err.costNanos, durationMs: err.durationMs });
+      await count({ content: "", usage: err.usage, costNanos: err.costNanos, durationMs: err.durationMs });
     }
     const kind: ZaiErrorKind = err instanceof ZaiError ? err.kind : "ai_server";
     if (!(err instanceof ZaiError) && !(err instanceof ExtractError)) console.error("AI run failed", err);
-    await finishRun(db, job, { kind }, spend);
-    return;
+    return { outcome: { kind }, spend };
   }
 
   // Only text pages can prove a quote: scans and photos stay unverified.
@@ -190,17 +218,13 @@ export async function runJob(db: D1Database, job: AiJob, call: (c: ZaiCall) => P
   const unique = more ? withoutRepeats(made, existing) : made;
   // A draft holds at most 500 cards (what the review screen can edit and save).
   const fresh = more ? unique.slice(0, Math.max(0, MAX_DRAFT_CARDS - current.length)) : unique;
-  await finishRun(
-    db,
-    job,
-    {
-      result,
-      cards: more ? [...current, ...fresh] : fresh,
-      added: fresh.length,
-      skipped: made.length - unique.length,
-    },
-    spend,
-  );
+  const outcome: Outcome = {
+    result,
+    cards: more ? [...current, ...fresh] : fresh,
+    added: fresh.length,
+    skipped: made.length - unique.length,
+  };
+  return { outcome, spend };
 }
 
 /** The terms of the draft's target set, so "More cards" does not repeat them either. */

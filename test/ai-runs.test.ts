@@ -179,6 +179,64 @@ describe("a run", () => {
     });
   });
 
+  it("when D1 fails after z.ai answered, the alarm retry writes the stored result: one call, one cost row", async () => {
+    const userId = await addUser("anna", "secret-pw");
+    const { fetchMock } = stubZai(answer([DOG]));
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO ai_drafts (user_id, status, kind) VALUES (?, 'running', 'auto')").bind(userId),
+      env.DB.prepare("INSERT INTO ai_draft_pages (user_id, draft_id, n, text) VALUES (?, 1, 2, ?)").bind(
+        userId,
+        PAGE_2,
+      ),
+    ]);
+    const job: AiJob = { userId, draftId: 1, action: "create", userLanguage: "en", fake: false, startedAt: Date.now() };
+    await runInDurableObject(runner(userId), async (instance, state) => {
+      const db = (instance as unknown as { env: Env }).env.DB;
+      const real = db.batch.bind(db);
+      let batches = 0;
+      // The first batch reads the draft; the second one writes the result and fails.
+      const spy = vi.spyOn(db, "batch").mockImplementation(async (statements) => {
+        if (++batches === 2) throw new Error("D1 is down");
+        return real(statements);
+      });
+      await state.storage.put("job", job);
+      await expect((instance as AiRunner).alarm()).rejects.toThrow("D1 is down");
+      expect(await state.storage.get("end")).toBeDefined();
+      spy.mockRestore();
+
+      await (instance as AiRunner).alarm(); // the runtime's retry
+      expect(await state.storage.get("job")).toBeUndefined();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(await env.DB.prepare("SELECT status FROM ai_drafts WHERE id = 1").first()).toEqual({ status: "ready" });
+    expect(await usageRows(userId)).toMatchObject([{ calls: 1, cost_nanos: 250_000 }]);
+  });
+
+  it("an alarm that died during the call fails the draft with the cost known so far", async () => {
+    const userId = await addUser("anna", "secret-pw");
+    const { fetchMock } = stubZai();
+    await env.DB.prepare("INSERT INTO ai_drafts (user_id, status, kind) VALUES (?, 'running', 'auto')")
+      .bind(userId)
+      .run();
+    const job: AiJob = { userId, draftId: 1, action: "create", userLanguage: "en", fake: false, startedAt: Date.now() };
+    const spend = {
+      calls: 1,
+      usage: { promptTokens: 100, cachedTokens: 0, completionTokens: 0 },
+      costNanos: 15_000,
+      durationMs: 9,
+    };
+    await runInDurableObject(runner(userId), async (instance, state) => {
+      await state.storage.put({ job, called: true, spend });
+      await (instance as AiRunner).alarm();
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(await env.DB.prepare("SELECT status, error FROM ai_drafts WHERE id = 1").first()).toEqual({
+      status: "failed",
+      error: "ai_server",
+    });
+    expect(await usageRows(userId)).toMatchObject([{ calls: 1, cost_nanos: 15_000 }]);
+  });
+
   it("a draft deleted during its run keeps its cost row, without the draft", async () => {
     const { id: userId, cookie } = await signedIn("anna");
     let release = () => {};
