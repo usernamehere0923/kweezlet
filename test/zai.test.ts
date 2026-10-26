@@ -81,6 +81,47 @@ describe("callZai", () => {
     expect(bad.message).toBe("Parameter is invalid");
   });
 
+  test("429 with an empty balance is ai_quota, not busy: waiting does not help", async () => {
+    stubFetch([
+      { status: 429, body: { error: { code: "1113", message: "Insufficient balance or no resource package." } } },
+      { status: 429, body: { error: { code: 1305, message: "Service overloaded" } } },
+      { status: 429, body: {} },
+    ]);
+    const kind = async () =>
+      ((await callZai("key", { messages: MESSAGES, maxTokens: 10 }).catch((e: unknown) => e)) as ZaiError).kind;
+    expect(await kind()).toBe("ai_quota");
+    expect(await kind()).toBe("ai_busy");
+    expect(await kind()).toBe("ai_busy");
+  });
+
+  test("413 and 422 are the material's fault: ai_input", async () => {
+    stubFetch([{ status: 413, body: "too large" }, { status: 422 }]);
+    const kind = async () =>
+      ((await callZai("key", { messages: MESSAGES, maxTokens: 10 }).catch((e: unknown) => e)) as ZaiError).kind;
+    expect(await kind()).toBe("ai_input");
+    expect(await kind()).toBe("ai_input");
+  });
+
+  test("an answer cut off at the output limit is ai_cut_off, with what it cost", async () => {
+    stubFetch([
+      {
+        status: 200,
+        body: {
+          choices: [
+            { message: { content: '{"kind":"terms","cards":[{"term":"Bern","defin' }, finish_reason: "length" },
+          ],
+          usage: { prompt_tokens: 1000, completion_tokens: 24000 },
+        },
+      },
+      { status: 200, body: { choices: [{ message: { content: "" }, finish_reason: "sensitive" }] } },
+    ]);
+    const err = (await callZai("key", { messages: MESSAGES, maxTokens: 24000 }).catch((e: unknown) => e)) as ZaiError;
+    expect(err.kind).toBe("ai_cut_off");
+    expect(err.costNanos).toBe(1000 * 150 + 24000 * 500);
+    const flagged = (await callZai("key", { messages: MESSAGES, maxTokens: 10 }).catch((e: unknown) => e)) as ZaiError;
+    expect(flagged.kind).toBe("ai_input");
+  });
+
   test("500 without a readable body still says what happened", async () => {
     stubFetch([{ status: 500, body: "not json" }]);
     const err = (await callZai("key", { messages: MESSAGES, maxTokens: 10 }).catch((e: unknown) => e)) as ZaiError;
@@ -100,7 +141,7 @@ describe("callZai", () => {
       },
     ]);
     const err = (await callZai("key", { messages: MESSAGES, maxTokens: 10 }).catch((e: unknown) => e)) as ZaiError;
-    expect(err.kind).toBe("ai_busy");
+    expect(err.kind).toBe("ai_quota");
     expect(err.costNanos).toBe(100 * 150 + 10 * 500);
     expect(err.usage).toEqual({ promptTokens: 100, cachedTokens: 0, completionTokens: 10 });
   });

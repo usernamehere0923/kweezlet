@@ -17,10 +17,22 @@ export type ZaiMessage = { role: "system" | "user" | "assistant"; content: strin
 /**
  * Why a call failed, as a code the UI translates ("AI is busy, try again in a
  * minute" and friends). Also the `error` column of a failed draft.
+ * - ai_busy: rate limit or overload, the same call works in a minute.
+ * - ai_quota: the z.ai account is out of credit or over its plan's limit:
+ *   retrying is useless until someone tops it up.
+ * - ai_key: the key is missing, wrong or not allowed.
+ * - ai_input: z.ai refused the material (too big, flagged, bad request).
+ * - ai_cut_off: the answer hit the output limit: too much for one run, and a
+ *   repair retry would be cut off the same way.
+ * - ai_server: anything else on z.ai's side, or no answer at all.
  */
-export type ZaiErrorKind = "ai_busy" | "ai_key" | "ai_input" | "ai_server";
+export type ZaiErrorKind = "ai_busy" | "ai_quota" | "ai_key" | "ai_input" | "ai_cut_off" | "ai_server";
 
-/** A failed call. Carries what it cost: z.ai may bill a call whose answer we reject. */
+/**
+ * A failed call. Carries what it cost: z.ai may bill a call whose answer we
+ * reject. The message is for the worker log only: it can quote z.ai's answer,
+ * so only `kind` ever goes to the UI or the database.
+ */
 export class ZaiError extends Error {
   constructor(
     readonly kind: ZaiErrorKind,
@@ -69,9 +81,20 @@ export async function callZai(apiKey: string | undefined, call: ZaiCall): Promis
   const usage = parseUsage(body?.usage);
   const cost = costNanos(MODEL, usage);
   if (!res.ok) {
-    throw new ZaiError(kindFor(res.status), zaiMessage(body) ?? `z.ai answered ${res.status}`, usage, cost, durationMs);
+    throw new ZaiError(
+      kindFor(res.status, body?.error?.code),
+      zaiMessage(body) ?? `z.ai answered ${res.status}`,
+      usage,
+      cost,
+      durationMs,
+    );
   }
-  const content = body?.choices?.[0]?.message?.content;
+  const choice = body?.choices?.[0];
+  const finished = finishKind(choice?.finish_reason);
+  if (finished) {
+    throw new ZaiError(finished, `z.ai stopped: ${String(choice?.finish_reason)}`, usage, cost, durationMs);
+  }
+  const content = choice?.message?.content;
   if (typeof content !== "string" || content.length === 0) {
     throw new ZaiError("ai_server", "z.ai answer had no content", usage, cost, durationMs);
   }
@@ -79,7 +102,7 @@ export async function callZai(apiKey: string | undefined, call: ZaiCall): Promis
 }
 
 type ZaiBody = {
-  choices?: { message?: { content?: unknown } }[];
+  choices?: { message?: { content?: unknown }; finish_reason?: unknown }[];
   usage?: {
     prompt_tokens?: number;
     completion_tokens?: number;
@@ -100,9 +123,25 @@ function zaiMessage(body: ZaiBody | null): string | undefined {
   return body?.error?.message;
 }
 
-function kindFor(status: number): ZaiErrorKind {
-  if (status === 429) return "ai_busy";
+/**
+ * The HTTP status alone is not enough: z.ai answers 429 both for "busy"
+ * (1302 rate limit, 1305 overloaded) and for "out of credit" (1113, and the
+ * plan limits 1308-1321). Its business code (docs.z.ai/api-reference/api-code)
+ * tells them apart; it comes as a string or a number.
+ */
+function kindFor(status: number, code: unknown): ZaiErrorKind {
+  const n = Number(code);
+  if (n === 1113 || (n >= 1308 && n <= 1321)) return "ai_quota";
+  if (n === 1302 || n === 1305 || status === 429) return "ai_busy";
   if (status === 401 || status === 403) return "ai_key";
-  if (status === 400) return "ai_input";
+  if (status === 400 || status === 413 || status === 422) return "ai_input";
   return "ai_server";
+}
+
+/** A finished answer that is not a whole one: cut off, or withheld by z.ai's filter. */
+function finishKind(reason: unknown): ZaiErrorKind | null {
+  if (reason === "length") return "ai_cut_off";
+  if (reason === "sensitive") return "ai_input";
+  if (reason === "network_error") return "ai_server";
+  return null;
 }
