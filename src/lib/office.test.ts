@@ -77,6 +77,17 @@ describe("Word", () => {
     ]);
   });
 
+  it("reads the text inside content controls too (templates, cover pages)", async () => {
+    const body = `<w:sdt><w:sdtPr/><w:sdtContent>${para("Deckblatt")}<w:sdt><w:sdtContent>${para(
+      "Kantone",
+      "berschrift1",
+    )}</w:sdtContent></w:sdt></w:sdtContent></w:sdt>${para("Es gibt 26 Kantone.")}`;
+    expect(await sectionsOf("vorlage.docx", word(body))).toEqual([
+      { n: 1, label: "Deckblatt", text: "Deckblatt" },
+      { n: 2, label: "Kantone", text: "Kantone\nEs gibt 26 Kantone." },
+    ]);
+  });
+
   it("without styles.xml, headings are guessed from the style id; long sections are split", async () => {
     const long = "Wort ".repeat(1000).trim(); // 4,999 characters
     const body = [para("Teil", "Heading2"), para(long), para(long)].join("");

@@ -1,5 +1,23 @@
+import { MODEL, PRICES } from "../../worker/ai/prices";
 import type { ZaiErrorKind } from "../../worker/ai/zai";
 import type { TKey } from "../i18n";
+
+/** About this many tokens per character of text (z.ai counts roughly 4 per token). */
+const CHARS_PER_TOKEN = 4;
+/** What one scanned or photographed page costs as input, roughly. */
+const TOKENS_PER_IMAGE = 1600;
+/** A run's answer plus its thinking, roughly: billed as output. */
+const OUTPUT_TOKENS = 6000;
+
+/**
+ * The estimate before a run: "about 6,000 tokens · about $0.01". Input from
+ * the material, plus a typical answer; the real cost is shown afterwards.
+ */
+export function estimateRun(material: { chars: number; images: number }): { tokens: number; nanos: number } {
+  const tokens = Math.ceil(material.chars / CHARS_PER_TOKEN) + material.images * TOKENS_PER_IMAGE;
+  const prices = PRICES[MODEL]!;
+  return { tokens, nanos: tokens * prices.input + OUTPUT_TOKENS * prices.output };
+}
 
 /**
  * What the AI cost, in dollars, rounded UP to the cent: $0.004 shows "$0.01",

@@ -181,8 +181,7 @@ async function wordSections(zip: Zip): Promise<OfficeSection[]> {
   if (!body) throw new OfficeError("unreadable");
   const blocks: Block[] = [];
   let block: Block | null = null;
-  for (const node of [...body.children]) {
-    if (node.namespaceURI !== W) continue;
+  for (const node of bodyParts(body)) {
     if (node.localName === "p") {
       const text = paragraphText(node);
       const level = paragraphLevel(node, levels);
@@ -207,6 +206,25 @@ async function wordSections(zip: Zip): Promise<OfficeSection[]> {
   // Text before the first heading is labelled by its own first line.
   for (const b of blocks) if (!b.label) b.label = short(b.lines.find((line) => line.trim())?.trim() ?? "");
   return numbered(blocks);
+}
+
+/**
+ * The body's paragraphs and tables in order, also those inside content
+ * controls (w:sdt): templates, cover pages and tables of contents wrap whole
+ * sections in them.
+ */
+function bodyParts(parent: Element): Element[] {
+  const parts: Element[] = [];
+  for (const node of [...parent.children]) {
+    if (node.namespaceURI !== W) continue;
+    if (node.localName === "sdt") {
+      const content = byTag(node, W, "sdtContent")[0];
+      if (content) parts.push(...bodyParts(content));
+    } else {
+      parts.push(node);
+    }
+  }
+  return parts;
 }
 
 /** Style id -> heading level, from the style's built-in name or its outline level. */

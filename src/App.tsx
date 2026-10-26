@@ -4,6 +4,8 @@ import { I18nProvider, useT } from "./i18n";
 import { SERVER_ERROR_EVENT } from "./lib/api";
 import { clientId, LiveProvider, useLive } from "./lib/live";
 import { SessionProvider, useSession } from "./lib/session";
+import { AiDraftPage } from "./pages/AiDraft";
+import { AiSourcePage } from "./pages/AiSource";
 import { DesignSystemPage } from "./pages/design";
 import { HomePage } from "./pages/Home";
 import { LoginPage } from "./pages/Login";
@@ -94,6 +96,8 @@ function LoggedInApp() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/review" element={<ReviewPage />} />
+          <Route path="/create/ai" element={<AiSourcePage />} />
+          <Route path="/create/ai/:draftId" element={<AiDraftPage />} />
           <Route path="/sets/new" element={<SetFormPage />} />
           <Route path="/sets/:id" element={<SetDetailPage />} />
           <Route path="/sets/:id/edit" element={<SetFormPage />} />

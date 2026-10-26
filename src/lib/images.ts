@@ -56,22 +56,33 @@ function shrink(img: HTMLImageElement, width: number, height: number, mime: "ima
   return canvas.toDataURL(mime, 0.82);
 }
 
+/** How big a picture may end up: its longest side, and its length as a data URL. */
+export type ImageLimits = { maxSide: number; maxChars: number };
+
+/** A term's picture (worker/images.ts). */
+export const TERM_IMAGE: ImageLimits = { maxSide: MAX_SIDE, maxChars: MAX_IMAGE_CHARS };
+/**
+ * A photographed page for the AI: big enough to read, small enough that six of
+ * them fit one run's request (4 MB, worker/ai.ts).
+ */
+export const PAGE_IMAGE: ImageLimits = { maxSide: 1600, maxChars: 600_000 };
+
 /**
  * A picked file as a small data URL, the way the image API accepts it.
  * Throws "image could not be read" when the file is no picture at all, or
  * when it is still too big for the API after shrinking.
  */
-export async function fileToDataUrl(file: File): Promise<string> {
+export async function fileToDataUrl(file: File, limits: ImageLimits = TERM_IMAGE): Promise<string> {
   const original = await readAsDataUrl(file);
   const img = await loadImage(original);
   // A small file can still be huge in pixels (a flat 8000x8000 PNG).
-  if (keepAsIs(file) && Math.max(img.naturalWidth, img.naturalHeight) <= MAX_SIDE) return original;
+  if (keepAsIs(file) && Math.max(img.naturalWidth, img.naturalHeight) <= limits.maxSide) return original;
   // Photos become JPEG (small); drawings and screenshots keep their PNG alpha.
   const mime = file.type === "image/png" ? "image/png" : "image/jpeg";
-  let { width, height } = fitSize(img.naturalWidth, img.naturalHeight, MAX_SIDE);
+  let { width, height } = fitSize(img.naturalWidth, img.naturalHeight, limits.maxSide);
   for (let tries = 0; ; tries++) {
     const dataUrl = shrink(img, width, height, mime);
-    if (dataUrl.length <= MAX_IMAGE_CHARS) return dataUrl;
+    if (dataUrl.length <= limits.maxChars) return dataUrl;
     if (tries >= 3) throw new Error("image could not be read");
     width = Math.max(1, Math.round(width * 0.75));
     height = Math.max(1, Math.round(height * 0.75));

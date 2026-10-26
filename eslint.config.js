@@ -21,9 +21,17 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ["**/worker/**", "!**/worker/languages", "!**/worker/progress", "!**/worker/grading"],
+              group: [
+                "**/worker/**",
+                "!**/worker/languages",
+                "!**/worker/progress",
+                "!**/worker/grading",
+                "!**/worker/ai/",
+                "**/worker/ai/*",
+                "!**/worker/ai/prices",
+              ],
               allowTypeImports: true,
-              message: "The UI may only import types from worker/ (plus languages, progress, grading).",
+              message: "The UI may only import types from worker/ (plus languages, progress, grading, ai/prices).",
             },
           ],
         },
