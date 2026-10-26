@@ -1,6 +1,6 @@
 # kweezlet plan
 
-Phases 0 to 5: done (PRs #3 to #12). Phases 6 and 7: planned on the other Mac, to be added here.
+Phases 0 to 7: done (PRs #3 to #23). Phase 8: in progress, see "Status" and "What's next" below.
 
 ## Phase 8: AI-made kweezlets
 
@@ -8,7 +8,40 @@ Phases 0 to 5: done (PRs #3 to #12). Phases 6 and 7: planned on the other Mac, t
 
 Goal: upload material (PDF, Word, PowerPoint, text, a photo of a page, or pasted text) → the AI proposes a learnable set → user reviews and edits the draft → only then it becomes a set. Every AI action shows its cost afterwards; the account keeps a running total.
 Decided: z.ai **GLM-5.3-Flash** (paid), drafts **saved** in D1, no auto-dump into sets, a **page picker** for PDFs, **every source quote checked** against the material, **"More cards"** on the draft.
-Migration numbers below are placeholders: use the next free `migrations/000N_` at build time.
+The migration is `migrations/0009_ai.sql`. It has not run on the live database yet, so it may still change until PR #24 is merged; a local database that already ran an older version needs `npm run db:reset`.
+
+### Status (2026-10-26: branch `phase-8-ai`, draft PR #24, CI green)
+
+Done, worker side, with tests:
+
+- Build steps 1–3: the z.ai client (`worker/ai/zai.ts`), prices, prompt, a lenient answer reader with one repair retry (`worker/ai/extract.ts`), the quote check (`worker/ai/verify.ts`), the tables (`ai_drafts`, `ai_draft_pages`, `ai_usage`), the `AiRunner` Durable Object that runs each job from an alarm (`worker/ai/runner.ts`), every route (`worker/ai.ts`), the spending cap, "Download my data" and demo rows.
+- Tests: `test/ai-runs.test.ts` (job flow, one run at a time, failures, repair retry, no double billing on an alarm retry, cap, dedup, save), `test/ai.test.ts`, `test/zai.test.ts`, `test/ai-verify.test.ts`.
+- A stand-in AI for local dev without a key: `ZAI_FAKE=1` in `.dev.vars` (`worker/ai/fake.ts`). It makes cards from the material itself in about 3 s, at no cost; every AI route refuses to run on a non-local host while it is set.
+- The UI may import only types from `worker/` (eslint), so the AI client and `ZAI_API_KEY` never reach the browser.
+
+Changed against the plan below while building:
+
+- A second run while one is going: 409 `ai_running`, not `ai_busy` (that one means z.ai itself is busy).
+- Two more error kinds: `ai_quota` (z.ai out of credit or over its plan, codes 1113 and 1308–1321, also HTTP 429) and `ai_cut_off` (the answer hit `max_tokens`; no repair retry, it would be cut off again).
+- The material is stored one row per page (`ai_draft_pages`), not in one `pages_json` column: six photo pages would pass D1's 2 MB row limit.
+- Office files: Workers AI is out, see "Office files" below.
+
+Not done: Office files (decision needed), the UI (step 4), its tests (half of step 5), real runs with the key (step 6), cached-token price and real latency (need real calls).
+
+### What's next
+
+In this order. Each step on `phase-8-ai`, one commit per working step, `npm run check` and `npm test` green before each.
+
+1. **Review fixes.** A high code review of the whole branch ran on 2026-10-26; fix what it confirms.
+2. **Office files: decide.** Recommended: read them in the browser (see "Office files"). Then build `src/lib/office.ts` and its tests.
+3. **UI** (build step 4), each part checked in Playwright at 390px with `ZAI_FAKE=1`:
+   1. The new `src/ui` pieces, shown on `/design`: cost line, page thumbnail tile, draft card (source quote, page badge, "unverified" tag). `formatCost()` in `src/lib`. i18n keys (en and de-CH) for every error the API can answer: `ai_busy`, `ai_quota`, `ai_key`, `ai_input`, `ai_cut_off`, `ai_server`, `ai_cap`, `ai_running`.
+   2. Source screen: file, pasted text or photo; the PDF page picker (`src/lib/pdf.ts`, `pdfjs-dist`, approved); "What to make", "How many", instructions, the cost estimate; "Create cards".
+   3. Review screen `/create/ai/:draftId`: "Making cards…" while running; cards with checkbox, edit, delete, page badge and quote; unverified ones unchecked; header counts; cost line; Regenerate (asks first), More cards, Save (new or existing set), Discard; follows the live topic `ai`.
+   4. Home: "From material" next to "Create a set", and the "unfinished AI draft" card. Settings → "AI usage" with the cap.
+   5. UI tests (mock `src/lib/pdf.ts` and `src/lib/office.ts`): page picker, review flow, unverified cards start unchecked. Coverage floors 95 % / 75 % stay.
+4. **Real runs** (build step 6), needs the z.ai key: put `ZAI_API_KEY=…` in `.dev.vars` and remove `ZAI_FAKE`. Run a text PDF, a scanned PDF, an Office file, a phone photo and pasted text. Compare the cost with the z.ai console, set `MAX_OUTPUT_TOKENS` from the measured runs, write the cached-token price and the latency into this plan.
+5. **Ship.** Mark PR #24 ready, merge (merge commit), delete the branch. Then live, in this order: Settings → "Download my data" on the live app; `npm run db:migrate:remote` (0009); `npx wrangler secret put ZAI_API_KEY`; `npm run deploy` (it brings the `AiRunner` Durable Object, wrangler migration `v2`). Never set `ZAI_FAKE` on the live Worker.
 
 ### What Quizlet does (reference, not a limit)
 
@@ -38,7 +71,8 @@ Migration numbers below are placeholders: use the next free `migrations/000N_` a
 - **D1 row limit** (2 MB per row): the material is stored one row per page (`ai_draft_pages`), since six image pages as data URLs would not fit in one row. Text is capped at 400,000 characters in all (about 100k tokens), checked before the run.
 - **Data**: the z.ai DPA says inputs are not stored; processing is in Singapore. One line in the UI says so.
 - **Alarm time limit** (verified 2026-10-26, Cloudflare "Durable Objects limits"): an alarm handler runs at most 15 minutes wall time, 30 s CPU by default; a throwing alarm is retried up to 6 times. A run (120 s timeout, one repair retry) fits easily; the runner never throws after the z.ai call, so a retry can't pay twice.
-- **To verify in the first commit** (the docs are unclear): cached-token price, real latency, and whether Workers AI `toMarkdown()` handles docx/pptx **and** works under `npm run dev` without `wrangler login` and in `npm test`. If it needs a login or a remote connection, the double-click start would break: then drop the binding and send Office files as a z.ai `file` part (cards "unverified") for this phase.
+- **Workers AI `toMarkdown()`** (checked 2026-10-26): AI bindings always run remotely, also under `npm run dev` (Cloudflare: "There is no current local simulation for Workers AI"), so it needs a Cloudflare login and a connection, and the docs do not list which formats it converts. By the rule of this plan: no binding. See "Office files".
+- **Still to verify with real calls**: cached-token price, real latency.
 
 ### How material gets to the AI (text first, so quotes can be checked)
 
@@ -46,10 +80,25 @@ The source quote is only proof if the server has the text to check it against. S
 
 - **PDF**: the browser opens it with **pdf.js** (`pdfjs-dist`, approved, lazy-loaded on this page only). It renders page thumbnails for the picker and extracts the text of each page. Selected pages go to the Worker as `<page n="5">…</page>`.
   - A page without a text layer (a scan) is sent as a rendered JPEG instead (max 1600 px, quality 0.8), tagged with its page number. Cards from such pages can't be checked and come back "unverified".
-- **Word, PowerPoint, Excel**: the Worker converts them with Workers AI `toMarkdown()` (free, no dependency); the result is split into sections (pptx: one per slide). If the conversion fails, the file is sent as a `file` part and every card is "unverified".
+- **Word, PowerPoint, Excel**: not with Workers AI after all (it needs a Cloudflare connection even locally). Open decision, see "Office files" below.
 - **Text file / pasted text**: used as is, as one page.
 - **Photo**: an image, so its cards are "unverified". iPhone photos can be HEIC: the browser draws them to a canvas and sends a JPEG (max 1600 px), same as scan pages.
 - The pages used for a run are stored with the draft (`ai_draft_pages`, one row per page: text or image), so "More cards" and the quote check never need the file again. The file itself is never stored.
+
+### Office files (open decision)
+
+Workers AI `toMarkdown()` is out: it always runs on Cloudflare, also under `npm run dev`, so the double-click start and `npm test` would need a login and a connection.
+
+**Recommended: read them in the browser, like PDFs.** `.docx`, `.pptx` and `.xlsx` are zip files of XML. The browser unzips them with the built-in `DecompressionStream("deflate-raw")` (iOS Safari 16.4+) and reads the XML with `DOMParser`: no new dependency, nothing on the server.
+
+- **Word**: the paragraphs of `word/document.xml`. A section starts at each heading (Heading 1/2) and is numbered like a page.
+- **PowerPoint**: one section per slide (`ppt/slides/slideN.xml`, in presentation order), with the slide title as its label.
+- **Excel**: one section per sheet, each row as a line "cell | cell" (`xl/sharedStrings.xml` plus `xl/worksheets/sheetN.xml`).
+- The sections go to the Worker as page-tagged text, exactly like PDF pages: the picker shows them, the quote check works, cards can be "verified", "More cards" has the text.
+- Old binary `.doc`, `.ppt`, `.xls` are refused with "Save it as .docx/.pptx/.xlsx first".
+- One small adapter `src/lib/office.ts` (`extractSections(file) → sections`) plus tests with tiny fixture files. About 1–2 hours.
+
+**Alternative (this plan's first fallback):** send the whole file to z.ai as a `file` part. No parsing code, but every card is "unverified", nothing is stored for "More cards", and whether GLM-5.3-Flash reads docx/pptx at all is not verified.
 
 ### Run as a job, not one long request
 
@@ -171,7 +220,7 @@ User message: `<kind>`, `<max_cards>`, `<user_language>` (from the account local
 ### Build (branch `phase-8-ai`, one commit per working step)
 
 1. **Plumbing.** `ZAI_API_KEY` secret: `.dev.vars` locally (already gitignored), `wrangler secret put ZAI_API_KEY` for live, a dummy value in the test env; README "Deploy" gets the secret step and the `AI_MONTHLY_CAP_USD` var; `npm run types`. The `AiRunner` Durable Object and its alarm. Then `worker/ai/zai.ts` (fetch, 120 s timeout, 429 mapping, usage → cost), `worker/ai/prices.ts`, `worker/ai/prompt.ts`, zod card schema plus a lenient JSON extractor with one repair retry.
-2. **Migration `000N_ai.sql`.** Tables `ai_drafts` (`id, user_id, created_at, updated_at, status ('running'|'ready'|'failed'), error, source_name, kind, title, term_lang, def_lang, instructions, set_id NULL REFERENCES sets ON DELETE SET NULL, cards_json`), `ai_draft_pages` (one row per page) and `ai_usage`, plus `exportTables` and the seed. `worker/ai/verify.ts` + its tests in the same step. `normalizeAnswer` moves from `src/lib/grading.ts` to an import-free `worker/grading.ts` (like `worker/progress.ts`) so the worker can dedup with it.
+2. **Migration `0009_ai.sql`.** Tables `ai_drafts` (`id, user_id, created_at, updated_at, status ('running'|'ready'|'failed'), error, source_name, kind, title, term_lang, def_lang, instructions, set_id NULL REFERENCES sets ON DELETE SET NULL, cards_json`), `ai_draft_pages` (one row per page) and `ai_usage`, plus `exportTables` and the seed. `worker/ai/verify.ts` + its tests in the same step. `normalizeAnswer` moves from `src/lib/grading.ts` to an import-free `worker/grading.ts` (like `worker/progress.ts`) so the worker can dedup with it.
 3. **Routes `worker/ai.ts`.** Every query scoped to `c.get("user").id`, validated with `validate()`:
    - `POST /api/ai/drafts` (create from file, text or photo)
    - `GET` / `PATCH` / `DELETE /api/ai/drafts/:id`
