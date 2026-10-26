@@ -37,7 +37,8 @@ Migration numbers below are placeholders: use the next free `migrations/000N_` a
 - **Worker limits** (free plan): 10 ms CPU, 128 MB memory. Waiting on z.ai doesn't count as CPU, but parsing and validating a big JSON body does. So the request body is capped at **4 MB** and a run takes at most **6 image pages** (scans, photo); text pages are cheap. The file itself is never stored.
 - **D1 row limit** (2 MB per row): the material is stored one row per page (`ai_draft_pages`), since six image pages as data URLs would not fit in one row. Text is capped at 400,000 characters in all (about 100k tokens), checked before the run.
 - **Data**: the z.ai DPA says inputs are not stored; processing is in Singapore. One line in the UI says so.
-- **To verify in the first commit** (the docs are unclear): cached-token price, real latency, the Durable Object alarm time limit, and whether Workers AI `toMarkdown()` handles docx/pptx **and** works under `npm run dev` without `wrangler login` and in `npm test`. If it needs a login or a remote connection, the double-click start would break: then drop the binding and send Office files as a z.ai `file` part (cards "unverified") for this phase.
+- **Alarm time limit** (verified 2026-10-26, Cloudflare "Durable Objects limits"): an alarm handler runs at most 15 minutes wall time, 30 s CPU by default; a throwing alarm is retried up to 6 times. A run (120 s timeout, one repair retry) fits easily; the runner never throws after the z.ai call, so a retry can't pay twice.
+- **To verify in the first commit** (the docs are unclear): cached-token price, real latency, and whether Workers AI `toMarkdown()` handles docx/pptx **and** works under `npm run dev` without `wrangler login` and in `npm test`. If it needs a login or a remote connection, the double-click start would break: then drop the binding and send Office files as a z.ai `file` part (cards "unverified") for this phase.
 
 ### How material gets to the AI (text first, so quotes can be checked)
 
@@ -58,7 +59,7 @@ A run takes 20–120 s (thinking is always on). On the iPhone, putting Safari in
 2. The new Durable Object class `AiRunner` (one per user, SQLite-backed like `UserChannel`; wrangler migration `v2`) runs the z.ai call from an **alarm** set to "now". An alarm keeps running when the browser goes away; `ctx.waitUntil` in the Worker has a shorter limit than a thinking call. Verify the alarm wall-time limit in the first commit.
 3. When z.ai answers, the alarm writes the cards, `status = 'ready'` (or `'failed'` with the reason) and the `ai_usage` row to D1, then `notifyLater`-style broadcasts topic `ai`.
 4. The page shows "Making cards… usually 20–60 s" and follows the draft through `useLive("ai")` plus `GET /api/ai/drafts/:id`. Closing the app is fine: the draft is waiting when you come back.
-5. One running job per user: a second "Create cards" while one runs gets 409 `{ error: "ai_busy" }`, so retries and double taps can't pay twice.
+5. One running job per user: a second "Create cards" while one runs gets 409 `{ error: "ai_running" }` (not `ai_busy`: that one means z.ai itself is busy), so retries and double taps can't pay twice.
 
 ### Input options
 

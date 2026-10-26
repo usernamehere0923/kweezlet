@@ -271,12 +271,17 @@
           says so.
         </li>
         <li>
-          <strong>To verify in the first commit</strong> (the docs are unclear): cached-token price, real latency, the
-          Durable Object alarm time limit, and whether Workers AI <code>toMarkdown()</code> handles docx/pptx
-          <strong>and</strong> works under <code>npm run dev</code> without <code>wrangler login</code> and in
-          <code>npm test</code>. If it needs a login or a remote connection, the double-click start would break: then
-          drop the binding and send Office files as a z.ai <code>file</code> part (cards &quot;unverified&quot;) for
-          this phase.
+          <strong>Alarm time limit</strong> (verified 2026-10-26, Cloudflare &quot;Durable Objects limits&quot;): an
+          alarm handler runs at most 15 minutes wall time, 30 s CPU by default; a throwing alarm is retried up to 6
+          times. A run (120 s timeout, one repair retry) fits easily; the runner never throws after the z.ai call, so a
+          retry can&#x27;t pay twice.
+        </li>
+        <li>
+          <strong>To verify in the first commit</strong> (the docs are unclear): cached-token price, real latency, and
+          whether Workers AI <code>toMarkdown()</code> handles docx/pptx <strong>and</strong> works under
+          <code>npm run dev</code> without <code>wrangler login</code> and in <code>npm test</code>. If it needs a login
+          or a remote connection, the double-click start would break: then drop the binding and send Office files as a
+          z.ai <code>file</code> part (cards &quot;unverified&quot;) for this phase.
         </li>
       </ul>
       <h3 id="how-material-gets-to-the-ai-text-first-so-quotes-can-be-checked">
@@ -343,7 +348,8 @@
         </li>
         <li>
           One running job per user: a second &quot;Create cards&quot; while one runs gets 409
-          <code>{ error: &quot;ai_busy&quot; }</code>, so retries and double taps can&#x27;t pay twice.
+          <code>{ error: &quot;ai_running&quot; }</code> (not <code>ai_busy</code>: that one means z.ai itself is busy),
+          so retries and double taps can&#x27;t pay twice.
         </li>
       </ol>
       <h3 id="input-options">Input options</h3>

@@ -30,6 +30,8 @@ echo 'ZAI_API_KEY=<your key>' > .dev.vars   # z.ai key for the AI features
 
 The z.ai key comes from <https://z.ai/manage-apikey/apikey-list>. Without it everything works except "From material" (it fails with "the AI key is missing"). The key is only in `.dev.vars` on this machine and in a Cloudflare secret when deployed; never in the code.
 
+No key yet, or trying screens without paying: add `ZAI_FAKE=1` to `.dev.vars`. A stand-in AI then makes cards from the material itself (pairs like "el perro — the dog" and sentences), after a few seconds, at no cost. It only works on the local dev server; anywhere else the AI routes refuse to run while it is set.
+
 Every day:
 
 ```sh
