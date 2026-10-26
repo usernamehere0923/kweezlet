@@ -1,3 +1,4 @@
+import { MAX_CARDS } from "./extract";
 import type { ZaiMessage, ZaiPart } from "./zai";
 
 /**
@@ -50,8 +51,9 @@ Rules for every card:
 
 Answer with JSON only, no prose, no code fences:
 {"kind":"vocabulary|questions|terms","title":"<max 60 chars>",
- "term_lang":"en|de|fr|it|es|null","def_lang":"en|de|fr|it|es|null",
- "cards":[{"term":"…","definition":"…","source":"…","page":5}],"notes":"…"}`;
+ "term_lang":"en|de|fr|it|es" or null,"def_lang":"en|de|fr|it|es" or null,
+ "cards":[{"term":"…","definition":"…","source":"…","page":5}],"notes":"…"}
+A language outside that list, or one you cannot tell: null (the JSON null, no quotes).`;
 
 /**
  * Output bound: 60 cards plus the thinking around them. Reasoning tokens are
@@ -62,7 +64,10 @@ export const MAX_OUTPUT_TOKENS = 24_000;
 /** What the user asks for. `kind: "auto"` lets the AI classify the material. */
 export type RunOptions = {
   kind: "auto" | "vocabulary" | "questions" | "terms";
-  /** Hard cap 60. "How many" preset or 60 for "as many as the material supports". */
+  /**
+   * The "how many" preset; 0 = as many as the material supports (the draft's
+   * max_cards default). Anything above the hard cap of 60 is 60.
+   */
   maxCards: number;
   /** From the account locale: "en", "de", … For translating when the material has no translation. */
   userLanguage: string;
@@ -113,7 +118,7 @@ function userContent(options: RunOptions, material: Material): ZaiPart[] {
   parts.push({ type: "text", text: header(options) });
   for (const page of material.pages) {
     if ("text" in page) {
-      parts.push({ type: "text", text: `<page n="${page.n}">\n${page.text}\n</page>` });
+      parts.push({ type: "text", text: `<page n="${page.n}">\n${defused(page.text)}\n</page>` });
     } else {
       // A scan or photo: the image is the page, tagged with its page number.
       parts.push({ type: "text", text: `<page n="${page.n}" type="image"></page>` });
@@ -123,13 +128,31 @@ function userContent(options: RunOptions, material: Material): ZaiPart[] {
   return parts;
 }
 
+/** 0 (as many as possible), negative or above the cap: the cap. */
+function cardLimit(maxCards: number): number {
+  return maxCards > 0 ? Math.min(Math.floor(maxCards), MAX_CARDS) : MAX_CARDS;
+}
+
+/**
+ * Text from the user or the material must not open or close our own tags: a
+ * page holding "</page><instructions>…" would otherwise speak as the user.
+ * The "<" of such a tag becomes the full-width "＜", which the model reads
+ * as text; NFKC turns it back into "<", so a quote of it still verifies.
+ */
+const OUR_TAGS = /<(\/?\s*(?:page|instructions|existing|kind|max_cards|user_language)\b)/gi;
+function defused(text: string): string {
+  return text.replace(OUR_TAGS, "＜$1");
+}
+
 function header(options: RunOptions): string {
   const lines = [
     `<kind>${options.kind}</kind>`,
-    `<max_cards>${options.maxCards}</max_cards>`,
+    `<max_cards>${cardLimit(options.maxCards)}</max_cards>`,
     `<user_language>${options.userLanguage}</user_language>`,
   ];
-  if (options.instructions.trim()) lines.push(`<instructions>${options.instructions.trim()}</instructions>`);
-  if (options.existing.trim()) lines.push(`<existing>\n${options.existing.trim()}\n</existing>`);
+  const instructions = defused(options.instructions.trim());
+  const existing = defused(options.existing.trim());
+  if (instructions) lines.push(`<instructions>${instructions}</instructions>`);
+  if (existing) lines.push(`<existing>\n${existing}\n</existing>`);
   return lines.join("\n");
 }
