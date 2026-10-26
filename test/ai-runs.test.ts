@@ -5,7 +5,7 @@ import { runDurableObjectAlarm, runInDurableObject } from "cloudflare:test";
 import { env } from "cloudflare:workers";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fakeZai } from "../worker/ai/fake";
-import { runJob, type AiJob } from "../worker/ai/runner";
+import { runJob, type AiJob, type AiRunner } from "../worker/ai/runner";
 import { isLocalHost } from "../worker/ai";
 import { addUser, api, signedIn } from "./helpers";
 
@@ -258,6 +258,82 @@ describe("more cards and regenerate", () => {
     expect((await api(`/api/ai/drafts/${id}`, { method: "PATCH", cookie: ben, json: {} })).status).toBe(404);
     expect((await api(`/api/ai/drafts/${id}`, { method: "DELETE", cookie: ben })).status).toBe(404);
     expect((await post(ben, `/api/ai/drafts/${id}/save`, { setId: null, title: "x" })).status).toBe(404);
+  });
+});
+
+describe("races and limits", () => {
+  it("a refused run changes nothing: kind and pages stay as they were", async () => {
+    const { cookie } = await signedIn("anna");
+    stubZai(answer([DOG]));
+    const ready = await createDraft(cookie);
+    await settled(cookie, ready);
+    let release = () => {};
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    stubZai({ ...answer([CAT]), gate });
+    const running = await createDraft(cookie);
+
+    expect((await post(cookie, `/api/ai/drafts/${ready}/regenerate`, { kind: "questions" })).status).toBe(409);
+    const more = await post(cookie, `/api/ai/drafts/${ready}/more`, { pages: [{ n: 2, text: "replaced" }] });
+    expect(more.status).toBe(409);
+    const page = await env.DB.prepare("SELECT text FROM ai_draft_pages WHERE draft_id = ? AND n = 2")
+      .bind(ready)
+      .first();
+    expect(page).toEqual({ text: PAGE_2 });
+    expect((await settled(cookie, ready)).kind).toBe("auto");
+    release();
+    await settled(cookie, running);
+  });
+
+  it("two saves at once write the cards once; the second finds no draft", async () => {
+    const { cookie } = await signedIn("anna");
+    const set = await post(cookie, "/api/sets", { title: "Zoo", terms: [{ term: "el pez", definition: "the fish" }] });
+    const setId = ((await set.json()) as { id: number }).id;
+    stubZai(answer([DOG]), answer([CAT]));
+    const intoSet = await createDraft(cookie);
+    await settled(cookie, intoSet);
+    const intoNew = await createDraft(cookie);
+    await settled(cookie, intoNew);
+
+    const saveTwice = (id: number, json: unknown) =>
+      Promise.all([post(cookie, `/api/ai/drafts/${id}/save`, json), post(cookie, `/api/ai/drafts/${id}/save`, json)]);
+    expect((await saveTwice(intoSet, { setId })).map((r) => r.status).sort()).toEqual([200, 404]);
+    expect((await saveTwice(intoNew, { setId: null, title: "New" })).map((r) => r.status).sort()).toEqual([200, 404]);
+
+    const terms = await env.DB.prepare("SELECT term FROM terms ORDER BY id").all();
+    expect(terms.results.map((row) => row.term)).toEqual(["el pez", "el perro", "el gato"]);
+    const sets = await env.DB.prepare("SELECT title FROM sets ORDER BY id").all();
+    expect(sets.results.map((row) => row.title)).toEqual(["Zoo", "New"]);
+  });
+
+  it("a draft holds at most 500 cards: More cards fills it up, then refuses", async () => {
+    const { cookie } = await signedIn("anna");
+    stubZai(answer([DOG]));
+    const id = await createDraft(cookie);
+    await settled(cookie, id);
+    const filler = Array.from({ length: 499 }, (_, i) => ({ term: `t${i}`, definition: `d${i}` }));
+    await env.DB.prepare("UPDATE ai_drafts SET cards_json = ? WHERE id = ?").bind(JSON.stringify(filler), id).run();
+
+    stubZai(answer([DOG, CAT]));
+    expect((await post(cookie, `/api/ai/drafts/${id}/more`, { pages: [{ n: 3, text: "x" }] })).status).toBe(202);
+    const body = await settled(cookie, id);
+    expect(body).toMatchObject({ added: 1, skipped: 0 });
+    expect(body.cards).toHaveLength(500);
+
+    const full = await post(cookie, `/api/ai/drafts/${id}/more`, { pages: [{ n: 4, text: "y" }] });
+    expect(await full.json()).toMatchObject({ fields: { cards: "too_big" } });
+  });
+
+  it("a start that fails on D1 stores no job: the lock stays free", async () => {
+    const userId = await addUser("anna", "secret-pw");
+    const job: AiJob = { userId, draftId: 1, action: "create", userLanguage: "en", fake: false, startedAt: Date.now() };
+    await runInDurableObject(runner(userId), async (instance, state) => {
+      const db = (instance as unknown as { env: Env }).env.DB;
+      const batch = vi.spyOn(db, "batch").mockRejectedValueOnce(new Error("D1 is down"));
+      await expect((instance as AiRunner).start(job)).rejects.toThrow("D1 is down");
+      expect(await state.storage.get("job")).toBeUndefined();
+      expect(await state.storage.getAlarm()).toBeNull();
+      batch.mockRestore();
+    });
   });
 });
 

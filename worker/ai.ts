@@ -5,7 +5,8 @@ import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import type { DraftCard } from "./ai/extract";
-import type { AiJob } from "./ai/runner";
+import { MAX_DRAFT_CARDS, pageStatements } from "./ai/pages";
+import type { AiJob, RunChanges } from "./ai/runner";
 import type { ZaiErrorKind } from "./ai/zai";
 import { LANGUAGES, type Language } from "./languages";
 import { notifyLater } from "./live";
@@ -33,7 +34,6 @@ const pageSchema = z.union([
   z.object({ n: z.number().int().positive().max(10_000), text: z.string().min(1).max(MAX_TEXT_CHARS) }),
   z.object({ n: z.number().int().positive().max(10_000), image: pageImage }),
 ]);
-type PageInput = z.infer<typeof pageSchema>;
 
 /** The pages of one run: numbers unique, the image and text caps of the plan. */
 const pagesSchema = z
@@ -77,7 +77,7 @@ const patchBody = z.object({
   termLang: languageSchema.nullable().optional(),
   defLang: languageSchema.nullable().optional(),
   setId: z.number().int().positive().nullable().optional(),
-  cards: z.array(draftCard).max(500).optional(),
+  cards: z.array(draftCard).max(MAX_DRAFT_CARDS).optional(),
 });
 const saveBody = z.object({
   /** null: a new set with this title; else the checked cards go into that set. */
@@ -176,19 +176,31 @@ export function isLocalHost(hostname: string): boolean {
 /**
  * The stand-in AI (ZAI_FAKE=1) is for `npm run dev` only. Set anywhere else,
  * every run is refused rather than handing out canned cards: null = refuse.
+ * Checked first in every route that starts a run, before anything is written.
  */
 function fakeMode(c: Context<AppEnv>): boolean | null {
   if (c.env.ZAI_FAKE !== "1") return false;
   return isLocalHost(new URL(c.req.url).hostname) ? true : null;
 }
+const fakeRefused = (c: Context<AppEnv>) => {
+  console.error("ZAI_FAKE is set outside local dev: AI runs refused");
+  return c.json({ error: "server_error" as const }, 500);
+};
 
-/** Hands the job to the user's AiRunner; false when a run is already going. */
-async function startRun(c: Context<AppEnv>, job: Omit<AiJob, "userId" | "userLanguage" | "startedAt" | "fake">) {
+/**
+ * Hands the job to the user's AiRunner; false when a run is already going.
+ * `changes` (a new kind, new pages) are written by the runner itself, only
+ * once it holds the lock: a refused run changes nothing.
+ */
+async function startRun(
+  c: Context<AppEnv>,
+  fake: boolean,
+  job: Omit<AiJob, "userId" | "userLanguage" | "startedAt" | "fake">,
+  changes: RunChanges = {},
+) {
   const user = c.get("user");
-  const fake = fakeMode(c);
-  if (fake === null) throw new Error("ZAI_FAKE is set outside local dev");
   const runner = c.env.AI_RUNNER.get(c.env.AI_RUNNER.idFromName(String(user.id)));
-  return runner.start({ ...job, userId: user.id, userLanguage: user.locale, fake, startedAt: Date.now() });
+  return runner.start({ ...job, userId: user.id, userLanguage: user.locale, fake, startedAt: Date.now() }, changes);
 }
 
 /**
@@ -207,24 +219,6 @@ async function tidyDrafts(db: D1Database, userId: number): Promise<void> {
       .prepare("DELETE FROM ai_drafts WHERE user_id = ? AND status != 'running' AND updated_at < unixepoch() - ?")
       .bind(userId, DRAFT_DAYS * 86400),
   ]);
-}
-
-/** The pages as rows of ai_draft_pages; an existing page number is replaced. */
-function pageStatements(db: D1Database, userId: number, draftId: number | "latest", pages: PageInput[]) {
-  const draft = draftId === "latest" ? "(SELECT MAX(id) FROM ai_drafts WHERE user_id = ?)" : "?";
-  return pages.map((page) =>
-    db
-      .prepare(
-        `INSERT OR REPLACE INTO ai_draft_pages (user_id, draft_id, n, text, image) VALUES (?, ${draft}, ?, ?, ?)`,
-      )
-      .bind(
-        userId,
-        draftId === "latest" ? userId : draftId,
-        page.n,
-        "text" in page ? page.text : null,
-        "image" in page ? page.image : null,
-      ),
-  );
 }
 
 async function ownsSet(db: D1Database, userId: number, setId: number): Promise<boolean> {
@@ -250,6 +244,8 @@ export const aiRoutes = new Hono<AppEnv>()
       const user = c.get("user");
       const body = c.req.valid("json");
       const db = c.env.DB;
+      const fake = fakeMode(c);
+      if (fake === null) return fakeRefused(c);
       if (await overCap(c)) return capError(c);
       if (body.setId !== null && !(await ownsSet(db, user.id, body.setId))) {
         return validationError(c, { setId: "invalid_value" });
@@ -266,7 +262,7 @@ export const aiRoutes = new Hono<AppEnv>()
         ...pageStatements(db, user.id, "latest", body.pages),
       ]);
       const id = created!.results[0]!.id;
-      if (!(await startRun(c, { draftId: id, action: "create" }))) {
+      if (!(await startRun(c, fake, { draftId: id, action: "create" }))) {
         await db.prepare("DELETE FROM ai_drafts WHERE id = ? AND user_id = ?").bind(id, user.id).run();
         return runningError(c);
       }
@@ -336,10 +332,7 @@ export const aiRoutes = new Hono<AppEnv>()
     const { id } = c.req.valid("param");
     const body = c.req.valid("json");
     const db = c.env.DB;
-    const draft = await loadDraft(db, userId, id);
-    if (!draft) return notFound(c);
-    // The run writes the cards when it ends: an edit now would be lost.
-    if (draft.status === "running") return runningError(c);
+    if (!(await loadDraft(db, userId, id))) return notFound(c);
     if (body.setId != null && !(await ownsSet(db, userId, body.setId))) {
       return validationError(c, { setId: "invalid_value" });
     }
@@ -353,13 +346,17 @@ export const aiRoutes = new Hono<AppEnv>()
     ];
     const changed = fields.filter(([, value]) => value !== undefined);
     if (changed.length > 0) {
-      await db
+      // The run writes the cards when it ends: an edit during it would be lost.
+      // The status is checked in the UPDATE itself, so a run that starts right
+      // now cannot slip in between a check and the write.
+      const updated = await db
         .prepare(
           `UPDATE ai_drafts SET ${changed.map(([column]) => `${column} = ?`).join(", ")}, updated_at = unixepoch()
-            WHERE id = ? AND user_id = ?`,
+            WHERE id = ? AND user_id = ? AND status != 'running'`,
         )
         .bind(...changed.map(([, value]) => value), id, userId)
         .run();
+      if (!updated.meta.changes) return runningError(c);
       notifyLater(c, "ai");
     }
     return c.json({ ok: true as const }, 200);
@@ -378,16 +375,14 @@ export const aiRoutes = new Hono<AppEnv>()
   .post("/ai/drafts/:id/regenerate", validate("param", idParam), validate("json", regenerateBody), async (c) => {
     const userId = c.get("user").id;
     const { id } = c.req.valid("param");
-    const db = c.env.DB;
-    const draft = await loadDraft(db, userId, id);
+    const fake = fakeMode(c);
+    if (fake === null) return fakeRefused(c);
+    const draft = await loadDraft(c.env.DB, userId, id);
     if (!draft) return notFound(c);
     if (draft.status === "running") return runningError(c);
     if (await overCap(c)) return capError(c);
-    await db
-      .prepare("UPDATE ai_drafts SET kind = ? WHERE id = ? AND user_id = ?")
-      .bind(c.req.valid("json").kind, id, userId)
-      .run();
-    if (!(await startRun(c, { draftId: id, action: "regenerate" }))) return runningError(c);
+    const changes = { kind: c.req.valid("json").kind };
+    if (!(await startRun(c, fake, { draftId: id, action: "regenerate" }, changes))) return runningError(c);
     notifyLater(c, "ai");
     return c.json({ ok: true as const }, 202);
   })
@@ -402,14 +397,18 @@ export const aiRoutes = new Hono<AppEnv>()
       const userId = c.get("user").id;
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
-      const db = c.env.DB;
-      const draft = await loadDraft(db, userId, id);
+      const fake = fakeMode(c);
+      if (fake === null) return fakeRefused(c);
+      const draft = await loadDraft(c.env.DB, userId, id);
       if (!draft) return notFound(c);
       if (draft.status === "running") return runningError(c);
+      // A full draft cannot take more: save or drop cards first.
+      if ((JSON.parse(draft.cards_json) as unknown[]).length >= MAX_DRAFT_CARDS) {
+        return validationError(c, { cards: "too_big" });
+      }
       if (await overCap(c)) return capError(c);
-      await db.batch(pageStatements(db, userId, id, body.pages));
-      const pages = body.pages.map((page) => page.n);
-      if (!(await startRun(c, { draftId: id, action: "more", pages, instructions: body.instructions }))) {
+      const job = { draftId: id, action: "more" as const, pages: body.pages.map((page) => page.n) };
+      if (!(await startRun(c, fake, { ...job, instructions: body.instructions }, { pages: body.pages }))) {
         return runningError(c);
       }
       notifyLater(c, "ai");
@@ -431,6 +430,11 @@ export const aiRoutes = new Hono<AppEnv>()
     if (cards.some((card) => !card.term.trim() || !card.definition.trim())) {
       return validationError(c, { cards: "invalid_value" });
     }
+    // Two saves at once (a double tap, two devices) both read the draft above.
+    // So every insert only happens while the draft still exists, and the draft
+    // goes last in the same batch: D1 runs batches one after the other, and the
+    // second one finds no draft and writes nothing.
+    const draftExists = "EXISTS (SELECT 1 FROM ai_drafts WHERE id = ? AND user_id = ?)";
     const deleteDraft = db.prepare("DELETE FROM ai_drafts WHERE id = ? AND user_id = ?").bind(id, userId);
 
     let setId: number;
@@ -439,19 +443,23 @@ export const aiRoutes = new Hono<AppEnv>()
       if (cards.length > 500) return validationError(c, { cards: "too_big" });
       const [created] = await db.batch<{ id: number }>([
         db
-          .prepare("INSERT INTO sets (user_id, title, term_lang, def_lang) VALUES (?, ?, ?, ?) RETURNING id")
-          .bind(userId, body.title, body.termLang, body.defLang),
+          .prepare(
+            `INSERT INTO sets (user_id, title, term_lang, def_lang) SELECT ?, ?, ?, ? WHERE ${draftExists} RETURNING id`,
+          )
+          .bind(userId, body.title, body.termLang, body.defLang, id, userId),
         ...cards.map((card, position) =>
           db
             .prepare(
               `INSERT INTO terms (user_id, set_id, term, definition, position)
-               VALUES (?, (SELECT MAX(id) FROM sets WHERE user_id = ?), ?, ?, ?)`,
+               SELECT ?, (SELECT MAX(id) FROM sets WHERE user_id = ?), ?, ?, ? WHERE ${draftExists}`,
             )
-            .bind(userId, userId, card.term.trim(), card.definition.trim(), position),
+            .bind(userId, userId, card.term.trim(), card.definition.trim(), position, id, userId),
         ),
         deleteDraft,
       ]);
-      setId = created!.results[0]!.id;
+      const made = created!.results[0];
+      if (!made) return notFound(c); // the other save got there first
+      setId = made.id;
     } else {
       setId = body.setId;
       const row = await db
@@ -465,15 +473,18 @@ export const aiRoutes = new Hono<AppEnv>()
       if (!row || !(await ownsSet(db, userId, setId))) return validationError(c, { setId: "invalid_value" });
       // A set holds at most 500 terms, like the set form.
       if (row.count + cards.length > 500) return validationError(c, { cards: "too_big" });
-      await db.batch([
+      const results = await db.batch([
         ...cards.map((card, i) =>
           db
-            .prepare("INSERT INTO terms (user_id, set_id, term, definition, position) VALUES (?, ?, ?, ?, ?)")
-            .bind(userId, setId, card.term.trim(), card.definition.trim(), row.last + 1 + i),
+            .prepare(
+              `INSERT INTO terms (user_id, set_id, term, definition, position) SELECT ?, ?, ?, ?, ? WHERE ${draftExists}`,
+            )
+            .bind(userId, setId, card.term.trim(), card.definition.trim(), row.last + 1 + i, id, userId),
         ),
         db.prepare("UPDATE sets SET updated_at = unixepoch() WHERE id = ? AND user_id = ?").bind(setId, userId),
         deleteDraft,
       ]);
+      if (!results.at(-1)!.meta.changes) return notFound(c); // the other save got there first
     }
     notifyLater(c, "sets");
     notifyLater(c, "ai");
