@@ -11,13 +11,18 @@ const MIN_BOUNDARY_LENGTH = 12;
 /** The text of a run's pages, keyed by page number. Scan/photo pages are not here. */
 export type PageTexts = Map<number, string>;
 
+/** A hyphen at the end of a line, with a letter on both sides. */
+const LINE_BREAK_HYPHEN = /(\p{L})-\s*\n\s*(\p{L})/gu;
+
 /**
  * NFKC, lower case, curly quotes and dashes to plain ones, line-break hyphens
  * joined ("Konfö-\nderation" -> "Konföderation"), "ß" -> "ss", whitespace
  * collapsed. Both sides of the check go through it, so PDF text quirks like
  * ligatures ("ﬁ") and page breaks cannot hide a real quote.
+ * `keepHyphens` keeps such a hyphen and only drops the line break: a real
+ * compound ("Baden-\nWürttemberg") that just happens to wrap.
  */
-export function normalizeForMatch(text: string): string {
+export function normalizeForMatch(text: string, keepHyphens = false): string {
   return (
     text
       .normalize("NFKC")
@@ -27,12 +32,34 @@ export function normalizeForMatch(text: string): string {
       .replace(/[‐‑‒–—―−]/g, "-")
       // Hyphenation from a PDF text layer: real hyphens at line breaks get joined,
       // soft hyphens (U+00AD) just disappear.
-      .replace(/(\p{L})-\s*\n\s*(\p{L})/gu, "$1$2")
+      .replace(LINE_BREAK_HYPHEN, keepHyphens ? "$1-$2" : "$1$2")
       .replace(/\u00AD/g, "")
       .replace(/ß/g, "ss")
       .replace(/\s+/g, " ")
       .trim()
   );
+}
+
+/**
+ * A run's pages, normalized lazily: each page at most once per run, and only
+ * when a card looks at it (the D1 row can hold 400k characters, and 60 cards
+ * may each search every page). A page with hyphens at line breaks has two
+ * forms, joined and kept; the quote may match either.
+ */
+export class NormalizedPages {
+  private readonly cache = new Map<number, string[]>();
+  constructor(readonly pages: PageTexts) {}
+
+  forms(n: number): string[] {
+    let forms = this.cache.get(n);
+    if (forms === undefined) {
+      const joined = normalizeForMatch(this.pages.get(n) ?? "");
+      const kept = normalizeForMatch(this.pages.get(n) ?? "", true);
+      forms = kept === joined ? [joined] : [joined, kept];
+      this.cache.set(n, forms);
+    }
+    return forms;
+  }
 }
 
 /**
@@ -45,26 +72,17 @@ export function normalizeForMatch(text: string): string {
  */
 export function checkQuote(
   card: { source: string; page: number | null },
-  pages: PageTexts,
+  pages: PageTexts | NormalizedPages,
 ): { verified: boolean; page: number | null } {
+  const normalized = pages instanceof NormalizedPages ? pages : new NormalizedPages(pages);
   const quote = normalizeForMatch(card.source);
-  const normalized = new Map<number, string>();
-  // Normalizing page text costs CPU (the D1 row can hold 400k characters), so
-  // each page is normalized at most once and only when it is looked at.
-  const pageText = (n: number): string => {
-    let text = normalized.get(n);
-    if (text === undefined) {
-      text = normalizeForMatch(pages.get(n) ?? "");
-      normalized.set(n, text);
-    }
-    return text;
-  };
   if (!quote) return { verified: false, page: card.page };
-  if (card.page != null && pages.has(card.page) && findQuote(quote, pageText(card.page))) {
+  const onPage = (n: number) => normalized.forms(n).some((text) => findQuote(quote, text));
+  if (card.page != null && normalized.pages.has(card.page) && onPage(card.page)) {
     return { verified: true, page: card.page };
   }
-  for (const n of [...pages.keys()].sort((a, b) => a - b)) {
-    if (n !== card.page && findQuote(quote, pageText(n))) return { verified: true, page: n };
+  for (const n of [...normalized.pages.keys()].sort((a, b) => a - b)) {
+    if (n !== card.page && onPage(n)) return { verified: true, page: n };
   }
   return { verified: false, page: card.page };
 }
@@ -75,8 +93,9 @@ export function checkQuote(
  * rest, which is how they arrive on the review screen.
  */
 export function verifyCards(cards: AiCard[], pages: PageTexts): DraftCard[] {
+  const normalized = new NormalizedPages(pages);
   return cards.map((card) => {
-    const { verified, page } = checkQuote(card, pages);
+    const { verified, page } = checkQuote(card, normalized);
     return { ...card, page, verified, checked: verified };
   });
 }

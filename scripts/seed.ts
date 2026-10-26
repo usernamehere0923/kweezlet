@@ -68,7 +68,7 @@ const statements: string[] = [
   // cards" run whose draft is gone (the cost row stays).
   `INSERT INTO ai_usage (user_id, created_at, action, model, calls, input_tokens, cached_tokens, output_tokens, cost_nanos, duration_ms, draft_id) VALUES
      (${demo}, unixepoch() - 3600, 'create', 'glm-5.3-flash', 1, 8400, 0, 2100, 2310000, 38000, ${draft(demo)}),
-     (${demo}, unixepoch() - 2 * 86400, 'more', 'glm-5.3-flash', 2, 11200, 4000, 3300, 2450000, 71000, NULL)`,
+     (${demo}, unixepoch() - 2 * 86400, 'more', 'glm-5.3-flash', 2, 11200, 4000, 3300, 2850000, 71000, NULL)`,
   // A second, normal account (student / student) for trying the monthly cap.
   `INSERT INTO ai_usage (user_id, created_at, action, model, calls, input_tokens, cached_tokens, output_tokens, cost_nanos, duration_ms, draft_id) VALUES
      (${student}, unixepoch() - 86400, 'create', 'glm-5.3-flash', 1, 5200, 0, 1400, 1480000, 29000, NULL)`,

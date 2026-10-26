@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import type { AiCard } from "../worker/ai/extract";
 import { checkQuote, normalizeForMatch, verifyCards, type PageTexts } from "../worker/ai/verify";
 
@@ -50,6 +50,8 @@ describe("normalizeForMatch", () => {
     expect(normalizeForMatch("Konfö- \n\t deration")).toBe("konföderation");
     // Ordinary hyphens in words stay.
     expect(normalizeForMatch("Mittel-Schule")).toBe("mittel-schule");
+    // Or keeps them, only dropping the line break.
+    expect(normalizeForMatch("Baden-\nWürttemberg", true)).toBe("baden-württemberg");
   });
 
   test("unfolds ligatures and drops soft hyphens", () => {
@@ -125,6 +127,19 @@ describe("checkQuote", () => {
 });
 
 describe("verifyCards", () => {
+  test("a real compound that wraps at a line break verifies, with or without its hyphen", () => {
+    const pages: PageTexts = new Map([[1, "Das Land Baden-\nWürttemberg grenzt an die Schweiz. Die Konfö-\nderation"]]);
+    const cards = [card("Baden-Württemberg grenzt an die Schweiz", 1), card("die Konföderation", 1)];
+    expect(verifyCards(cards, pages).map((c) => c.verified)).toEqual([true, true]);
+  });
+
+  test("normalizes each page once per run, not once per card", () => {
+    const pages = new Map([[1, "Der Bund wurde 1291 gegründet."]]);
+    const get = vi.spyOn(pages, "get");
+    verifyCards([card("Der Bund", 1), card("wurde 1291", 1), card("nirgends zu finden", 1)], pages);
+    expect(get).toHaveBeenCalledTimes(2); // the joined and the kept form, once
+  });
+
   test("fills in verified and page, and checks the verified ones", () => {
     const cards = [card("Der Bund wurde 1291 gegründet.", 2), card("Der Rhein entspringt im Gotthard.", 1)];
     expect(verifyCards(cards, PAGES)).toEqual([
