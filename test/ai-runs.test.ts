@@ -381,6 +381,60 @@ describe("races and limits", () => {
     expect(await full.json()).toMatchObject({ fields: { cards: "too_big" } });
   });
 
+  it("regenerate sends at most one run's worth of pages, even when More cards added more", async () => {
+    const { cookie } = await signedIn("anna");
+    const image = "data:image/jpeg;base64,AAAA";
+    stubZai(answer([DOG]));
+    const id = await createDraft(cookie, { pages: Array.from({ length: 6 }, (_, i) => ({ n: i + 1, image })) });
+    await settled(cookie, id);
+    stubZai(answer([CAT]));
+    await post(cookie, `/api/ai/drafts/${id}/more`, {
+      pages: Array.from({ length: 6 }, (_, i) => ({ n: i + 7, image })),
+    });
+    await settled(cookie, id);
+
+    const { bodies } = stubZai(answer([HORSE]));
+    await post(cookie, `/api/ai/drafts/${id}/regenerate`, { kind: "auto" });
+    await settled(cookie, id);
+    const parts = bodies[0]!.messages[1]!.content as { type: string }[];
+    expect(parts.filter((part) => part.type === "image_url")).toHaveLength(6);
+  });
+
+  it("a stale job's paid result is written before a new run wipes the runner", async () => {
+    const userId = await addUser("anna", "secret-pw");
+    await env.DB.prepare("INSERT INTO ai_drafts (user_id, status, kind) VALUES (?, 'running', 'auto')")
+      .bind(userId)
+      .run();
+    const old: AiJob = { userId, draftId: 1, action: "create", userLanguage: "en", fake: false, startedAt: 0 };
+    const end = {
+      outcome: { kind: "ai_busy" },
+      spend: {
+        calls: 1,
+        usage: { promptTokens: 100, cachedTokens: 0, completionTokens: 0 },
+        costNanos: 15_000,
+        durationMs: 9,
+      },
+    };
+    await runInDurableObject(runner(userId), async (instance, state) => {
+      await state.storage.put({ job: old, called: true, end });
+      const next: AiJob = { ...old, startedAt: Date.now() };
+      stubZai(answer([DOG]));
+      expect(await (instance as AiRunner).start(next)).toBe(true);
+    });
+    // The old run's cost first, then the new run's (which runs by itself).
+    await vi.waitFor(async () =>
+      expect(await usageRows(userId)).toMatchObject([
+        { calls: 1, cost_nanos: 15_000, draft_id: 1 },
+        { calls: 1, cost_nanos: 250_000, draft_id: 1 },
+      ]),
+    );
+    await vi.waitFor(() =>
+      runInDurableObject(runner(userId), async (_instance, state) => {
+        expect(await state.storage.get("job")).toBeUndefined();
+      }),
+    );
+  });
+
   it("a start that fails on D1 stores no job: the lock stays free", async () => {
     const userId = await addUser("anna", "secret-pw");
     const job: AiJob = { userId, draftId: 1, action: "create", userLanguage: "en", fake: false, startedAt: Date.now() };

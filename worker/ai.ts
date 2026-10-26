@@ -5,7 +5,7 @@ import { Hono, type Context } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { z } from "zod";
 import type { DraftCard } from "./ai/extract";
-import { MAX_DRAFT_CARDS, pageStatements } from "./ai/pages";
+import { MAX_DRAFT_CARDS, MAX_IMAGE_PAGES, MAX_PAGES, MAX_TEXT_CHARS, pageStatements } from "./ai/pages";
 import type { AiJob, RunChanges } from "./ai/runner";
 import type { ZaiErrorKind } from "./ai/zai";
 import { LANGUAGES, type Language } from "./languages";
@@ -13,10 +13,6 @@ import { notifyLater } from "./live";
 import type { AppEnv, User } from "./types";
 import { idParam, validate, validationError } from "./validate";
 
-/** One run's material: at most 60 pages, 6 of them images, 400,000 characters of text. */
-export const MAX_PAGES = 60;
-export const MAX_IMAGE_PAGES = 6;
-export const MAX_TEXT_CHARS = 400_000;
 /** A run's request: page images are already shrunk (max 1600 px JPEG) by the browser. */
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 /** Drafts nobody touched for this long are deleted when the list is next loaded. */

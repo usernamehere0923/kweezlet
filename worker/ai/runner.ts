@@ -3,7 +3,7 @@ import { normalizeAnswer } from "../grading";
 import { notify } from "../live";
 import { ExtractError, parseResult, type AiCardResult, type DraftCard } from "./extract";
 import { fakeZai } from "./fake";
-import { MAX_DRAFT_CARDS, pageStatements, type PageInput } from "./pages";
+import { MAX_DRAFT_CARDS, pageStatements, withinRunLimits, type PageInput } from "./pages";
 import { addUsage, MODEL, NO_USAGE, type Usage } from "./prices";
 import { MAX_OUTPUT_TOKENS, repairMessages, runMessages, type AiPage, type RunOptions } from "./prompt";
 import { verifyCards, type PageTexts } from "./verify";
@@ -54,6 +54,10 @@ export class AiRunner extends DurableObject<Env> {
         const running = await this.ctx.storage.get<AiJob>("job");
         if (running && job.startedAt - running.startedAt < STALE_JOB_MS) return false;
         const db = this.env.DB;
+        // A stale job whose alarm gave up while D1 was down may still hold a
+        // paid result: write it first, the storage is wiped below.
+        const leftover = running && (await this.ctx.storage.get<RunEnd>("end"));
+        if (running && leftover) await finishRun(db, running, leftover.outcome, leftover.spend);
         await db.batch([
           db
             .prepare(
@@ -174,9 +178,11 @@ async function runRun(
     instructions: more ? (job.instructions ?? "") : draft.instructions,
     existing: existing.map((card) => `${card.term} — ${card.definition}`).join("\n"),
   };
-  const material: AiPage[] = pages
-    .filter((page) => !more || job.pages?.includes(page.n))
-    .map((page) => (page.text !== null ? { n: page.n, text: page.text } : { n: page.n, image: page.image! }));
+  const material: AiPage[] = withinRunLimits(
+    pages
+      .filter((page) => !more || job.pages?.includes(page.n))
+      .map((page) => (page.text !== null ? { n: page.n, text: page.text } : { n: page.n, image: page.image! })),
+  );
 
   let spend = NO_SPEND;
   const count = async (result: ZaiResult) => {
