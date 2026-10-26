@@ -70,9 +70,18 @@ describe("fitSize", () => {
 
 describe("fileToDataUrl", () => {
   it("a small picture goes to the server as it is", async () => {
+    fakeImage(false, 800, 600);
     const dataUrl = await fileToDataUrl(picked(10, "image/png"));
     expect(dataUrl).toMatch(/^data:image\/png;base64,/);
     expect(dataUrl.length).toBeLessThan(100);
+  });
+
+  it("a small file with huge pixels is resized all the same", async () => {
+    fakeImage(false, 8000, 8000);
+    const { widths } = fakeCanvas("data:image/png;base64,SMALL=");
+
+    await expect(fileToDataUrl(picked(10, "image/png"))).resolves.toBe("data:image/png;base64,SMALL=");
+    expect(widths[0]).toBe(1024);
   });
 
   it("a big photo is resized to fit and becomes a JPEG", async () => {
@@ -101,6 +110,15 @@ describe("fileToDataUrl", () => {
     expect(toDataURL).toHaveBeenCalledTimes(3);
     expect(widths[0]).toBe(1024);
     expect(widths[2]).toBeLessThan(1024); // the canvas really got smaller
+  });
+
+  it("gives up after the last try instead of sending what the API refuses", async () => {
+    fakeImage();
+    const tooBig = `data:image/jpeg;base64,${"A".repeat(MAX_IMAGE_CHARS + 10)}`;
+    const { toDataURL } = fakeCanvas(tooBig);
+
+    await expect(fileToDataUrl(picked(500_000, "image/jpeg"))).rejects.toThrow("image could not be read");
+    expect(toDataURL).toHaveBeenCalledTimes(4);
   });
 
   it("a file that is no picture throws", async () => {

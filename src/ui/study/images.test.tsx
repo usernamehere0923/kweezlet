@@ -5,10 +5,11 @@ import { renderUi } from "../../test/render";
 import { TermEditorRow, TermImage, TermImagePicker, TermList } from "..";
 import { fileToDataUrl } from "../../lib/images";
 
-vi.mock("../../lib/images", async (importOriginal) => {
-  const mod = await importOriginal<typeof import("../../lib/images")>();
-  return { ...mod, fileToDataUrl: vi.fn(mod.fileToDataUrl) };
-});
+// jsdom decodes no pictures: the shrinking itself is tested in src/lib/images.test.ts.
+vi.mock("../../lib/images", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../../lib/images")>()),
+  fileToDataUrl: vi.fn(async () => "data:image/png;base64,CAT"),
+}));
 
 const mockedFileToDataUrl = vi.mocked(fileToDataUrl);
 

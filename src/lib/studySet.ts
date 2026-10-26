@@ -16,8 +16,9 @@ type Options = {
 
 /**
  * The set a page works on, kept fresh: refetched when another device changes
- * one of `topics`, together with the images of its terms (term id -> data
- * URL; terms without one are missing). A set that is gone sends the user back
+ * one of `topics`. The images of its terms (term id -> data URL; terms without
+ * one are missing) are big: they come with the first load and after a "sets"
+ * change only, not after every answer. A set that is gone sends the user back
  * to it, unless `onMissing` decides otherwise. Any other failure keeps what is
  * shown (api.ts already says why); when nothing is shown yet, `failed` turns
  * true and `retry()` loads again.
@@ -29,15 +30,20 @@ export function useStudySet(id: string, topics: Topic[], options: Options = {}) 
   const [failed, setFailed] = useState(false);
   const request = useRef(0);
   const loaded = useRef(false);
+  // Images are owed until a load that fetched them got through: a newer
+  // load without them must not drop the ones an older load was bringing.
+  const imagesDue = useRef(true);
   const latest = useRef(options);
   useEffect(() => {
     latest.current = options;
   });
 
-  const load = useCallback(() => {
-    const mine = ++request.current;
-    return Promise.all([api.sets[":id"].$get({ param: { id } }), api.sets[":id"].images.$get({ param: { id } })]).then(
-      async ([res, imagesRes]) => {
+  const load = useCallback(
+    (withImages: boolean) => {
+      const mine = ++request.current;
+      if (withImages) imagesDue.current = true;
+      const imagesReq = imagesDue.current ? api.sets[":id"].images.$get({ param: { id } }) : null;
+      return Promise.all([api.sets[":id"].$get({ param: { id } }), imagesReq]).then(async ([res, imagesRes]) => {
         // An older answer must not overwrite a newer one.
         if (!res.ok) {
           if (mine !== request.current) return;
@@ -50,29 +56,34 @@ export function useStudySet(id: string, topics: Topic[], options: Options = {}) 
           return;
         }
         const data = await res.json();
+        // Pictures that fail to load leave their terms without one.
+        const pictures = imagesRes && (imagesRes.ok ? (await imagesRes.json()).images : {});
         if (mine !== request.current) return;
         const first = !loaded.current;
         loaded.current = true;
         setFailed(false);
         setSet(data);
-        // Pictures that fail to load leave their terms without one.
-        setImages(imagesRes.ok ? (await imagesRes.json()).images : {});
+        if (pictures) {
+          imagesDue.current = false;
+          setImages(pictures);
+        }
         latest.current.onLoad?.(data, first);
-      },
-    );
-  }, [id, navigate]);
+      });
+    },
+    [id, navigate],
+  );
 
   // A new id starts over: its first load is a first one again.
   useEffect(() => {
     loaded.current = false;
-    void load();
+    void load(true);
   }, [load]);
   const refresh = (topic: Topic) => () => {
-    if (topics.includes(topic)) void load();
+    if (topics.includes(topic)) void load(topic === "sets");
   };
   const retry = useCallback(() => {
     setFailed(false);
-    void load();
+    void load(true);
   }, [load]);
   useLive("sets", refresh("sets"));
   useLive("study", refresh("study"));

@@ -1,9 +1,23 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
+import { fileToDataUrl } from "../lib/images";
 import { SPANISH_DETAIL } from "../test/fixtures";
 import { ME, renderApp } from "../test/render";
 import { mockApi } from "../test/server";
+
+// jsdom decodes no pictures: the shrinking itself is tested in src/lib/images.test.ts.
+vi.mock("../lib/images", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/images")>()),
+  fileToDataUrl: vi.fn(async () => "data:image/png;base64,CAT"),
+}));
+
+/** Picks a picture on the nth row's picker. */
+function pickImage(container: HTMLElement, row = 0) {
+  fireEvent.change(container.querySelectorAll('input[type="file"]')[row] as HTMLInputElement, {
+    target: { files: [new File(["hello"], "cat.png", { type: "image/png" })] },
+  });
+}
 
 describe("set form", () => {
   test("creating a set sends the form and opens the set", async () => {
@@ -106,9 +120,7 @@ describe("set form", () => {
     await userEvent.type(await screen.findByLabelText("Title"), "Spanish animals");
     await userEvent.type(screen.getByLabelText("Term"), "el perro");
     await userEvent.type(screen.getByLabelText("Definition"), "the dog");
-    fireEvent.change(container.querySelector('input[type="file"]') as HTMLInputElement, {
-      target: { files: [new File(["hello"], "cat.png", { type: "image/png" })] },
-    });
+    pickImage(container);
     await waitFor(() => expect(screen.getByRole("img", { name: "Image" })).toBeTruthy());
 
     await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -117,6 +129,52 @@ describe("set form", () => {
     const put = calls.find((c) => c.method === "PUT");
     expect(put?.path).toBe("/api/terms/70/image");
     expect(put?.body).toMatchObject({ image: expect.stringMatching(/^data:image\/png;base64,/) });
+  });
+
+  test("a picture still shrinking stays with its row when a row above is deleted", async () => {
+    let done: (dataUrl: string) => void = () => {};
+    vi.mocked(fileToDataUrl).mockImplementationOnce(() => new Promise((resolve) => (done = resolve)));
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets/7": () => ({ json: SPANISH_DETAIL }),
+      "GET /api/sets/7/images": () => ({ json: { images: {} } }),
+      "PATCH /api/sets/7": () => ({ json: { ...SPANISH_DETAIL, terms: SPANISH_DETAIL.terms.slice(1) } }),
+      "PUT /api/terms/71/image": () => ({ json: { ok: true } }),
+    });
+    const { container } = renderApp("/sets/7/edit");
+    await screen.findByDisplayValue("el gato");
+
+    pickImage(container, 1); // el gato's row
+    await userEvent.click(screen.getAllByRole("button", { name: "Delete term" })[0]!); // el perro goes
+    done("data:image/png;base64,GATO");
+    await waitFor(() => expect(screen.getByRole("img", { name: "Image" })).toBeTruthy());
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(calls.some((c) => c.method === "PUT")).toBe(true));
+    expect(calls.find((c) => c.method === "PUT")).toMatchObject({
+      path: "/api/terms/71/image",
+      body: { image: "data:image/png;base64,GATO" },
+    });
+  });
+
+  test("a new row whose picture was taken off again is just an empty row", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "POST /api/sets": () => ({ status: 201, json: { ...SPANISH_DETAIL, id: 9 } }),
+      "GET /api/sets/9": () => ({ json: { ...SPANISH_DETAIL, id: 9 } }),
+    });
+    const { container } = renderApp("/sets/new");
+    await userEvent.type(await screen.findByLabelText("Title"), "Spanish animals");
+    await userEvent.type(screen.getByLabelText("Term"), "el perro");
+    await userEvent.type(screen.getByLabelText("Definition"), "the dog");
+    await userEvent.click(screen.getByRole("button", { name: "Add a term" }));
+    pickImage(container, 1);
+    await userEvent.click(await screen.findByRole("button", { name: "Remove image" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    expect((calls.find((c) => c.method === "POST")?.body as { terms: unknown[] }).terms).toHaveLength(1);
+    expect(calls.some((c) => c.method === "PUT")).toBe(false);
   });
 
   test("server field errors show under the field", async () => {

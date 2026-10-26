@@ -177,7 +177,7 @@ export function SetFormPage() {
           <div className="flex flex-col gap-3">
             {rows.map((row, i) => (
               <TermEditorRow
-                key={row.id ?? `new-${i}`}
+                key={row.uid}
                 ref={(el) => {
                   rowRefs.current[i] = el;
                 }}
@@ -188,7 +188,7 @@ export function SetFormPage() {
                 onChange={(term, definition) => update(i, term, definition)}
                 onNext={() => next(i)}
                 onDelete={rows.length > 1 ? () => remove(i) : undefined}
-                onImage={(image) => updateImage(i, image)}
+                onImage={(image) => updateImage(row.uid, image)}
               />
             ))}
             <Button variant="secondary" icon="plus" onClick={add}>

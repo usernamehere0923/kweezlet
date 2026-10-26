@@ -261,7 +261,7 @@ export function StudyKit() {
         <div className="flex flex-col gap-3">
           {termRows.rows.map((row, i) => (
             <TermEditorRow
-              key={i}
+              key={row.uid}
               ref={(el) => {
                 termRows.rowRefs.current[i] = el;
               }}
