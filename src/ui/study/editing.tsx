@@ -12,19 +12,22 @@ export type TermEditorHandle = { focus: () => void };
 const cell =
   "w-full border-0 border-b-2 border-line bg-transparent px-0 pt-1 pb-1.5 text-base text-ink outline-none transition-colors focus:border-accent";
 
-/** One input of a TermEditorRow, its caption under it. Enter runs onEnter instead of submitting. */
-function Cell({
+/**
+ * One input of a TermEditorRow (and of a DraftCard), its caption under it.
+ * Enter runs onEnter instead of submitting. Not exported from src/ui: rows only.
+ */
+export function Cell({
   ref,
   label,
   value,
   onChange,
   onEnter,
 }: {
-  ref: Ref<HTMLInputElement>;
+  ref?: Ref<HTMLInputElement>;
   label: string;
   value: string;
   onChange: (value: string) => void;
-  onEnter: () => void;
+  onEnter?: () => void;
 }) {
   return (
     <label className="block">
@@ -35,7 +38,7 @@ function Cell({
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();
-            onEnter();
+            onEnter?.();
           }
         }}
         className={cell}
