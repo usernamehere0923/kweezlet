@@ -40,6 +40,8 @@ export class ZaiError extends Error {
     readonly usage: Usage = NO_USAGE,
     readonly costNanos: number = 0,
     readonly durationMs: number = 0,
+    /** False when nothing was sent (no key): such a failure is no call to log. */
+    readonly sent: boolean = true,
   ) {
     super(message);
     this.name = "ZaiError";
@@ -62,7 +64,7 @@ export type ZaiResult = {
 
 /** One call to z.ai. Throws ZaiError on every failure, with the cost so far. */
 export async function callZai(apiKey: string | undefined, call: ZaiCall): Promise<ZaiResult> {
-  if (!apiKey) throw new ZaiError("ai_key", "ZAI_API_KEY is not set");
+  if (!apiKey) throw new ZaiError("ai_key", "ZAI_API_KEY is not set", NO_USAGE, 0, 0, false);
   const started = Date.now();
   let res: Response;
   try {

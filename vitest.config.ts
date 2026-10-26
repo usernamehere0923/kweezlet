@@ -22,6 +22,8 @@ export default defineConfig(async () => {
                   TEST_MIGRATIONS: migrations,
                   // A dummy key: tests stub the z.ai fetch, never call the real API.
                   ZAI_API_KEY: "test-key",
+                  // The stand-in AI stays off, whatever .dev.vars on this machine says.
+                  ZAI_FAKE: "",
                 },
               },
             }),

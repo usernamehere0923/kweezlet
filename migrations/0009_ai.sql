@@ -23,6 +23,13 @@ CREATE TABLE ai_drafts (
   term_lang     TEXT CHECK (term_lang IS NULL OR term_lang IN ('en', 'de', 'fr', 'it', 'es')),
   def_lang      TEXT CHECK (def_lang IS NULL OR def_lang IN ('en', 'de', 'fr', 'it', 'es')),
   instructions  TEXT    NOT NULL DEFAULT '',
+  -- What the last run made: the kind it detected (kind 'auto') or was given.
+  made_kind     TEXT CHECK (made_kind IS NULL OR made_kind IN ('vocabulary', 'questions', 'terms')),
+  -- The last run's result: the AI's note (why fewer cards, or none), the cards
+  -- it added and, for "More cards", the duplicates it skipped.
+  notes         TEXT    NOT NULL DEFAULT '',
+  added         INTEGER NOT NULL DEFAULT 0,
+  skipped       INTEGER NOT NULL DEFAULT 0,
   -- Where the cards go when the draft is kept. NULL = a new set.
   set_id        INTEGER REFERENCES sets (id) ON DELETE SET NULL,
   -- The cards: [{term, definition, source, page, verified, checked}].

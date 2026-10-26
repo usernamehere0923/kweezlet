@@ -26,7 +26,14 @@
     },
   ],
   "durable_objects": {
-    "bindings": [{ "name": "USER_CHANNEL", "class_name": "UserChannel" }],
+    "bindings": [
+      { "name": "USER_CHANNEL", "class_name": "UserChannel" },
+      // One per user: runs that user's AI jobs from an alarm (worker/ai/runner.ts).
+      { "name": "AI_RUNNER", "class_name": "AiRunner" },
+    ],
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["UserChannel"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["UserChannel"] },
+    { "tag": "v2", "new_sqlite_classes": ["AiRunner"] },
+  ],
 }
