@@ -43,7 +43,7 @@ In this order. Each step on `phase-8-ai`, one commit per working step, `npm run 
    4. Home: "From material" next to "Create a set", and the "unfinished AI draft" card. Settings → "AI usage" with the cap.
    5. UI tests (mock `src/lib/pdf.ts` and `src/lib/office.ts`): page picker, review flow, unverified cards start unchecked. Coverage floors 95 % / 75 % stay.
 4. **Real runs** (build step 6), needs the z.ai key: put `ZAI_API_KEY=…` in `.dev.vars` and remove `ZAI_FAKE`. Run a text PDF, a scanned PDF, an Office file, a phone photo and pasted text. Compare the cost with the z.ai console, set `MAX_OUTPUT_TOKENS` from the measured runs, write the cached-token price and the latency into this plan.
-5. **Ship.** Mark PR #24 ready, merge (merge commit), delete the branch. Then live, in this order: Settings → "Download my data" on the live app; `npm run db:migrate:remote` (0009); `npx wrangler secret put ZAI_API_KEY`; `npm run deploy` (it brings the `AiRunner` Durable Object, wrangler migration `v2`). Never set `ZAI_FAKE` on the live Worker.
+5. **Ship.** Not before steps 3 and 4 are done (decided 2026-10-26): once merged, `0009_ai.sql` is frozen and every schema change the UI or the real runs need would be a new migration. Mark PR #24 ready, merge (merge commit), delete the branch. Then live, in this order: Settings → "Download my data" on the live app; `npm run db:migrate:remote` (0009); `npx wrangler secret put ZAI_API_KEY`; `npm run deploy` (it brings the `AiRunner` Durable Object, wrangler migration `v2`). Never set `ZAI_FAKE` on the live Worker.
 
 ### What Quizlet does (reference, not a limit)
 

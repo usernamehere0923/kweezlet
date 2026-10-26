@@ -296,8 +296,10 @@
           the measured runs, write the cached-token price and the latency into this plan.
         </li>
         <li>
-          <strong>Ship.</strong> Mark PR #24 ready, merge (merge commit), delete the branch. Then live, in this order:
-          Settings → &quot;Download my data&quot; on the live app; <code>npm run db:migrate:remote</code> (0009);
+          <strong>Ship.</strong> Not before steps 3 and 4 are done (decided 2026-10-26): once merged,
+          <code>0009_ai.sql</code> is frozen and every schema change the UI or the real runs need would be a new
+          migration. Mark PR #24 ready, merge (merge commit), delete the branch. Then live, in this order: Settings →
+          &quot;Download my data&quot; on the live app; <code>npm run db:migrate:remote</code> (0009);
           <code>npx wrangler secret put ZAI_API_KEY</code>; <code>npm run deploy</code> (it brings the
           <code>AiRunner</code> Durable Object, wrangler migration <code>v2</code>). Never set <code>ZAI_FAKE</code> on
           the live Worker.
