@@ -262,8 +262,9 @@
           cheap. The file itself is never stored.
         </li>
         <li>
-          <strong>D1 row limit</strong> (2 MB per row): <code>pages_json</code> is capped at 400,000 characters (about
-          100k tokens), checked before the run.
+          <strong>D1 row limit</strong> (2 MB per row): the material is stored one row per page
+          (<code>ai_draft_pages</code>), since six image pages as data URLs would not fit in one row. Text is capped at
+          400,000 characters in all (about 100k tokens), checked before the run.
         </li>
         <li>
           <strong>Data</strong>: the z.ai DPA says inputs are not stored; processing is in Singapore. One line in the UI
@@ -308,8 +309,9 @@
           browser draws them to a canvas and sends a JPEG (max 1600 px), same as scan pages.
         </li>
         <li>
-          The page texts used for a run are stored with the draft (<code>ai_drafts.pages_json</code>), so &quot;More
-          cards&quot; and the quote check never need the file again. The file itself is never stored.
+          The pages used for a run are stored with the draft (<code>ai_draft_pages</code>, one row per page: text or
+          image), so &quot;More cards&quot; and the quote check never need the file again. The file itself is never
+          stored.
         </li>
       </ul>
       <h3 id="run-as-a-job-not-one-long-request">Run as a job, not one long request</h3>
@@ -578,11 +580,11 @@ Answer with JSON only, no prose, no code fences:
           **Migration <code>000N_ai.sql</code>.** Tables <code>ai_drafts</code> (<code
             >id, user_id, created_at, updated_at, status (&#x27;running&#x27;|&#x27;ready&#x27;|&#x27;failed&#x27;),
             error, source_name, kind, title, term_lang, def_lang, instructions, set_id NULL REFERENCES sets ON DELETE
-            SET NULL, pages_json, cards_json</code
-          >) and <code>ai_usage</code>, plus <code>exportTables</code> and the seed. <code>worker/ai/verify.ts</code> +
-          its tests in the same step. <code>normalizeAnswer</code> moves from <code>src/lib/grading.ts</code> to an
-          import-free <code>worker/grading.ts</code> (like <code>worker/progress.ts</code>) so the worker can dedup with
-          it.
+            SET NULL, cards_json</code
+          >), <code>ai_draft_pages</code> (one row per page) and <code>ai_usage</code>, plus
+          <code>exportTables</code> and the seed. <code>worker/ai/verify.ts</code> + its tests in the same step.
+          <code>normalizeAnswer</code> moves from <code>src/lib/grading.ts</code> to an import-free
+          <code>worker/grading.ts</code> (like <code>worker/progress.ts</code>) so the worker can dedup with it.
         </li>
         <li>
           **Routes <code>worker/ai.ts</code>.** Every query scoped to <code>c.get(&quot;user&quot;).id</code>, validated

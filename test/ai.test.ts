@@ -60,6 +60,32 @@ describe("ai_drafts", () => {
     for (const lang of LANGUAGES) await insert(lang);
     await expect(insert("xx")).rejects.toThrow(/CHECK/);
   });
+
+  test("keep their material one row per page: six photos fit, each page text or image, gone with the draft", async () => {
+    const userId = await addUser("anna", "secret-pw");
+    const { meta } = await env.DB.prepare("INSERT INTO ai_drafts (user_id, status, kind) VALUES (?, 'ready', 'auto')")
+      .bind(userId)
+      .run();
+    const draftId = meta.last_row_id;
+    const page = (n: number, text: string | null, image: string | null) =>
+      env.DB.prepare("INSERT INTO ai_draft_pages (user_id, draft_id, n, text, image) VALUES (?, ?, ?, ?, ?)").bind(
+        userId,
+        draftId,
+        n,
+        text,
+        image,
+      );
+    // Six photo pages of ~900 KB each: far more than one 2 MB row could hold.
+    const photo = `data:image/jpeg;base64,${"A".repeat(900_000)}`;
+    await env.DB.batch([1, 2, 3, 4, 5, 6].map((n) => page(n, null, photo)));
+    await page(7, "Bern ist die Hauptstadt.", null).run();
+
+    await expect(page(8, "both", photo).run()).rejects.toThrow(/CHECK/);
+    await expect(page(8, null, null).run()).rejects.toThrow(/CHECK/);
+    await env.DB.prepare("DELETE FROM ai_drafts WHERE id = ?").bind(draftId).run();
+    const left = await env.DB.prepare("SELECT COUNT(*) AS n FROM ai_draft_pages").first<{ n: number }>();
+    expect(left!.n).toBe(0);
+  });
 });
 
 describe("extractJsonObject", () => {

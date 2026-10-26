@@ -25,13 +25,27 @@ CREATE TABLE ai_drafts (
   instructions  TEXT    NOT NULL DEFAULT '',
   -- Where the cards go when the draft is kept. NULL = a new set.
   set_id        INTEGER REFERENCES sets (id) ON DELETE SET NULL,
-  -- The material of the run, so "More cards" and the quote check never need
-  -- the file again: [{n, text} | {n, image}], capped at 400,000 characters.
-  pages_json    TEXT    NOT NULL DEFAULT '[]',
   -- The cards: [{term, definition, source, page, verified, checked}].
   cards_json    TEXT    NOT NULL DEFAULT '[]'
 );
 CREATE INDEX ai_drafts_user ON ai_drafts (user_id, updated_at DESC);
+
+-- The material of a draft's run, so "More cards" and the quote check never
+-- need the file again. One row per page, not one column for all: D1 refuses
+-- a row over 2 MB, and six scan or photo pages as data URLs are more than that.
+-- A page is its text or its image (a JPEG data URL), never both.
+CREATE TABLE ai_draft_pages (
+  user_id   INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+  draft_id  INTEGER NOT NULL REFERENCES ai_drafts (id) ON DELETE CASCADE,
+  n         INTEGER NOT NULL CHECK (n > 0),
+  text      TEXT,
+  image     TEXT,
+  CHECK ((text IS NULL) <> (image IS NULL)),
+  -- Far below the row limit: text runs are capped at 400,000 characters in all.
+  CHECK (length(coalesce(text, image)) <= 1500000),
+  PRIMARY KEY (draft_id, n)
+);
+CREATE INDEX ai_draft_pages_user ON ai_draft_pages (user_id);
 
 CREATE TABLE ai_usage (
   id             INTEGER PRIMARY KEY AUTOINCREMENT,

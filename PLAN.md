@@ -35,7 +35,7 @@ Migration numbers below are placeholders: use the next free `migrations/000N_` a
 - **Usage**: `prompt_tokens`, `completion_tokens`, `prompt_tokens_details.cached_tokens`. Every successful call is costed from these.
 - **Rate limit**: HTTP 429 (code 1302) → "AI is busy, try again in a minute".
 - **Worker limits** (free plan): 10 ms CPU, 128 MB memory. Waiting on z.ai doesn't count as CPU, but parsing and validating a big JSON body does. So the request body is capped at **4 MB** and a run takes at most **6 image pages** (scans, photo); text pages are cheap. The file itself is never stored.
-- **D1 row limit** (2 MB per row): `pages_json` is capped at 400,000 characters (about 100k tokens), checked before the run.
+- **D1 row limit** (2 MB per row): the material is stored one row per page (`ai_draft_pages`), since six image pages as data URLs would not fit in one row. Text is capped at 400,000 characters in all (about 100k tokens), checked before the run.
 - **Data**: the z.ai DPA says inputs are not stored; processing is in Singapore. One line in the UI says so.
 - **To verify in the first commit** (the docs are unclear): cached-token price, real latency, the Durable Object alarm time limit, and whether Workers AI `toMarkdown()` handles docx/pptx **and** works under `npm run dev` without `wrangler login` and in `npm test`. If it needs a login or a remote connection, the double-click start would break: then drop the binding and send Office files as a z.ai `file` part (cards "unverified") for this phase.
 
@@ -48,7 +48,7 @@ The source quote is only proof if the server has the text to check it against. S
 - **Word, PowerPoint, Excel**: the Worker converts them with Workers AI `toMarkdown()` (free, no dependency); the result is split into sections (pptx: one per slide). If the conversion fails, the file is sent as a `file` part and every card is "unverified".
 - **Text file / pasted text**: used as is, as one page.
 - **Photo**: an image, so its cards are "unverified". iPhone photos can be HEIC: the browser draws them to a canvas and sends a JPEG (max 1600 px), same as scan pages.
-- The page texts used for a run are stored with the draft (`ai_drafts.pages_json`), so "More cards" and the quote check never need the file again. The file itself is never stored.
+- The pages used for a run are stored with the draft (`ai_draft_pages`, one row per page: text or image), so "More cards" and the quote check never need the file again. The file itself is never stored.
 
 ### Run as a job, not one long request
 
@@ -170,7 +170,7 @@ User message: `<kind>`, `<max_cards>`, `<user_language>` (from the account local
 ### Build (branch `phase-8-ai`, one commit per working step)
 
 1. **Plumbing.** `ZAI_API_KEY` secret: `.dev.vars` locally (already gitignored), `wrangler secret put ZAI_API_KEY` for live, a dummy value in the test env; README "Deploy" gets the secret step and the `AI_MONTHLY_CAP_USD` var; `npm run types`. The `AiRunner` Durable Object and its alarm. Then `worker/ai/zai.ts` (fetch, 120 s timeout, 429 mapping, usage → cost), `worker/ai/prices.ts`, `worker/ai/prompt.ts`, zod card schema plus a lenient JSON extractor with one repair retry.
-2. **Migration `000N_ai.sql`.** Tables `ai_drafts` (`id, user_id, created_at, updated_at, status ('running'|'ready'|'failed'), error, source_name, kind, title, term_lang, def_lang, instructions, set_id NULL REFERENCES sets ON DELETE SET NULL, pages_json, cards_json`) and `ai_usage`, plus `exportTables` and the seed. `worker/ai/verify.ts` + its tests in the same step. `normalizeAnswer` moves from `src/lib/grading.ts` to an import-free `worker/grading.ts` (like `worker/progress.ts`) so the worker can dedup with it.
+2. **Migration `000N_ai.sql`.** Tables `ai_drafts` (`id, user_id, created_at, updated_at, status ('running'|'ready'|'failed'), error, source_name, kind, title, term_lang, def_lang, instructions, set_id NULL REFERENCES sets ON DELETE SET NULL, cards_json`), `ai_draft_pages` (one row per page) and `ai_usage`, plus `exportTables` and the seed. `worker/ai/verify.ts` + its tests in the same step. `normalizeAnswer` moves from `src/lib/grading.ts` to an import-free `worker/grading.ts` (like `worker/progress.ts`) so the worker can dedup with it.
 3. **Routes `worker/ai.ts`.** Every query scoped to `c.get("user").id`, validated with `validate()`:
    - `POST /api/ai/drafts` (create from file, text or photo)
    - `GET` / `PATCH` / `DELETE /api/ai/drafts/:id`

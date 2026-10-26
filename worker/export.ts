@@ -12,6 +12,7 @@ export const exportTables: string[] = [
   "term_stats",
   "match_best",
   "ai_drafts",
+  "ai_draft_pages",
   "ai_usage",
 ];
 
