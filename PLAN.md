@@ -37,8 +37,8 @@ In this order. Each step on `phase-8-ai`, one commit per working step, `npm run 
 1. ~~Review fixes.~~ Done 2026-10-26.
 2. ~~Office files.~~ Done 2026-10-26: read in the browser, `src/lib/office.ts`.
 3. **UI** (build step 4), each part checked in Playwright at 390px with `ZAI_FAKE=1`:
-   1. The new `src/ui` pieces, shown on `/design`: cost line, page thumbnail tile, draft card (source quote, page badge, "unverified" tag). `formatCost()` in `src/lib`. i18n keys (en and de-CH) for every error the API can answer: `ai_busy`, `ai_quota`, `ai_key`, `ai_input`, `ai_cut_off`, `ai_server`, `ai_cap`, `ai_running`.
-   2. Source screen: file, pasted text or photo; the PDF page picker (`src/lib/pdf.ts`, `pdfjs-dist`, approved); "What to make", "How many", instructions, the cost estimate; "Create cards".
+   1. ~~Done 2026-10-26.~~ The new `src/ui` pieces (`CostLine`, `PageTile`, `DraftCard`, `src/lib/cost.ts`), shown on `/design`: cost line, page thumbnail tile, draft card (source quote, page badge, "unverified" tag). `formatCost()` in `src/lib`. i18n keys (en and de-CH) for every error the API can answer: `ai_busy`, `ai_quota`, `ai_key`, `ai_input`, `ai_cut_off`, `ai_server`, `ai_cap`, `ai_running`.
+   2. ~~Done 2026-10-26.~~ Source screen `/create/ai` (`src/pages/AiSource.tsx`, `src/lib/material.ts`), plus a first draft page `/create/ai/:draftId` that follows the run: file, pasted text or photo; the PDF page picker (`src/lib/pdf.ts`, `pdfjs-dist`, approved); "What to make", "How many", instructions, the cost estimate; "Create cards".
    3. Review screen `/create/ai/:draftId`: "Making cards…" while running; cards with checkbox, edit, delete, page badge and quote; unverified ones unchecked; header counts; cost line; Regenerate (asks first), More cards, Save (new or existing set), Discard; follows the live topic `ai`.
    4. Home: "From material" next to "Create a set", and the "unfinished AI draft" card. Settings → "AI usage" with the cap.
    5. UI tests (mock `src/lib/pdf.ts` and `src/lib/office.ts`): page picker, review flow, unverified cards start unchecked. Coverage floors 95 % / 75 % stay.
