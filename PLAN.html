@@ -156,7 +156,7 @@
               >How material gets to the AI (text first, so quotes can be checked)</a
             >
           </li>
-          <li><a href="#office-files-open-decision">Office files (open decision)</a></li>
+          <li><a href="#office-files">Office files (decided: read in the browser)</a></li>
           <li><a href="#run-as-a-job-not-one-long-request">Run as a job, not one long request</a></li>
           <li><a href="#input-options">Input options</a></li>
           <li><a href="#draft-review-creation-step">Draft review (creation step)</a></li>
@@ -218,6 +218,16 @@
           The UI may import only types from <code>worker/</code> (eslint), so the AI client and
           <code>ZAI_API_KEY</code> never reach the browser.
         </li>
+        <li>
+          The high code review of the branch (2026-10-26): all 9 findings fixed with tests. A double save writes once; a
+          refused run changes nothing; edits cannot land during a run; a draft holds at most 500 cards; a paid call
+          survives a failed D1 write (the alarm retry writes the stored result).
+        </li>
+        <li>
+          Office files: <code>src/lib/office.ts</code> reads <code>.docx</code>, <code>.pptx</code>,
+          <code>.xlsx</code> in the browser into numbered sections (tests: <code>src/lib/office.test.ts</code>, zips
+          built by <code>src/test/zip.ts</code>). Not wired to a screen yet.
+        </li>
       </ul>
       <p>Changed against the plan below while building:</p>
       <ul>
@@ -234,11 +244,11 @@
           The material is stored one row per page (<code>ai_draft_pages</code>), not in one <code>pages_json</code>
           column: six photo pages would pass D1&#x27;s 2 MB row limit.
         </li>
-        <li>Office files: Workers AI is out, see &quot;Office files&quot; below.</li>
+        <li>Office files: Workers AI is out; they are read in the browser, see &quot;Office files&quot; below.</li>
       </ul>
       <p>
-        Not done: Office files (decision needed), the UI (step 4), its tests (half of step 5), real runs with the key
-        (step 6), cached-token price and real latency (need real calls).
+        Not done: the UI (step 4), its tests (half of step 5), real runs with the key (step 6), cached-token price and
+        real latency (need real calls).
       </p>
       <h3 id="whats-next">What&#x27;s next</h3>
       <p>
@@ -246,13 +256,8 @@
         <code>npm test</code> green before each.
       </p>
       <ol>
-        <li>
-          <strong>Review fixes.</strong> A high code review of the whole branch ran on 2026-10-26; fix what it confirms.
-        </li>
-        <li>
-          <strong>Office files: decide.</strong> Recommended: read them in the browser (see &quot;Office files&quot;).
-          Then build <code>src/lib/office.ts</code> and its tests.
-        </li>
+        <li><s>Review fixes.</s> Done 2026-10-26.</li>
+        <li><s>Office files.</s> Done 2026-10-26: read in the browser, <code>src/lib/office.ts</code>.</li>
         <li>
           <strong>UI</strong> (build step 4), each part checked in Playwright at 390px with <code>ZAI_FAKE=1</code>:
           <ol>
@@ -430,13 +435,13 @@
           stored.
         </li>
       </ul>
-      <h3 id="office-files-open-decision">Office files (open decision)</h3>
+      <h3 id="office-files">Office files (decided 2026-10-26: read in the browser)</h3>
       <p>
         Workers AI <code>toMarkdown()</code> is out: it always runs on Cloudflare, also under <code>npm run dev</code>,
         so the double-click start and <code>npm test</code> would need a login and a connection.
       </p>
       <p>
-        <strong>Recommended: read them in the browser, like PDFs.</strong> <code>.docx</code>, <code>.pptx</code> and
+        <strong>Read them in the browser, like PDFs.</strong> <code>.docx</code>, <code>.pptx</code> and
         <code>.xlsx</code> are zip files of XML. The browser unzips them with the built-in
         <code>DecompressionStream(&quot;deflate-raw&quot;)</code> (iOS Safari 16.4+) and reads the XML with
         <code>DOMParser</code>: no new dependency, nothing on the server.
@@ -465,14 +470,20 @@
           .docx/.pptx/.xlsx first&quot;.
         </li>
         <li>
-          One small adapter <code>src/lib/office.ts</code> (<code>extractSections(file) → sections</code>) plus tests
-          with tiny fixture files. About 1–2 hours.
+          Built: <code>src/lib/office.ts</code> (<code>extractSections(file) → { n, label, text }[]</code>, errors
+          <code>old_format</code> / <code>unsupported</code> / <code>unreadable</code> for the UI to translate). Sizes
+          come from the zip&#x27;s central directory, so LibreOffice and Google Docs exports (sizes only after the data)
+          read too.
+        </li>
+        <li>
+          A Word file without heading styles (headings only made bold and big) has no headings to find: it becomes
+          sections of about 6,000 characters each.
         </li>
       </ul>
       <p>
-        <strong>Alternative (this plan&#x27;s first fallback):</strong> send the whole file to z.ai as a
-        <code>file</code> part. No parsing code, but every card is &quot;unverified&quot;, nothing is stored for
-        &quot;More cards&quot;, and whether GLM-5.3-Flash reads docx/pptx at all is not verified.
+        Not chosen: sending the whole file to z.ai as a <code>file</code> part. Every card would be
+        &quot;unverified&quot;, nothing stored for &quot;More cards&quot;, and whether GLM-5.3-Flash reads docx/pptx at
+        all is not verified.
       </p>
       <h3 id="run-as-a-job-not-one-long-request">Run as a job, not one long request</h3>
       <p>

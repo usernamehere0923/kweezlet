@@ -18,22 +18,24 @@ Done, worker side, with tests:
 - Tests: `test/ai-runs.test.ts` (job flow, one run at a time, failures, repair retry, no double billing on an alarm retry, cap, dedup, save), `test/ai.test.ts`, `test/zai.test.ts`, `test/ai-verify.test.ts`.
 - A stand-in AI for local dev without a key: `ZAI_FAKE=1` in `.dev.vars` (`worker/ai/fake.ts`). It makes cards from the material itself in about 3 s, at no cost; every AI route refuses to run on a non-local host while it is set.
 - The UI may import only types from `worker/` (eslint), so the AI client and `ZAI_API_KEY` never reach the browser.
+- The high code review of the branch (2026-10-26): all 9 findings fixed with tests. A double save writes once; a refused run changes nothing; edits cannot land during a run; a draft holds at most 500 cards; a paid call survives a failed D1 write (the alarm retry writes the stored result).
+- Office files: `src/lib/office.ts` reads `.docx`, `.pptx`, `.xlsx` in the browser into numbered sections (tests: `src/lib/office.test.ts`, zips built by `src/test/zip.ts`). Not wired to a screen yet.
 
 Changed against the plan below while building:
 
 - A second run while one is going: 409 `ai_running`, not `ai_busy` (that one means z.ai itself is busy).
 - Two more error kinds: `ai_quota` (z.ai out of credit or over its plan, codes 1113 and 1308–1321, also HTTP 429) and `ai_cut_off` (the answer hit `max_tokens`; no repair retry, it would be cut off again).
 - The material is stored one row per page (`ai_draft_pages`), not in one `pages_json` column: six photo pages would pass D1's 2 MB row limit.
-- Office files: Workers AI is out, see "Office files" below.
+- Office files: Workers AI is out; they are read in the browser, see "Office files" below.
 
-Not done: Office files (decision needed), the UI (step 4), its tests (half of step 5), real runs with the key (step 6), cached-token price and real latency (need real calls).
+Not done: the UI (step 4), its tests (half of step 5), real runs with the key (step 6), cached-token price and real latency (need real calls).
 
 ### What's next
 
 In this order. Each step on `phase-8-ai`, one commit per working step, `npm run check` and `npm test` green before each.
 
-1. **Review fixes.** A high code review of the whole branch ran on 2026-10-26; fix what it confirms.
-2. **Office files: decide.** Recommended: read them in the browser (see "Office files"). Then build `src/lib/office.ts` and its tests.
+1. ~~Review fixes.~~ Done 2026-10-26.
+2. ~~Office files.~~ Done 2026-10-26: read in the browser, `src/lib/office.ts`.
 3. **UI** (build step 4), each part checked in Playwright at 390px with `ZAI_FAKE=1`:
    1. The new `src/ui` pieces, shown on `/design`: cost line, page thumbnail tile, draft card (source quote, page badge, "unverified" tag). `formatCost()` in `src/lib`. i18n keys (en and de-CH) for every error the API can answer: `ai_busy`, `ai_quota`, `ai_key`, `ai_input`, `ai_cut_off`, `ai_server`, `ai_cap`, `ai_running`.
    2. Source screen: file, pasted text or photo; the PDF page picker (`src/lib/pdf.ts`, `pdfjs-dist`, approved); "What to make", "How many", instructions, the cost estimate; "Create cards".
@@ -80,25 +82,26 @@ The source quote is only proof if the server has the text to check it against. S
 
 - **PDF**: the browser opens it with **pdf.js** (`pdfjs-dist`, approved, lazy-loaded on this page only). It renders page thumbnails for the picker and extracts the text of each page. Selected pages go to the Worker as `<page n="5">…</page>`.
   - A page without a text layer (a scan) is sent as a rendered JPEG instead (max 1600 px, quality 0.8), tagged with its page number. Cards from such pages can't be checked and come back "unverified".
-- **Word, PowerPoint, Excel**: not with Workers AI after all (it needs a Cloudflare connection even locally). Open decision, see "Office files" below.
+- **Word, PowerPoint, Excel**: not with Workers AI after all (it needs a Cloudflare connection even locally). Read in the browser instead, see "Office files" below.
 - **Text file / pasted text**: used as is, as one page.
 - **Photo**: an image, so its cards are "unverified". iPhone photos can be HEIC: the browser draws them to a canvas and sends a JPEG (max 1600 px), same as scan pages.
 - The pages used for a run are stored with the draft (`ai_draft_pages`, one row per page: text or image), so "More cards" and the quote check never need the file again. The file itself is never stored.
 
-### Office files (open decision)
+### Office files (decided 2026-10-26: read in the browser)
 
 Workers AI `toMarkdown()` is out: it always runs on Cloudflare, also under `npm run dev`, so the double-click start and `npm test` would need a login and a connection.
 
-**Recommended: read them in the browser, like PDFs.** `.docx`, `.pptx` and `.xlsx` are zip files of XML. The browser unzips them with the built-in `DecompressionStream("deflate-raw")` (iOS Safari 16.4+) and reads the XML with `DOMParser`: no new dependency, nothing on the server.
+**Read them in the browser, like PDFs.** `.docx`, `.pptx` and `.xlsx` are zip files of XML. The browser unzips them with the built-in `DecompressionStream("deflate-raw")` (iOS Safari 16.4+) and reads the XML with `DOMParser`: no new dependency, nothing on the server.
 
 - **Word**: the paragraphs of `word/document.xml`. A section starts at each heading (Heading 1/2) and is numbered like a page.
 - **PowerPoint**: one section per slide (`ppt/slides/slideN.xml`, in presentation order), with the slide title as its label.
 - **Excel**: one section per sheet, each row as a line "cell | cell" (`xl/sharedStrings.xml` plus `xl/worksheets/sheetN.xml`).
 - The sections go to the Worker as page-tagged text, exactly like PDF pages: the picker shows them, the quote check works, cards can be "verified", "More cards" has the text.
 - Old binary `.doc`, `.ppt`, `.xls` are refused with "Save it as .docx/.pptx/.xlsx first".
-- One small adapter `src/lib/office.ts` (`extractSections(file) → sections`) plus tests with tiny fixture files. About 1–2 hours.
+- Built: `src/lib/office.ts` (`extractSections(file) → { n, label, text }[]`, errors `old_format` / `unsupported` / `unreadable` for the UI to translate). Sizes come from the zip's central directory, so LibreOffice and Google Docs exports (sizes only after the data) read too.
+- A Word file without heading styles (headings only made bold and big) has no headings to find: it becomes sections of about 6,000 characters each.
 
-**Alternative (this plan's first fallback):** send the whole file to z.ai as a `file` part. No parsing code, but every card is "unverified", nothing is stored for "More cards", and whether GLM-5.3-Flash reads docx/pptx at all is not verified.
+Not chosen: sending the whole file to z.ai as a `file` part. Every card would be "unverified", nothing stored for "More cards", and whether GLM-5.3-Flash reads docx/pptx at all is not verified.
 
 ### Run as a job, not one long request
 
