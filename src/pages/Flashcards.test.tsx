@@ -54,6 +54,33 @@ describe("flashcards", () => {
     expect(image!.closest("[aria-hidden]")?.getAttribute("aria-hidden")).toBe("false");
   });
 
+  test("pictures are fetched again after a set change only, not after every answer", async () => {
+    let picture = "data:image/png;base64,DOG";
+    const { calls } = mockApi({
+      ...flashcardsApi(),
+      "GET /api/sets/7/images": () => ({ json: { images: { 70: picture } } }),
+    });
+    renderApp("/sets/7/flashcards");
+    await screen.findByText("el perro");
+    const imageCalls = () => calls.filter((c) => c.path === "/api/sets/7/images").length;
+    expect(imageCalls()).toBe(1);
+
+    await waitFor(() => expect(FakeSocket.instances.length).toBeGreaterThan(0));
+    await act(async () => {
+      FakeSocket.last.receive(JSON.stringify({ topic: "study", data: null }));
+    });
+    await waitFor(() => expect(calls.filter((c) => c.path === "/api/sets/7")).toHaveLength(2));
+    expect(imageCalls()).toBe(1);
+    expect(document.querySelector('img[src="data:image/png;base64,DOG"]')).not.toBeNull();
+
+    picture = "data:image/png;base64,PUPPY";
+    await act(async () => {
+      FakeSocket.last.receive(JSON.stringify({ topic: "sets", data: null }));
+    });
+    await waitFor(() => expect(document.querySelector('img[src="data:image/png;base64,PUPPY"]')).not.toBeNull());
+    expect(imageCalls()).toBe(2);
+  });
+
   test("records the study day with the local date, but only after a flip", async () => {
     const { calls } = mockApi(flashcardsApi());
     renderApp("/sets/7/flashcards");

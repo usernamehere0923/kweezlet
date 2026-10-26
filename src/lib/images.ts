@@ -11,7 +11,7 @@ const SMALL_FILE_BYTES = 250_000;
 const MAX_SIDE = 1024;
 const KEEP_MIME = ["image/png", "image/jpeg", "image/webp"];
 
-/** A small picture of an accepted kind keeps its pixels; big ones get resized. */
+/** A small file of an accepted kind may keep its pixels; big ones get resized. */
 export function keepAsIs(file: { type: string; size: number }): boolean {
   return file.size <= SMALL_FILE_BYTES && KEEP_MIME.includes(file.type);
 }
@@ -58,17 +58,21 @@ function shrink(img: HTMLImageElement, width: number, height: number, mime: "ima
 
 /**
  * A picked file as a small data URL, the way the image API accepts it.
- * Throws "image could not be read" when the file is no picture at all.
+ * Throws "image could not be read" when the file is no picture at all, or
+ * when it is still too big for the API after shrinking.
  */
 export async function fileToDataUrl(file: File): Promise<string> {
-  if (keepAsIs(file)) return readAsDataUrl(file);
-  const img = await loadImage(await readAsDataUrl(file));
+  const original = await readAsDataUrl(file);
+  const img = await loadImage(original);
+  // A small file can still be huge in pixels (a flat 8000x8000 PNG).
+  if (keepAsIs(file) && Math.max(img.naturalWidth, img.naturalHeight) <= MAX_SIDE) return original;
   // Photos become JPEG (small); drawings and screenshots keep their PNG alpha.
   const mime = file.type === "image/png" ? "image/png" : "image/jpeg";
   let { width, height } = fitSize(img.naturalWidth, img.naturalHeight, MAX_SIDE);
   for (let tries = 0; ; tries++) {
     const dataUrl = shrink(img, width, height, mime);
-    if (dataUrl.length <= MAX_IMAGE_CHARS || tries >= 3) return dataUrl;
+    if (dataUrl.length <= MAX_IMAGE_CHARS) return dataUrl;
+    if (tries >= 3) throw new Error("image could not be read");
     width = Math.max(1, Math.round(width * 0.75));
     height = Math.max(1, Math.round(height * 0.75));
   }
