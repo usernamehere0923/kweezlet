@@ -4,6 +4,7 @@ import { I18nProvider, useT } from "./i18n";
 import { SERVER_ERROR_EVENT } from "./lib/api";
 import { clientId, LiveProvider, useLive } from "./lib/live";
 import { SessionProvider, useSession } from "./lib/session";
+import { ThemeProvider } from "./lib/theme";
 import { AiDraftPage } from "./pages/AiDraft";
 import { AiSourcePage } from "./pages/AiSource";
 import { DesignSystemPage } from "./pages/design";
@@ -32,13 +33,15 @@ import {
 export function App() {
   return (
     <I18nProvider>
-      <HotkeyInput>
-        <ToastProvider>
-          <SessionProvider>
-            <Root />
-          </SessionProvider>
-        </ToastProvider>
-      </HotkeyInput>
+      <ThemeProvider>
+        <HotkeyInput>
+          <ToastProvider>
+            <SessionProvider>
+              <Root />
+            </SessionProvider>
+          </ToastProvider>
+        </HotkeyInput>
+      </ThemeProvider>
       {/* Only on `npm run dev`; the live app never shows it. */}
       {import.meta.env.DEV && <DevRibbon />}
     </I18nProvider>

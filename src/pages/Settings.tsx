@@ -1,10 +1,24 @@
 import type { InferResponseType } from "hono/client";
+import type { Theme } from "../../worker/themes";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useT, type Locale, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
 import { useLive } from "../lib/live";
 import { useSession, useUser } from "../lib/session";
-import { AiUsage, Button, ButtonLink, Card, Heading, PageTitle, LocalePicker, Text, TextField, useToast } from "../ui";
+import { useTheme } from "../lib/theme";
+import {
+  AiUsage,
+  Button,
+  ButtonLink,
+  Card,
+  Heading,
+  PageTitle,
+  LocalePicker,
+  Text,
+  TextField,
+  ThemePicker,
+  useToast,
+} from "../ui";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -17,6 +31,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 
 export function SettingsPage() {
   const { t, locale, setLocale } = useT();
+  const { theme, setTheme } = useTheme();
   const user = useUser();
   const { logout } = useSession();
   const toast = useToast();
@@ -27,10 +42,24 @@ export function SettingsPage() {
     if (res.ok) toast(t("common.saved"), "success");
   }
 
+  // Applies at once; the other devices follow through the "settings" topic.
+  async function changeTheme(next: Theme) {
+    setTheme(next);
+    const res = await api.me.settings.$patch({ json: { theme: next } });
+    if (res.ok) toast(t("common.saved"), "success");
+  }
+
   return (
     <div className="mx-auto max-w-2xl">
       <PageTitle>{t("settings.title")}</PageTitle>
       <div className="flex flex-col gap-5">
+        <Section title={t("settings.theme")}>
+          <ThemePicker label={t("settings.theme")} value={theme} onChange={(next) => void changeTheme(next)} />
+          <Text variant="small" className="mt-3">
+            {t("settings.themeHint")}
+          </Text>
+        </Section>
+
         <Section title={t("settings.language")}>
           <LocalePicker label={t("settings.language")} value={locale} onChange={(l) => void changeLocale(l)} />
           <Text variant="small" className="mt-3">

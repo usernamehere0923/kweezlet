@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { PublicUser } from "../../worker/types";
 import { useT } from "../i18n";
 import { api, UNAUTHORIZED_EVENT } from "./api";
+import { useTheme } from "./theme";
 
 type Me = PublicUser;
 
@@ -23,13 +24,15 @@ const SessionContext = createContext<SessionApi | null>(null);
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session>({ status: "loading", user: null });
   const { setLocale } = useT();
+  const { setTheme } = useTheme();
 
   const signedIn = useCallback(
     (me: Me) => {
       setSession({ status: "loggedIn", user: me });
       setLocale(me.locale);
+      setTheme(me.theme);
     },
-    [setLocale],
+    [setLocale, setTheme],
   );
 
   const refresh = useCallback(() => {

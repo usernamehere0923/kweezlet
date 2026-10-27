@@ -164,6 +164,16 @@ export const en = {
   "settings.logout": "Log out",
   "settings.language": "Language",
   "settings.languageHint": "Changes the language on all your devices.",
+  "settings.theme": "Theme",
+  "settings.themeHint": "Changes the look on all your devices.",
+
+  // Theme names (worker/themes.ts): the same in every language.
+  "theme.cardigan": "Grandma's Cardigan",
+  "theme.midnight-cram": "Midnight Cram",
+  "theme.ballpoint": "Ballpoint Blues",
+  "theme.unicorn-sneeze": "Unicorn Sneeze",
+  "theme.kung-fu": "I Know Kung Fu",
+
   "settings.password": "Password",
   "settings.passwordCurrent": "Current password",
   "settings.passwordNew": "New password",

@@ -14,6 +14,22 @@ describe("settings", () => {
     expect(await screen.findAllByRole("status")).toHaveLength(1);
   });
 
+  test("the account's theme is applied, and picking another switches at once and saves it", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: { ...ME, theme: "unicorn-sneeze" } }),
+      "PATCH /api/me/settings": () => ({ json: {} }),
+    });
+    renderApp("/settings");
+    const current = await screen.findByRole("radio", { name: "Unicorn Sneeze" });
+    expect(current.getAttribute("aria-checked")).toBe("true");
+    expect(document.documentElement.dataset.theme).toBe("unicorn-sneeze");
+
+    await userEvent.click(screen.getByRole("radio", { name: "Midnight Cram" }));
+    expect(document.documentElement.dataset.theme).toBe("midnight-cram");
+    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ theme: "midnight-cram" }));
+    expect(await screen.findAllByRole("status")).toHaveLength(1);
+  });
+
   async function fillPassword(current: string, next: string, repeat: string) {
     const user = userEvent.setup();
     await user.type(await screen.findByLabelText("Current password"), current);

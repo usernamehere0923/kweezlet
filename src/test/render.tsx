@@ -3,15 +3,18 @@ import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { App } from "../App";
 import { I18nProvider } from "../i18n";
+import { ThemeProvider } from "../lib/theme";
 import { HotkeyInput, ToastProvider } from "../ui";
 
 function Providers({ children }: { children: ReactNode }) {
   return (
     <MemoryRouter>
       <I18nProvider>
-        <HotkeyInput>
-          <ToastProvider>{children}</ToastProvider>
-        </HotkeyInput>
+        <ThemeProvider>
+          <HotkeyInput>
+            <ToastProvider>{children}</ToastProvider>
+          </HotkeyInput>
+        </ThemeProvider>
       </I18nProvider>
     </MemoryRouter>
   );
