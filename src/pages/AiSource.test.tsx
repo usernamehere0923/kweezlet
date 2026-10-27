@@ -192,3 +192,78 @@ describe("cards from material", () => {
     expect(await screen.findByText("This material cannot be sent. Pick fewer pages, or other ones.")).toBeTruthy();
   });
 });
+
+describe("more cards for a draft", () => {
+  const HAD = {
+    ...DRAFT,
+    status: "ready",
+    sourceName: "kurs.pdf",
+    pages: [
+      { n: 1, image: false },
+      { n: 2, image: true },
+    ],
+  };
+
+  test("the same file again: its pages keep their numbers, the used ones are marked", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/ai/drafts/9": () => ({ json: HAD }),
+      "POST /api/ai/drafts/9/more": () => ({ status: 202, json: { ok: true } }),
+    });
+    const { container } = renderApp("/create/ai/9/more");
+    expect(await screen.findByRole("heading", { level: 1, name: "More cards" })).toBeTruthy();
+    // More cards are of the draft's kind: no kind or count to pick.
+    expect(screen.queryByLabelText("What to make")).toBeNull();
+    pick(container, /pdf/, [new File(["%PDF"], "kurs.pdf", { type: "application/pdf" })]);
+    expect(await screen.findByRole("button", { name: "Page 2, scan, used" })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: /^Page 3:/ }));
+    await userEvent.type(screen.getByLabelText("Instructions"), "only the cantons");
+    await userEvent.click(screen.getByRole("button", { name: "Add cards" }));
+
+    await waitFor(() => expect(calls.some((c) => c.path.endsWith("/more"))).toBe(true));
+    expect(calls.find((c) => c.path.endsWith("/more"))?.body).toEqual({
+      pages: [{ n: 3, text: "Kapitel 3: Die Schweiz hat 26 Kantone." }],
+      instructions: "only the cantons",
+    });
+    // Back on the draft, which follows the run.
+    expect(await screen.findByRole("heading", { level: 1, name: "Your cards" })).toBeTruthy();
+  });
+
+  test("other material is numbered after the draft's pages; a full draft says so", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/ai/drafts/9": () => ({ json: HAD }),
+      "POST /api/ai/drafts/9/more": () => ({
+        status: 400,
+        json: { error: "validation", fields: { cards: "too_big" } },
+      }),
+    });
+    renderApp("/create/ai/9/more");
+    await userEvent.click(await screen.findByRole("radio", { name: "Text" }));
+    await userEvent.type(screen.getByLabelText("Text"), "Der Rhein fliesst durch Basel.");
+    await userEvent.click(screen.getByRole("button", { name: "Add cards" }));
+    expect(await screen.findByText(/^This draft holds 500 cards/)).toBeTruthy();
+    expect(calls.find((c) => c.path.endsWith("/more"))?.body).toMatchObject({
+      pages: [{ n: 3, text: "Der Rhein fliesst durch Basel." }],
+    });
+  });
+
+  test("a refused run says why; a draft that is gone says so", async () => {
+    let draft: { status: number; json: unknown } = { status: 200, json: HAD };
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/ai/drafts/9": () => draft,
+      "POST /api/ai/drafts/9/more": () => ({ status: 409, json: { error: "ai_running" } }),
+    });
+    const { unmount } = renderApp("/create/ai/9/more");
+    await userEvent.click(await screen.findByRole("radio", { name: "Text" }));
+    await userEvent.type(screen.getByLabelText("Text"), "Bern");
+    await userEvent.click(screen.getByRole("button", { name: "Add cards" }));
+    expect(await screen.findByText("Cards are already being made. Wait until they are done.")).toBeTruthy();
+    unmount();
+
+    draft = { status: 404, json: {} };
+    renderApp("/create/ai/9/more");
+    expect(await screen.findByText("This draft is gone")).toBeTruthy();
+  });
+});

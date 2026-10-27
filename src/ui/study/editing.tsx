@@ -1,4 +1,4 @@
-import { useImperativeHandle, useRef, type Ref } from "react";
+import { useImperativeHandle, useRef, type KeyboardEvent, type Ref } from "react";
 import type { TermProgress } from "../../../worker/progress";
 import { useT } from "../../i18n";
 import { cx } from "../cx";
@@ -14,7 +14,9 @@ const cell =
 
 /**
  * One input of a TermEditorRow (and of a DraftCard), its caption under it.
- * Enter runs onEnter instead of submitting. Not exported from src/ui: rows only.
+ * Enter runs onEnter instead of submitting. `wrap`: grows to show all of a
+ * long text (an AI answer), still one line per Enter-less entry. Not exported
+ * from src/ui: rows only.
  */
 export function Cell({
   ref,
@@ -22,27 +24,37 @@ export function Cell({
   value,
   onChange,
   onEnter,
+  wrap = false,
 }: {
   ref?: Ref<HTMLInputElement>;
   label: string;
   value: string;
   onChange: (value: string) => void;
   onEnter?: () => void;
+  wrap?: boolean;
 }) {
+  const keys = {
+    value,
+    onKeyDown: (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onEnter?.();
+      }
+    },
+  };
   return (
     <label className="block">
-      <input
-        ref={ref}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            onEnter?.();
-          }
-        }}
-        className={cell}
-      />
+      {wrap ? (
+        <textarea
+          {...keys}
+          rows={1}
+          // A pasted line break would end up inside the card: a space instead.
+          onChange={(e) => onChange(e.target.value.replace(/\r?\n/g, " "))}
+          className={cx(cell, "field-sizing-content resize-none")}
+        />
+      ) : (
+        <input ref={ref} {...keys} onChange={(e) => onChange(e.target.value)} className={cell} />
+      )}
       <span className="mt-1.5 block text-xs font-semibold tracking-wide text-faint uppercase">{label}</span>
     </label>
   );

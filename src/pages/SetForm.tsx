@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router";
 import { LANGUAGES, type Language } from "../../worker/languages";
-import { useT, type TKey } from "../i18n";
+import { LANG_KEY, useT, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
 import { checkSetForm, saveImageChanges, termsError, useTermRows } from "../lib/setForm";
 import {
@@ -20,14 +20,6 @@ import {
   useToast,
   type Option,
 } from "../ui";
-
-const LANG_KEY: Record<Language, TKey> = {
-  en: "lang.en",
-  de: "lang.de",
-  fr: "lang.fr",
-  it: "lang.it",
-  es: "lang.es",
-};
 
 /** Create (no id) or edit (id in the URL) a study set. */
 export function SetFormPage() {

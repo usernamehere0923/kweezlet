@@ -152,8 +152,8 @@ export function DraftCard({
         </span>
       </div>
       <div className="grid gap-5 md:grid-cols-2 md:gap-8">
-        <Cell label={t("study.term")} value={term} onChange={(value) => onChange(value, definition)} />
-        <Cell label={t("study.definition")} value={definition} onChange={(value) => onChange(term, value)} />
+        <Cell label={t("study.term")} value={term} onChange={(value) => onChange(value, definition)} wrap />
+        <Cell label={t("study.definition")} value={definition} onChange={(value) => onChange(term, value)} wrap />
       </div>
       {!verified && <p className="mt-3 text-sm text-muted">{t("ai.unverifiedHint")}</p>}
       {source ? (

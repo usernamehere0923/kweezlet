@@ -98,6 +98,7 @@ function LoggedInApp() {
           <Route path="/review" element={<ReviewPage />} />
           <Route path="/create/ai" element={<AiSourcePage />} />
           <Route path="/create/ai/:draftId" element={<AiDraftPage />} />
+          <Route path="/create/ai/:draftId/more" element={<AiSourcePage more />} />
           <Route path="/sets/new" element={<SetFormPage />} />
           <Route path="/sets/:id" element={<SetDetailPage />} />
           <Route path="/sets/:id/edit" element={<SetFormPage />} />

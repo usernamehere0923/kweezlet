@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
+import type { DraftDetail } from "../../worker/ai";
 import { useT, type TKey } from "../i18n";
 import { api, offline } from "../lib/api";
 import { aiErrorMessage } from "../lib/cost";
@@ -17,10 +18,13 @@ import {
 } from "../lib/material";
 import {
   Button,
+  ButtonLink,
   Card,
   CostLine,
   FormError,
+  EmptyState,
   Heading,
+  PageLoading,
   PageTile,
   PageTitle,
   SegmentedControl,
@@ -42,10 +46,17 @@ const FILE_ERRORS: Record<MaterialErrorCode, TKey> = {
   photo: "ai.source.error.photo",
 };
 
-/** /create/ai: material in, a draft out. Pick the pages, say what to make, go. */
-export function AiSourcePage() {
+/**
+ * /create/ai: material in, a draft out. Pick the pages, say what to make, go.
+ * `more` (/create/ai/:draftId/more): more cards for a draft. The file was never
+ * stored, so it is picked again; pages an earlier run had are marked "used".
+ */
+export function AiSourcePage({ more = false }: { more?: boolean }) {
   const { t, tn } = useT();
   const navigate = useNavigate();
+  const { draftId = "" } = useParams();
+  const [draft, setDraft] = useState<DraftDetail | null>(null);
+  const [missing, setMissing] = useState(false);
   const [source, setSource] = useState<Source>("file");
   const [material, setMaterial] = useState<Material | null>(null);
   const [picked, setPicked] = useState<Set<number>>(new Set());
@@ -66,6 +77,21 @@ export function AiSourcePage() {
   const current = source === "text" ? pastedMaterial : material;
   const chosen = source === "text" ? new Set(pastedMaterial ? [1] : []) : picked;
   const sum = current ? totals(current.pages, chosen) : null;
+
+  useEffect(() => {
+    if (!more) return;
+    void api.ai.drafts[":id"].$get({ param: { id: draftId } }).then(async (res) => {
+      if (res.ok) setDraft(await res.json());
+      else if (res.status === 404) setMissing(true);
+    });
+  }, [more, draftId]);
+
+  // More cards from the draft's own file keep its page numbers (the pages it
+  // had are marked, sending one again replaces it). Anything else is numbered
+  // after the draft's pages, so it never overwrites the material of its cards.
+  const sameFile = source === "file" && material !== null && material.name.slice(0, 200) === draft?.sourceName;
+  const used = new Set(sameFile && draft ? draft.pages.map((page) => page.n) : []);
+  const offset = !draft || sameFile ? 0 : Math.max(0, ...draft.pages.map((page) => page.n));
 
   // A replaced (or left) PDF frees its document and worker.
   useEffect(() => () => material?.close?.(), [material]);
@@ -136,7 +162,11 @@ export function AiSourcePage() {
     setBusy(true);
     setError(null);
     try {
-      const pages = await pagesToSend(current, chosen);
+      const pages = (await pagesToSend(current, chosen)).map((page) => ({ ...page, n: page.n + offset }));
+      if (more) {
+        await addMore(pages);
+        return;
+      }
       const json = {
         sourceName: current.name.slice(0, 200),
         kind,
@@ -172,6 +202,47 @@ export function AiSourcePage() {
     }
   }
 
+  /** "More cards": the pages go to the draft, the cards come back on its page. */
+  async function addMore(pages: Awaited<ReturnType<typeof pagesToSend>>) {
+    const json = { pages, instructions: instructions.trim() };
+    if (JSON.stringify(json).length > MAX_BODY_CHARS) {
+      setError(t("ai.source.error.tooLarge"));
+      return;
+    }
+    const res = await api.ai.drafts[":id"].more.$post({ param: { id: draftId }, json });
+    if (res.ok) {
+      navigate(`/create/ai/${draftId}`);
+      return;
+    }
+    if (offline(res) || res.status >= 500) return;
+    if ((res.status as number) === 413) {
+      setError(t("ai.source.error.tooLarge"));
+      return;
+    }
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      capNanos?: number;
+      fields?: Record<string, string>;
+    };
+    if (body.error === "validation") {
+      setError(t(body.fields?.cards ? "ai.draft.full" : "ai.source.error.invalid"));
+    } else if (res.status === 404) {
+      setMissing(true);
+    } else {
+      setError(aiErrorMessage(t, body.error ?? null, body.capNanos));
+    }
+  }
+
+  if (missing) {
+    return (
+      <EmptyState
+        title={t("ai.draft.missing")}
+        action={<ButtonLink to="/create/ai">{t("ai.source.title")}</ButtonLink>}
+      />
+    );
+  }
+  if (more && !draft) return <PageLoading />;
+
   const sources: Option<Source>[] = [
     { value: "file", label: t("ai.source.file") },
     { value: "text", label: t("ai.source.text") },
@@ -196,7 +267,11 @@ export function AiSourcePage() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-5">
-      <PageTitle subtitle={t("ai.source.subtitle")}>{t("ai.source.title")}</PageTitle>
+      {more ? (
+        <PageTitle subtitle={t("ai.more.subtitle", { name: draft?.sourceName ?? "" })}>{t("ai.draft.more")}</PageTitle>
+      ) : (
+        <PageTitle subtitle={t("ai.source.subtitle")}>{t("ai.source.title")}</PageTitle>
+      )}
 
       <Card className="flex flex-col gap-4">
         <SegmentedControl label={t("ai.source.mode")} value={source} onChange={switchSource} options={sources} />
@@ -271,6 +346,7 @@ export function AiSourcePage() {
                 label={page.label ?? page.text.slice(0, 160)}
                 thumbnail={page.thumbnail}
                 scan={page.scan}
+                used={used.has(page.n)}
                 selected={picked.has(page.n)}
                 disabled={!fits(material.pages, picked, page)}
                 onToggle={(on) => toggle(page.n, on)}
@@ -282,13 +358,23 @@ export function AiSourcePage() {
       )}
 
       <Card className="flex flex-col gap-4">
-        <Select label={t("ai.source.kind")} value={kind} onChange={setKind} options={kinds} />
-        <div className="flex flex-col gap-2">
-          <Text variant="small" className="font-semibold text-ink-soft">
-            {t("ai.source.howMany")}
-          </Text>
-          <SegmentedControl label={t("ai.source.howMany")} value={howMany} onChange={setHowMany} options={amounts} />
-        </div>
+        {/* More cards are of the draft's kind and as many as the pages hold. */}
+        {!more && (
+          <>
+            <Select label={t("ai.source.kind")} value={kind} onChange={setKind} options={kinds} />
+            <div className="flex flex-col gap-2">
+              <Text variant="small" className="font-semibold text-ink-soft">
+                {t("ai.source.howMany")}
+              </Text>
+              <SegmentedControl
+                label={t("ai.source.howMany")}
+                value={howMany}
+                onChange={setHowMany}
+                options={amounts}
+              />
+            </div>
+          </>
+        )}
         <TextField
           label={t("ai.source.instructions")}
           hint={t("ai.source.instructionsHint")}
@@ -302,7 +388,7 @@ export function AiSourcePage() {
       <div className="flex flex-col items-start gap-2">
         {error && <FormError>{error}</FormError>}
         <Button onClick={() => void create()} loading={busy} disabled={busy || reading} icon="bulb">
-          {t("ai.source.create")}
+          {t(more ? "ai.more.create" : "ai.source.create")}
         </Button>
         {sum && sum.count > 0 && (
           <div className="flex flex-wrap items-baseline gap-x-1 text-sm text-muted">
