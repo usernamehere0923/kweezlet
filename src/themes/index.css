@@ -1,0 +1,4 @@
+/* Every theme's tokens and fonts. Cardigan first: it also sits on :root, and
+   a later [data-theme] rule of the same specificity wins over it.
+   A browser downloads a theme's fonts only once something uses them. */
+@import "./cardigan.css";

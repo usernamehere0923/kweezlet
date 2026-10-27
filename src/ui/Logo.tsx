@@ -22,7 +22,7 @@ export function Wordmark({ className }: { className?: string }) {
   return (
     <span className={cx("inline-flex items-center gap-2.5", className)}>
       <LogoMark size={30} />
-      <span className="font-serif text-[22px] leading-none tracking-tight text-ink">kweezlet</span>
+      <span className="font-display text-[22px] leading-none tracking-tight text-ink">kweezlet</span>
     </span>
   );
 }

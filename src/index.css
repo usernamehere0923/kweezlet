@@ -1,30 +1,8 @@
 @import "tailwindcss";
 
-/* Self-hosted variable fonts, the same files ../rongo ships.
-   They are Anthropic's typefaces: fine for this private app. If kweezlet ever
-   goes public as a product, point the three --font-* tokens below at free
-   look-alikes (Inter, Source Serif, JetBrains Mono) and delete these files. */
-@font-face {
-  font-family: "Anthropic Sans";
-  src: url("./fonts/SansWebVariable-TextRegular.woff2") format("woff2");
-  font-weight: 300 800;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Anthropic Serif";
-  src: url("./fonts/SerifWebVariable-TextRegular.woff2") format("woff2");
-  font-weight: 300 800;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Anthropic Serif";
-  src: url("./fonts/SerifWebVariable-TextRegularItalic.woff2") format("woff2");
-  font-weight: 300 800;
-  font-style: italic;
-  font-display: swap;
-}
+/* Self-hosted variable fonts, the same files ../rongo ships. Mono and icons
+   are the same in every theme; each theme brings its own body/display fonts
+   (src/themes/*.css). */
 @font-face {
   font-family: "Anthropic Mono";
   src: url("./fonts/MonoVariableVariable-Regular.woff2") format("woff2");
@@ -42,46 +20,59 @@
   font-display: block;
 }
 
-/* THE design tokens. Components use them as Tailwind classes (bg-surface,
-   text-muted, border-line, ...). No other colours anywhere, no dark mode. */
+/* Drops Tailwind's own font-sans/font-serif, so only font-body, font-display
+   and font-mono exist (a leftover font-serif would otherwise quietly work). */
 @theme {
-  --color-bg: #f0eee6; /* the warm beige page */
-  --color-surface: #faf9f5; /* cards, inputs, nav */
-  --color-sunken: #e8e6dc; /* hover on ghost things, tracks */
-  --color-line: #dedcd1; /* borders */
-  --color-line-soft: #e8e6dc; /* quiet borders, dividers */
+  --font-*: initial;
+}
 
-  --color-ink: #141413; /* main text, never pure black */
-  --color-ink-soft: #3d3d3a;
-  --color-muted: #5e5d59; /* secondary text */
-  --color-faint: #8f8d86; /* placeholders, hints */
+/* THE design tokens. Components use them as Tailwind classes (bg-surface,
+   text-muted, border-line, font-display, ...). The values come from the
+   active theme (src/themes/*.css, `--theme-*`); this block only names them.
+   `inline` makes every class read var(--theme-*) where it is used, so a
+   <div data-theme="..."> restyles just its own subtree (theme picker, /design). */
+@theme inline {
+  --color-bg: var(--theme-bg); /* the page */
+  --color-surface: var(--theme-surface); /* cards, inputs, nav */
+  --color-sunken: var(--theme-sunken); /* hover on ghost things, tracks */
+  --color-line: var(--theme-line); /* borders */
+  --color-line-soft: var(--theme-line-soft); /* quiet borders, dividers */
 
-  --color-accent: #d97757; /* Claude orange: focus ring, highlights */
-  --color-accent-strong: #c6613f; /* primary button */
-  --color-accent-deep: #b0532f; /* primary button pressed */
-  --color-accent-wash: #f6e4da;
-  --color-on-accent: #faf9f5; /* text on orange/teal/red fills */
+  --color-ink: var(--theme-ink); /* main text */
+  --color-ink-soft: var(--theme-ink-soft);
+  --color-muted: var(--theme-muted); /* secondary text */
+  --color-faint: var(--theme-faint); /* placeholders, hints */
 
-  --color-teal: #2f7f7a; /* links, secondary actions, tags */
-  --color-teal-strong: #256561;
-  --color-teal-wash: #ddebe8;
+  --color-accent: var(--theme-accent); /* focus ring, highlights */
+  --color-accent-strong: var(--theme-accent-strong); /* primary button */
+  --color-accent-deep: var(--theme-accent-deep); /* primary button pressed */
+  --color-accent-wash: var(--theme-accent-wash);
+  --color-on-accent: var(--theme-on-accent); /* text on accent/teal/red/green fills */
 
-  --color-correct: #5a8c5a;
-  --color-correct-wash: #e2ebdc;
-  --color-wrong: #c14638;
-  --color-wrong-strong: #a83a2e;
-  --color-wrong-wash: #f5dfda;
+  --color-teal: var(--theme-teal); /* links, secondary actions, tags */
+  --color-teal-strong: var(--theme-teal-strong);
+  --color-teal-wash: var(--theme-teal-wash);
 
-  --font-sans: "Anthropic Sans", system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  --font-serif: "Anthropic Serif", Georgia, "Times New Roman", Times, serif;
+  --color-correct: var(--theme-correct);
+  --color-correct-wash: var(--theme-correct-wash);
+  --color-wrong: var(--theme-wrong);
+  --color-wrong-strong: var(--theme-wrong-strong);
+  --color-wrong-wash: var(--theme-wrong-wash);
+
+  --font-body: var(--theme-font-body); /* everything */
+  --font-display: var(--theme-font-display); /* headings, card fronts, scores, logo */
+
+  --shadow-raised: var(--theme-shadow-raised);
+  --shadow-overlay: var(--theme-shadow-overlay);
+}
+
+/* The same in every theme. */
+@theme {
   --font-mono: "Anthropic Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   --radius-ui: 10px;
   --radius-ui-lg: 12px;
   --radius-ui-xl: 16px;
-
-  --shadow-raised: 0 1px 2px rgb(20 20 19 / 0.04), 0 8px 24px -10px rgb(20 20 19 / 0.14);
-  --shadow-overlay: 0 24px 48px -12px rgb(20 20 19 / 0.24);
 
   --animate-shake: shake 0.4s ease-in-out;
   --animate-slide-up: slide-up 0.22s ease-out;
@@ -213,16 +204,16 @@
 }
 
 @layer base {
+  /* color-scheme comes from the theme (light or dark scrollbars, form controls). */
   html {
-    color-scheme: light;
     -webkit-text-size-adjust: 100%;
   }
 
   body {
     margin: 0;
-    background: var(--color-bg);
-    color: var(--color-ink);
-    font-family: var(--font-sans);
+    background: var(--theme-bg);
+    color: var(--theme-ink);
+    font-family: var(--theme-font-body);
     font-size: 16px;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
@@ -232,17 +223,17 @@
 
   /* One focus ring for everything: keyboard users always see where they are. */
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--theme-accent);
     outline-offset: 2px;
   }
 
   ::placeholder {
-    color: var(--color-faint);
+    color: var(--theme-faint);
     opacity: 1;
   }
 
   ::selection {
-    background: var(--color-accent-wash);
+    background: var(--theme-accent-wash);
   }
 
   /* Tailwind v4 dropped the pointer cursor on buttons. */
@@ -253,7 +244,7 @@
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--color-line) transparent;
+    scrollbar-color: var(--theme-line) transparent;
   }
 }
 

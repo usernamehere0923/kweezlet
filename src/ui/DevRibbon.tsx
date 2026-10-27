@@ -15,7 +15,7 @@ export function DevRibbon({ contained }: { contained?: boolean }) {
       className={cx("pointer-events-none top-0 right-0 z-50 size-44 overflow-hidden", contained ? "absolute" : "fixed")}
     >
       {/* Two reds in fine diagonal stripes, a darker edge and a stitched hairline along each side. */}
-      <div className="absolute top-[23px] -right-[94px] w-72 rotate-45 bg-[repeating-linear-gradient(45deg,var(--color-wrong)_0_8px,var(--color-wrong-strong)_8px_16px)] border-y-2 border-wrong-strong py-[9px]">
+      <div className="absolute top-[23px] -right-[94px] w-72 rotate-45 bg-[repeating-linear-gradient(45deg,var(--theme-wrong)_0_8px,var(--theme-wrong-strong)_8px_16px)] border-y-2 border-wrong-strong py-[9px]">
         <div className="border-y border-dashed border-on-accent/55 py-[8px] text-center text-[15px] leading-none font-bold pl-[0.4em] tracking-[0.4em] text-on-accent uppercase">
           {t("dev.ribbon")}
         </div>

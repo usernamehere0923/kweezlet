@@ -168,7 +168,7 @@ export function StudyKit() {
       >
         <div className="mx-auto flex max-w-2xl flex-col gap-3">
           <Card padding="sm" className="mb-2 text-center">
-            <span className="font-serif text-2xl">el perro</span>
+            <span className="font-display text-2xl">el perro</span>
           </Card>
           <div className="grid gap-3 sm:grid-cols-2">
             {choices.map((c, i) => (

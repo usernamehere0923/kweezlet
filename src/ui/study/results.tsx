@@ -73,7 +73,7 @@ export function ResultSummary({
         </svg>
         <span
           className={cx(
-            "absolute inset-0 flex items-center justify-center font-serif text-4xl text-ink tabular-nums",
+            "absolute inset-0 flex items-center justify-center font-display text-4xl text-ink tabular-nums",
             landed && ratio > 0 && "animate-pop",
           )}
         >
@@ -81,7 +81,7 @@ export function ResultSummary({
         </span>
       </div>
       <div>
-        <h2 className="font-serif text-3xl text-ink">{t("study.resultTitle")}</h2>
+        <h2 className="font-display text-3xl text-ink">{t("study.resultTitle")}</h2>
         <p className="mt-1 text-muted">{t("study.resultScore", { correct, total })}</p>
       </div>
     </ResultPanel>
@@ -131,7 +131,7 @@ export function MatchResult({
       )}
       <div>
         <p className="text-sm font-medium text-muted">{t("match.yourTime")}</p>
-        <p className="font-serif text-5xl text-ink tabular-nums">{time}</p>
+        <p className="font-display text-5xl text-ink tabular-nums">{time}</p>
       </div>
       <p className="text-muted">{t("match.bestTime", { time: bestTime })}</p>
     </ResultPanel>

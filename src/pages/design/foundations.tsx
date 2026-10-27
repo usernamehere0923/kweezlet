@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useT } from "../../i18n";
 import { Card, Heading, Icon, ICON_NAMES, PageTitle, Text, TextLink, Wordmark } from "../../ui";
 import { Chapter, Section } from "./layout";
@@ -24,11 +24,16 @@ const COLORS = [
 ] as const;
 
 function Swatch({ name, cls }: { name: string; cls: string }) {
-  // The value comes straight from the CSS, so this page can never show a stale colour.
-  const [hex] = useState(() => getComputedStyle(document.documentElement).getPropertyValue(`--color-${name}`).trim());
+  // The value comes straight from the CSS where the swatch sits, so this page
+  // can never show a stale colour.
+  const ref = useRef<HTMLDivElement>(null);
+  const [hex, setHex] = useState("");
+  useEffect(() => {
+    if (ref.current) setHex(getComputedStyle(ref.current).getPropertyValue(`--theme-${name}`).trim());
+  }, [name]);
   return (
     <div className="flex flex-col gap-1.5">
-      <div className={`h-14 rounded-ui border border-line-soft ${cls}`} />
+      <div ref={ref} className={`h-14 rounded-ui border border-line-soft ${cls}`} />
       <span className="font-mono text-xs text-ink-soft">{name}</span>
       <span className="font-mono text-[11px] text-faint">{hex}</span>
     </div>
@@ -41,7 +46,7 @@ export function Foundations() {
     <>
       <Chapter title={t("design.colors")}>
         <Section
-          title="Tokens (src/index.css @theme)"
+          title="Tokens (values in src/themes/*.css)"
           code={`<div className="bg-surface text-ink border border-line">…</div>
 <p className="text-muted">…</p>   // never write a #hex in a component`}
         >
@@ -64,12 +69,12 @@ export function Foundations() {
         >
           <Card>
             <PageTitle subtitle="Learn anything, card by card.">Spanish animals</PageTitle>
-            <Heading>Section heading (serif)</Heading>
+            <Heading>Section heading (font-display)</Heading>
             <Heading level={3} className="mt-4">
-              Small heading (sans)
+              Small heading (font-body)
             </Heading>
             <Text className="mt-2">
-              Body text in Anthropic Sans. A sentence about cats and dogs, with{" "}
+              Body text in the theme's body font. A sentence about cats and dogs, with{" "}
               <TextLink href="#">a teal link</TextLink> in it.
             </Text>
             <Text variant="muted" className="mt-1">
