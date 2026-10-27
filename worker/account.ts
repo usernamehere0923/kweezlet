@@ -3,7 +3,7 @@ import { z } from "zod";
 import { constantTimeEqual, hashPassword, newPasswordHash } from "./crypto";
 import { exportUserData } from "./export";
 import { notifyLater } from "./live";
-import { localeSchema, publicUser, type AppEnv } from "./types";
+import { localeSchema, publicUser, themeSchema, type AppEnv } from "./types";
 import { validate, validationError } from "./validate";
 
 export const accountRoutes = new Hono<AppEnv>()
@@ -11,13 +11,25 @@ export const accountRoutes = new Hono<AppEnv>()
     return c.json(publicUser(c.get("user")), 200);
   })
 
-  .patch("/settings", validate("json", z.object({ locale: localeSchema })), async (c) => {
-    const user = c.get("user");
-    const { locale } = c.req.valid("json");
-    await c.env.DB.prepare("UPDATE users SET locale = ? WHERE id = ?").bind(locale, user.id).run();
-    notifyLater(c, "settings");
-    return c.json({ locale }, 200);
-  })
+  // Either or both; whatever is left out stays as it is.
+  .patch(
+    "/settings",
+    validate("json", z.object({ locale: localeSchema.optional(), theme: themeSchema.optional() })),
+    async (c) => {
+      const user = c.get("user");
+      const { locale, theme } = c.req.valid("json");
+      const db = c.env.DB;
+      const updates = [
+        locale && db.prepare("UPDATE users SET locale = ? WHERE id = ?").bind(locale, user.id),
+        theme && db.prepare("UPDATE users SET theme = ? WHERE id = ?").bind(theme, user.id),
+      ].filter((s) => !!s);
+      if (updates.length) {
+        await db.batch(updates);
+        notifyLater(c, "settings");
+      }
+      return c.json({ locale, theme }, 200);
+    },
+  )
 
   .post(
     "/password",

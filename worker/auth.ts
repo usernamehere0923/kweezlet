@@ -23,7 +23,7 @@ export const requireUser = createMiddleware<AppEnv>(async (c, next) => {
   if (!token) return c.json({ error: "unauthorized" as const }, 401);
   const tokenHash = await sha256Hex(token);
   const row = await c.env.DB.prepare(
-    `SELECT u.id, u.username, u.locale, u.level FROM sessions s JOIN users u ON u.id = s.user_id
+    `SELECT u.id, u.username, u.locale, u.level, u.theme FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token_hash = ? AND s.expires_at > ?`,
   )
     .bind(tokenHash, now())
@@ -64,7 +64,7 @@ export const authRoutes = new Hono<AppEnv>()
     if ((recent?.n ?? 0) >= MAX_FAILURES) return c.json({ error: "rate_limited" as const }, 429);
 
     const user = await db
-      .prepare("SELECT id, username, locale, level, password_hash, salt FROM users WHERE username = ?")
+      .prepare("SELECT id, username, locale, level, theme, password_hash, salt FROM users WHERE username = ?")
       .bind(username)
       .first<User & { password_hash: string; salt: string }>();
     const hash = await hashPassword(password, user?.salt ?? DUMMY_SALT);

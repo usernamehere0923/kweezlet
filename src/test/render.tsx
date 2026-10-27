@@ -18,7 +18,7 @@ function Providers({ children }: { children: ReactNode }) {
 }
 
 /** The logged-in user GET /api/me answers with. */
-export const ME = { username: "demo", locale: "en", level: "admin" };
+export const ME = { username: "demo", locale: "en", level: "admin", theme: "cardigan" };
 
 /** The whole app at `path`, as the browser would load it. */
 export function renderApp(path = "/") {
