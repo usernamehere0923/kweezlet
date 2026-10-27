@@ -23,6 +23,7 @@ const DRAFT = {
   cards: [] as unknown[],
   pages: [{ n: 1, image: false }],
   cost: { nanos: 0, tokens: 0, durationMs: 0 },
+  lastRunNanos: null as number | null,
   updatedAt: 0,
 };
 const DOG = {
@@ -289,7 +290,7 @@ describe("a draft", () => {
   test("a run with no cards says so and can still be made anew or discarded", async () => {
     draftApi({ ...READY, cards: [], added: 0, notes: "" });
     renderApp("/create/ai/9");
-    expect(await screen.findByText(/^No cards came out of this material/)).toBeTruthy();
+    expect(await screen.findByText(/^This draft has no cards/)).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Make anew" }));
     expect(within(screen.getByRole("dialog")).getByText("Make the cards anew?")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Discard" })).toBeTruthy();
@@ -298,9 +299,9 @@ describe("a draft", () => {
 
   test("a More cards run says what it added; a full draft takes no more", async () => {
     const many = Array.from({ length: 500 }, (_, i) => ({ ...DOG, term: `t${i}` }));
-    const { state } = draftApi({ ...READY, cards: [DOG, CAT, DOG], added: 1, skipped: 2 });
+    const { state } = draftApi({ ...READY, cards: [DOG, CAT, DOG], added: 1, skipped: 2, lastRunNanos: 2_410_000 });
     const { unmount } = renderApp("/create/ai/9");
-    expect(await screen.findByText("Last run: 1 new · 2 skipped as repeats")).toBeTruthy();
+    expect(await screen.findByText("Last run: 1 new · 2 skipped as repeats · $0.01")).toBeTruthy();
     expect(screen.getByRole("button", { name: "More cards" }).hasAttribute("disabled")).toBe(false);
     unmount();
 

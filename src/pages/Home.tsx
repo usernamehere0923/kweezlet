@@ -17,11 +17,8 @@ import {
   PageLoading,
   StreakBadge,
   StudySetCard,
-  Text,
+  UnfinishedDrafts,
 } from "../ui";
-
-/** Home lists this many unfinished AI drafts, newest first. */
-const MAX_DRAFTS_SHOWN = 3;
 
 /** How long typing has to pause before the search goes out. */
 const SEARCH_PAUSE_MS = 250;
@@ -116,28 +113,16 @@ export function HomePage() {
       )}
 
       {drafts.length > 0 && (
-        <Card className="mb-6 flex flex-col gap-3">
-          <Heading level={3}>{tn("ai.home.drafts", drafts.length)}</Heading>
-          <ul className="flex flex-col gap-3">
-            {drafts.slice(0, MAX_DRAFTS_SHOWN).map((draft) => (
-              <li key={draft.id} className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-ink">{draft.title || draft.sourceName}</p>
-                  <Text variant="small">
-                    {draft.status === "running"
-                      ? t("ai.draft.making")
-                      : draft.status === "failed" && draft.cardCount === 0
-                        ? t("ai.home.failed")
-                        : tn("ai.draft.cards", draft.cardCount)}
-                  </Text>
-                </div>
-                <ButtonLink to={`/create/ai/${draft.id}`} variant="secondary" size="sm">
-                  {t("ai.home.open")}
-                </ButtonLink>
-              </li>
-            ))}
-          </ul>
-        </Card>
+        <div className="mb-6">
+          <UnfinishedDrafts
+            drafts={drafts.map((draft) => ({
+              to: `/create/ai/${draft.id}`,
+              title: draft.title || draft.sourceName,
+              status: draft.status,
+              cardCount: draft.cardCount,
+            }))}
+          />
+        </div>
       )}
 
       {sets === null ? (

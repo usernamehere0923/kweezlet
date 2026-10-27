@@ -378,6 +378,7 @@ export function AiSourcePage({ more = false }: { more?: boolean }) {
             <CostLine estimate nanos={sum.nanos} tokens={sum.tokens} />
           </div>
         )}
+        <Text variant="small">{t("ai.source.privacy")}</Text>
       </div>
     </div>
   );

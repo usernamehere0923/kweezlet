@@ -119,6 +119,7 @@ function draftDetail(
   row: DraftRow,
   pages: { n: number; image: number }[],
   cost: { nanos: number; tokens: number; durationMs: number },
+  lastRunNanos: number | null,
 ) {
   return {
     id: row.id,
@@ -141,6 +142,8 @@ function draftDetail(
     pages: pages.map((page) => ({ n: page.n, image: page.image === 1 })),
     /** What every run of this draft cost so far. */
     cost,
+    /** What its last run cost: the "More cards" result line. */
+    lastRunNanos,
     updatedAt: row.updated_at,
   };
 }
@@ -310,7 +313,7 @@ export const aiRoutes = new Hono<AppEnv>()
     const { id } = c.req.valid("param");
     const db = c.env.DB;
     await tidyDrafts(db, userId);
-    const [draftRes, pagesRes, costRes] = await db.batch([
+    const [draftRes, pagesRes, costRes, lastRes] = await db.batch([
       db.prepare("SELECT * FROM ai_drafts WHERE id = ? AND user_id = ?").bind(id, userId),
       db
         .prepare(
@@ -324,12 +327,16 @@ export const aiRoutes = new Hono<AppEnv>()
              FROM ai_usage WHERE draft_id = ? AND user_id = ?`,
         )
         .bind(id, userId),
+      db
+        .prepare("SELECT cost_nanos FROM ai_usage WHERE draft_id = ? AND user_id = ? ORDER BY id DESC LIMIT 1")
+        .bind(id, userId),
     ]);
     const row = draftRes!.results[0] as DraftRow | undefined;
     if (!row) return notFound(c);
     const pages = pagesRes!.results as { n: number; image: number }[];
     const cost = costRes!.results[0] as { nanos: number; tokens: number; durationMs: number };
-    return c.json(draftDetail(row, pages, cost), 200);
+    const last = lastRes!.results[0] as { cost_nanos: number } | undefined;
+    return c.json(draftDetail(row, pages, cost, last?.cost_nanos ?? null), 200);
   })
 
   // Edits on the review screen, saved as the user goes.

@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useT } from "../../i18n";
 import { formatCost } from "../../lib/cost";
-import { IconButton } from "../Button";
+import { ButtonLink, IconButton } from "../Button";
 import { cx } from "../cx";
 import { Checkbox } from "../fields";
 import { Icon } from "../Icon";
-import { surface, Tag } from "../surfaces";
+import { Card, surface, Tag } from "../surfaces";
+import { Heading, Text } from "../Text";
 import { Cell } from "./editing";
+import { ProgressBar } from "./ProgressBar";
 
 /**
  * What an AI run cost: "$0.02 · 14,210 tokens · 38 s". `estimate` is the line
@@ -187,6 +189,113 @@ export function DraftCard({
         </div>
       ) : (
         <p className="mt-3 text-sm text-faint">{t("ai.noSource")}</p>
+      )}
+    </div>
+  );
+}
+
+/** A draft as Home lists it. */
+export type DraftItem = {
+  /** Where "Open" goes: the draft's review screen. */
+  to: string;
+  title: string;
+  status: "running" | "ready" | "failed";
+  cardCount: number;
+};
+
+/**
+ * Home's card for AI drafts not saved or discarded yet, newest first: the
+ * first `max`, each with how far it is and a way back in.
+ */
+export function UnfinishedDrafts({ drafts, max = 3 }: { drafts: DraftItem[]; max?: number }) {
+  const { t, tn } = useT();
+  return (
+    <Card className="flex flex-col gap-3">
+      <Heading level={3}>{tn("ai.home.drafts", drafts.length)}</Heading>
+      <ul className="flex flex-col gap-3">
+        {drafts.slice(0, max).map((draft) => (
+          <li key={draft.to} className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate font-medium text-ink">{draft.title}</p>
+              <Text variant="small">
+                {draft.status === "running"
+                  ? t("ai.draft.making")
+                  : draft.status === "failed" && draft.cardCount === 0
+                    ? t("ai.home.failed")
+                    : tn("ai.draft.cards", draft.cardCount)}
+              </Text>
+            </div>
+            <ButtonLink to={draft.to} variant="secondary" size="sm">
+              {t("ai.home.open")}
+            </ButtonLink>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
+/** One AI run, as Settings lists it. */
+export type AiRun = { at: Date; action: "create" | "regenerate" | "more"; tokens: number; nanos: number };
+
+const RUN_ACTIONS = {
+  create: "settings.aiAction.create",
+  regenerate: "settings.aiAction.regenerate",
+  more: "settings.aiAction.more",
+} as const;
+
+/**
+ * What the AI cost: this month against the budget (`capNanos` null: no
+ * limit, no bar), all time, and the last runs.
+ */
+export function AiUsage({
+  monthNanos,
+  totalNanos,
+  capNanos,
+  runs,
+}: {
+  monthNanos: number;
+  totalNanos: number;
+  capNanos: number | null;
+  runs: AiRun[];
+}) {
+  const { t, tn, locale, formatNumber } = useT();
+  const when = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const month = formatCost(monthNanos);
+  return (
+    <div className="flex flex-col gap-4">
+      {capNanos === null ? (
+        <Text>{t("settings.aiMonthNoCap", { cost: month })}</Text>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <Text>{t("settings.aiMonth", { cost: month, cap: formatCost(capNanos) })}</Text>
+          <ProgressBar value={monthNanos} max={capNanos} label={t("settings.aiBudget")} />
+          <Text variant="small">{t("settings.aiCapHint")}</Text>
+        </div>
+      )}
+      <Text variant="muted">{t("settings.aiTotal", { cost: formatCost(totalNanos) })}</Text>
+      {runs.length === 0 ? (
+        <Text variant="small">{t("settings.aiNone")}</Text>
+      ) : (
+        <div>
+          <Heading level={3} className="mb-2">
+            {t("settings.aiRecent")}
+          </Heading>
+          <ul className="divide-y divide-line-soft text-sm">
+            {runs.map((run, i) => (
+              <li key={i} className="flex items-start justify-between gap-3 py-2">
+                <div>
+                  <p className="text-ink">{t(RUN_ACTIONS[run.action])}</p>
+                  <p className="text-muted">{when.format(run.at)}</p>
+                </div>
+                <div className="text-right tabular-nums">
+                  <p className="text-ink">{formatCost(run.nanos)}</p>
+                  <p className="text-muted">{tn("ai.tokens", run.tokens, { tokens: formatNumber(run.tokens) })}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );

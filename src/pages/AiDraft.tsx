@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router";
 import { LANG_KEY, useT, type TKey } from "../i18n";
 import { api } from "../lib/api";
 import { kindOptions, languageOptions, type CardKind } from "../lib/choices";
-import { aiErrorMessage, aiRefusal } from "../lib/cost";
+import { aiErrorMessage, aiRefusal, formatCost } from "../lib/cost";
 import { useDraft, type DraftEdits } from "../lib/draft";
 import { useLive } from "../lib/live";
 import {
@@ -228,7 +228,13 @@ export function AiDraftPage() {
           <Text>{summary.join(" · ")}</Text>
           <CostLine nanos={draft.cost.nanos} tokens={draft.cost.tokens} durationMs={draft.cost.durationMs} />
           {moreResult && (
-            <Text variant="small">{t("ai.draft.added", { added: draft.added, skipped: draft.skipped })}</Text>
+            <Text variant="small">
+              {t("ai.draft.added", {
+                added: draft.added,
+                skipped: draft.skipped,
+                cost: formatCost(draft.lastRunNanos ?? 0),
+              })}
+            </Text>
           )}
           {draft.notes && <Text variant="small">{draft.notes}</Text>}
           {rows.length === 0 && <Text>{t("ai.draft.empty")}</Text>}

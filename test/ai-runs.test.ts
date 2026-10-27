@@ -65,7 +65,7 @@ async function createDraft(cookie: string, body: unknown = MATERIAL): Promise<nu
   return ((await res.json()) as { id: number }).id;
 }
 
-type Draft = Record<string, unknown> & { status: string; cards: Record<string, unknown>[] };
+type Draft = Record<string, unknown> & { status: string; cards: Record<string, unknown>[]; cost: { nanos: number } };
 
 /** The draft once its run is over (the alarm runs by itself, a moment later). */
 async function settled(cookie: string, id: number): Promise<Draft> {
@@ -80,7 +80,7 @@ async function settled(cookie: string, id: number): Promise<Draft> {
 const usageRows = (userId: number) =>
   env.DB.prepare("SELECT action, model, calls, cost_nanos, draft_id FROM ai_usage WHERE user_id = ? ORDER BY id")
     .bind(userId)
-    .all()
+    .all<{ action: string; model: string; calls: number; cost_nanos: number; draft_id: number | null }>()
     .then((r) => r.results);
 
 afterEach(() => {
@@ -104,6 +104,7 @@ describe("a run", () => {
       { n: 2, image: false },
     ]);
     expect(body.cost).toEqual({ nanos: 1000 * 150 + 200 * 500, tokens: 1200, durationMs: expect.any(Number) });
+    expect(body.lastRunNanos).toBe(1000 * 150 + 200 * 500);
     // The page text went to z.ai, tagged with its number.
     expect(JSON.stringify(bodies[0]!.messages)).toContain(String.raw`<page n=\"2\">`);
     expect(await usageRows(userId)).toEqual([
@@ -279,7 +280,11 @@ describe("more cards and regenerate", () => {
     expect(sent).toContain(String.raw`<page n=\"3\">`);
     expect(sent).not.toContain(String.raw`<page n=\"2\">`);
     expect(sent).toContain("el caballo — the horse"); // the set's terms are listed as existing
-    expect((await usageRows(userId)).map((row) => row.action)).toEqual(["create", "more"]);
+    const usage = await usageRows(userId);
+    expect(usage.map((row) => row.action)).toEqual(["create", "more"]);
+    // The draft's cost is both runs; the result line names the last one.
+    expect(body.cost.nanos).toBe(usage[0]!.cost_nanos + usage[1]!.cost_nanos);
+    expect(body.lastRunNanos).toBe(usage[1]!.cost_nanos);
   });
 
   it("regenerate replaces the cards as the kind asked for", async () => {

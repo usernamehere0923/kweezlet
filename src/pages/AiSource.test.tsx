@@ -66,6 +66,7 @@ describe("cards from material", () => {
     await userEvent.click(screen.getByRole("radio", { name: "25" }));
     await userEvent.type(screen.getByLabelText("Instructions"), "answers in German");
     expect(screen.getByText("about 5 tokens · about $0.01")).toBeTruthy();
+    expect(screen.getByText(/^The material goes to z.ai in Singapore/)).toBeTruthy();
     await userEvent.click(screen.getByRole("button", { name: "Create cards" }));
 
     await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));

@@ -289,6 +289,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "ai.source.instructions": "Anweisungen",
   "ai.source.instructionsHint": "Freiwillig, z. B. «nur die roten Kästen» oder «Antworten auf Englisch».",
   "ai.source.create": "Karten erstellen",
+  "ai.source.privacy": "Das Material geht zur Erstellung der Karten an z.ai in Singapur. z.ai speichert es nicht.",
   "ai.source.picked_one": "{count} Seite",
   "ai.source.picked_other": "{count} Seiten",
   "ai.source.error.nothingPicked": "Wähle mindestens eine Seite oder füge Text ein.",
@@ -324,7 +325,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "ai.draft.unverifiedCount_one": "{count} nicht geprüft",
   "ai.draft.unverifiedCount_other": "{count} nicht geprüft",
   "ai.draft.languages": "{term} → {def}",
-  "ai.draft.added": "Letzter Lauf: {added} neu · {skipped} als Wiederholung übersprungen",
+  "ai.draft.added": "Letzter Lauf: {added} neu · {skipped} als Wiederholung übersprungen · {cost}",
   "ai.draft.more": "Mehr Karten",
   "ai.draft.full": "Dieser Entwurf hat 500 Karten, mehr geht nicht. Speichere ihn oder lösche zuerst ein paar Karten.",
   "ai.draft.regenerate": "Neu erstellen",
@@ -333,8 +334,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "ai.draft.regenerateText":
     "Die Karten werden aus dem gleichen Material neu erstellt. Deine Änderungen gehen verloren.",
   "ai.draft.discard": "Verwerfen",
-  "ai.draft.empty":
-    "Aus diesem Material sind keine Karten entstanden. Versuche andere Seiten oder schreib in den Anweisungen, was entstehen soll.",
+  "ai.draft.empty": "Dieser Entwurf hat keine Karten. Füge mit «Mehr Karten» welche hinzu oder erstelle sie neu.",
   "ai.draft.regenerateEmptyTitle": "Karten neu erstellen?",
   "ai.draft.regenerateEmptyText": "Die KI versucht es mit dem gleichen Material nochmals.",
   "ai.draft.discardTitle": "Diesen Entwurf verwerfen?",

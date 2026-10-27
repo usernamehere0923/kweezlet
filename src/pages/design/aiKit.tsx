@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useT } from "../../i18n";
 import { aiErrorMessage, type AiErrorCode } from "../../lib/cost";
-import { CostLine, DraftCard, FormError, PageTile } from "../../ui";
+import { AiUsage, CostLine, DraftCard, FormError, PageTile, UnfinishedDrafts } from "../../ui";
 import { Chapter, Section } from "./layout";
 
 const PAGES = [
@@ -16,6 +16,17 @@ const CARDS = [
   { term: "el perro", definition: "the dog", source: "el perro — the dog", page: 2, verified: true },
   { term: "el gato", definition: "the cat", source: "el gato, la gata", page: 2, verified: false },
   { term: "el caballo", definition: "the horse", source: "", page: null, verified: false },
+];
+
+const DRAFTS = [
+  { to: "/design", title: "Kantone der Schweiz", status: "running" as const, cardCount: 0 },
+  { to: "/design#ai", title: "Spanisch Tiere", status: "ready" as const, cardCount: 24 },
+  { to: "/design#kit", title: "kurs.pdf", status: "failed" as const, cardCount: 0 },
+];
+
+const RUNS = [
+  { at: new Date(2026, 9, 27, 7, 46), action: "more" as const, tokens: 4_120, nanos: 2_410_000 },
+  { at: new Date(2026, 9, 26, 18, 2), action: "create" as const, tokens: 14_210, nanos: 14_310_000 },
 ];
 
 const ERRORS: AiErrorCode[] = [
@@ -85,6 +96,25 @@ export function AiKit() {
               onDelete={() => setCards((list) => list.filter((_, j) => j !== i))}
             />
           ))}
+        </div>
+      </Section>
+
+      <Section
+        title="UnfinishedDrafts"
+        code={`<UnfinishedDrafts drafts={drafts.map((d) => ({ to: \`/create/ai/\${d.id}\`, title: d.title || d.sourceName, status: d.status, cardCount: d.cardCount }))} />
+// Home, above the sets: the newest 3 (max), each with how far it is`}
+      >
+        <UnfinishedDrafts drafts={DRAFTS} />
+      </Section>
+
+      <Section
+        title="AiUsage"
+        code={`<AiUsage monthNanos={u.monthNanos} totalNanos={u.totalNanos} capNanos={u.capNanos} runs={runs} />
+// Settings → "AI usage"; capNanos null (admins): "no limit", no bar`}
+      >
+        <div className="flex flex-col gap-6">
+          <AiUsage monthNanos={16_720_000} totalNanos={52_000_000} capNanos={2_000_000_000} runs={RUNS} />
+          <AiUsage monthNanos={0} totalNanos={0} capNanos={null} runs={[]} />
         </div>
       </Section>
 
