@@ -60,4 +60,46 @@ describe("settings", () => {
     expect(await screen.findByLabelText("Username")).toBeTruthy();
     expect(calls.some((c) => c.path === "/api/logout")).toBe(true);
   });
+
+  test("AI usage: this month against the budget, all time, the last runs", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/ai/usage": () => ({
+        json: {
+          monthNanos: 14_310_000,
+          totalNanos: 52_000_000,
+          capNanos: 2_000_000_000,
+          recent: [
+            {
+              createdAt: 1_761_550_000,
+              action: "more",
+              inputTokens: 12_000,
+              cachedTokens: 0,
+              outputTokens: 2_210,
+              costNanos: 14_310_000,
+            },
+          ],
+        },
+      }),
+    });
+    renderApp("/settings");
+    expect(await screen.findByText("This month: $0.02 of $2.00")).toBeTruthy();
+    expect(screen.getByRole("progressbar", { name: "Monthly AI budget used" }).getAttribute("aria-valuenow")).toBe(
+      "14310000",
+    );
+    expect(screen.getByText("All time: $0.06")).toBeTruthy();
+    expect(screen.getByText("More cards")).toBeTruthy();
+    expect(screen.getByText("14,210 tokens")).toBeTruthy();
+  });
+
+  test("AI usage without a budget (admins), and before the first run", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/ai/usage": () => ({ json: { monthNanos: 0, totalNanos: 0, capNanos: null, recent: [] } }),
+    });
+    renderApp("/settings");
+    expect(await screen.findByText("This month: $0.00, no limit")).toBeTruthy();
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(screen.getByText("No AI runs yet.")).toBeTruthy();
+  });
 });

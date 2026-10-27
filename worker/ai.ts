@@ -103,6 +103,16 @@ type DraftRow = {
   updated_at: number;
 };
 
+/** A draft in the list: Home's "unfinished AI draft" card. */
+export type DraftSummary = {
+  id: number;
+  status: DraftRow["status"];
+  title: string;
+  sourceName: string;
+  cardCount: number;
+  updatedAt: number;
+};
+
 /** A draft as the review screen gets it. */
 export type DraftDetail = ReturnType<typeof draftDetail>;
 function draftDetail(
@@ -284,7 +294,7 @@ export const aiRoutes = new Hono<AppEnv>()
         card_count: number;
         updated_at: number;
       }>();
-    const drafts = results.map((row) => ({
+    const drafts: DraftSummary[] = results.map((row) => ({
       id: row.id,
       status: row.status as DraftRow["status"],
       title: row.title,
