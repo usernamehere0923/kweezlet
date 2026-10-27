@@ -1,6 +1,7 @@
 import { useId, useRef, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from "react";
 import { cx } from "./cx";
 import { Icon } from "./Icon";
+import { useAutoGrow } from "./useAutoGrow";
 
 // iOS Safari zooms into any input below 16px, so every field uses text-base.
 const fieldBox =
@@ -72,11 +73,14 @@ export function TextField({
   ...rest
 }: TextFieldProps) {
   const { id, helpId, aria, border } = useFieldIds(hint, error);
+  const area = useRef<HTMLTextAreaElement>(null);
+  useAutoGrow(area, multiline ? value : "");
   return (
     <div className={className}>
       <Label htmlFor={id}>{label}</Label>
       {multiline ? (
         <textarea
+          ref={area}
           {...aria}
           rows={rows}
           value={value}

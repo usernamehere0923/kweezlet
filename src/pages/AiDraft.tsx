@@ -54,9 +54,10 @@ export function AiDraftPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const { draftId = "" } = useParams();
-  const { draft, edits, missing, refused, load, edit, flush, forget, close } = useDraft(draftId);
+  const { draft, edits, missing, refused, load, edit, flush, current, forget, close } = useDraft(draftId);
   const [target, setTarget] = useState<Target | null>(null);
-  const [sets, setSets] = useState<{ id: number; title: string }[]>([]);
+  /** The user's sets to save into; null until loaded. */
+  const [sets, setSets] = useState<{ id: number; title: string }[] | null>(null);
   const [busy, setBusy] = useState<"retry" | "regenerate" | "discard" | "save" | "more" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [asking, setAsking] = useState<"regenerate" | "discard" | null>(null);
@@ -111,16 +112,19 @@ export function AiDraftPage() {
     setBusy(null);
   }
 
-  async function save(current: DraftEdits) {
-    const kept = current.rows.filter((row) => row.card.checked);
+  /** The picked set, while it still exists (deleted on another device: none). */
+  const pickedSet = (setId: number | null) => (sets === null || sets.some((set) => set.id === setId) ? setId : null);
+
+  async function save(shown: DraftEdits) {
+    const kept = shown.rows.filter((row) => row.card.checked);
     const check: TKey | null =
       kept.length === 0
         ? "ai.save.error.none"
         : kept.some((row) => !row.card.term.trim() || !row.card.definition.trim())
           ? "ai.save.error.bothSides"
-          : targetNow === "new" && !current.title.trim()
+          : targetNow === "new" && !shown.title.trim()
             ? "ai.save.error.title"
-            : targetNow === "existing" && current.setId === null
+            : targetNow === "existing" && pickedSet(shown.setId) === null
               ? "ai.save.error.pickSet"
               : null;
     setError(check && t(check));
@@ -131,13 +135,20 @@ export function AiDraftPage() {
       setBusy(null);
       return;
     }
+    // What the server has now: a retry may have cleared a set deleted meanwhile.
+    const now = current()!;
+    if (targetNow === "existing" && now.setId === null) {
+      setBusy(null);
+      setError(t("ai.save.error.pickSet"));
+      return;
+    }
     const res = await api.ai.drafts[":id"].save.$post({
       param: { id: draftId },
       json: {
-        setId: targetNow === "existing" ? current.setId : null,
-        title: current.title,
-        termLang: current.termLang || null,
-        defLang: current.defLang || null,
+        setId: targetNow === "existing" ? now.setId : null,
+        title: now.title,
+        termLang: now.termLang || null,
+        defLang: now.defLang || null,
       },
     });
     setBusy(null);
@@ -178,7 +189,7 @@ export function AiDraftPage() {
   ];
   const setOptions: Option<string>[] = [
     { value: "", label: t("ai.save.pickSetOption") },
-    ...sets.map((set) => ({ value: String(set.id), label: set.title })),
+    ...(sets ?? []).map((set) => ({ value: String(set.id), label: set.title })),
   ];
 
   // "24 cards · 2 unverified · Vocabulary · English → Deutsch"
@@ -350,7 +361,7 @@ export function AiDraftPage() {
               <Select
                 label={t("ai.save.set")}
                 hint={t("ai.save.setHint")}
-                value={edits.setId === null ? "" : String(edits.setId)}
+                value={pickedSet(edits.setId) === null ? "" : String(edits.setId)}
                 onChange={(id) => {
                   // Picked here: stays on "Existing set" even when "Choose a set" clears the pick.
                   setTarget("existing");

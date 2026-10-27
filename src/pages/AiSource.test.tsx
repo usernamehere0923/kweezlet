@@ -194,6 +194,25 @@ describe("cards from material", () => {
   });
 });
 
+describe("the name a draft keeps", () => {
+  test("a long file name is cut to 200 characters and keeps its extension", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "POST /api/ai/drafts": () => ({ status: 201, json: { id: 9 } }),
+      "GET /api/ai/drafts/9": () => ({ json: DRAFT }),
+    });
+    const { container } = renderApp("/create/ai");
+    await screen.findByRole("button", { name: "Choose a file" });
+    pick(container, /pdf/, [new File(["%PDF"], `${"k".repeat(250)}.pdf`, { type: "application/pdf" })]);
+    await userEvent.click(await screen.findByRole("button", { name: /^Page 1:/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Create cards" }));
+    await waitFor(() => expect(calls.some((c) => c.method === "POST")).toBe(true));
+    const name = (calls.find((c) => c.method === "POST")?.body as { sourceName: string }).sourceName;
+    expect(name).toHaveLength(200);
+    expect(name.endsWith(".pdf")).toBe(true);
+  });
+});
+
 describe("more cards for a draft", () => {
   const HAD = {
     ...DRAFT,

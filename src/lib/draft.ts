@@ -21,10 +21,15 @@ export type DraftEdits = {
 /** Why the server did not take an edit: a run started elsewhere, or the edit itself was refused. */
 export type EditRefused = "running" | "invalid";
 
-/** What a draft is called before it has a title: its file, or "Pasted text" for pasted text. */
+/** What a draft is called before it has a title: its file, "Pasted text" or "Photos". */
 export function sourceLabel(t: (key: TKey) => string, sourceName: string): string {
-  return sourceName === "pasted" || !sourceName ? t("ai.draft.pasted") : sourceName;
+  if (sourceName === "pasted" || !sourceName) return t("ai.draft.pasted");
+  // Several photos (src/lib/material.ts readPhotos); one photo keeps its file name.
+  if (sourceName === "photo") return t("ai.draft.photos");
+  return sourceName;
 }
+
+type Outcome = "ok" | "retry" | "refused" | "kept";
 
 /** Typing pauses this long before the edits go out. */
 export const SAVE_PAUSE_MS = 500;
@@ -84,8 +89,8 @@ export function useDraft(draftId: string) {
   /** The edits the server has: a PATCH sends only what differs. */
   const saved = useRef<DraftEdits | null>(null);
   const dirty = useRef(false);
-  const sending = useRef<Promise<unknown> | null>(null);
-  /** Counts PATCHes sent: a reload started before one must not undo it. */
+  const sending = useRef<Promise<Outcome> | null>(null);
+  /** Counts PATCHes sent: a reload started before one (or during one) must not undo it. */
   const patches = useRef(0);
   const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
   /** Saved or discarded: the live echo of that must not reload a draft that is gone. */
@@ -94,6 +99,7 @@ export function useDraft(draftId: string) {
   const load = useCallback(async () => {
     if (closed.current) return;
     const before = patches.current;
+    const idle = !sending.current;
     return api.ai.drafts[":id"].$get({ param: { id: draftId } }).then(async (res) => {
       if (closed.current) return;
       if (res.status === 404) setMissing(true);
@@ -102,7 +108,7 @@ export function useDraft(draftId: string) {
       setDraft(next);
       // The run that refused an edit is over: its message is too.
       if (next.status !== "running") setRefused((now) => (now === "running" ? null : now));
-      if (dirty.current || sending.current || patches.current !== before) return;
+      if (!idle || dirty.current || sending.current || patches.current !== before) return;
       if (latest.current && sameAsSaved(latest.current, next)) return;
       latest.current = toEdits(next, latest.current);
       saved.current = latest.current;
@@ -110,19 +116,29 @@ export function useDraft(draftId: string) {
     });
   }, [draftId]);
 
-  /** Sends what is waiting and resolves once the server has it: false when it did not take it. */
+  /**
+   * Sends what is waiting and resolves once the server has it: false when it
+   * did not take it, also when the PATCH this waited on (a tap's) was refused.
+   */
   const flush = useCallback(async (): Promise<boolean> => {
     clearTimeout(timer.current);
+    let taken = true;
     // Again after a retry (the picked set was gone).
     for (;;) {
-      while (sending.current) await sending.current;
-      if (!dirty.current || !latest.current) return true;
+      while (sending.current) taken = (await sending.current) === "ok" && taken;
+      if (!dirty.current || !latest.current) return taken;
       dirty.current = false;
       const sent = latest.current;
+      const json = patchOf(sent, saved.current);
+      // Nothing differs from what the server has (an edit undone, a retry's dropped set).
+      if (Object.keys(json).length === 0) {
+        saved.current = sent;
+        return taken;
+      }
       patches.current++;
       const send = api.ai.drafts[":id"]
-        .$patch({ param: { id: draftId }, json: patchOf(sent, saved.current) })
-        .then(async (res): Promise<"ok" | "retry" | "refused" | "kept"> => {
+        .$patch({ param: { id: draftId }, json })
+        .then(async (res): Promise<Outcome> => {
           if (res.ok) {
             saved.current = sent;
             return "ok";
@@ -136,9 +152,12 @@ export function useDraft(draftId: string) {
             return "refused";
           }
           if (res.status === 400 && (await fieldErrors(res)).setId) {
-            // The set picked to save into was deleted meanwhile: back to a new set.
-            latest.current = { ...latest.current!, setId: null };
-            setEdits(latest.current);
+            // The set just picked was deleted meanwhile: no set picked, unless
+            // the user already picked another one.
+            if (latest.current!.setId === sent.setId) {
+              latest.current = { ...latest.current!, setId: null };
+              setEdits(latest.current);
+            }
             dirty.current = true;
             return "retry";
           }
@@ -156,9 +175,12 @@ export function useDraft(draftId: string) {
       if (outcome === "retry") continue;
       // Refused: what the server has is what counts now (a run owns the cards).
       if (outcome === "refused") await load();
-      return outcome === "ok";
+      return outcome === "ok" && taken;
     }
   }, [draftId, load]);
+
+  /** The edits as they are now: what Save sends after flush(). */
+  const current = useCallback(() => latest.current, []);
 
   const edit = useCallback(
     (change: (edits: DraftEdits) => DraftEdits, now = false) => {
@@ -193,5 +215,5 @@ export function useDraft(draftId: string) {
   // Leaving the page: what is waiting still goes out.
   useEffect(() => () => void (dirty.current && flush()), [flush]);
 
-  return { draft, edits, missing, refused, load, edit, flush, forget, close };
+  return { draft, edits, missing, refused, load, edit, flush, current, forget, close };
 }

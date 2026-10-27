@@ -112,7 +112,7 @@ describe("settings", () => {
     });
     renderApp("/settings");
     expect(await screen.findByText("This month: $2.03 of $2.00")).toBeTruthy();
-    expect(screen.getByText("The monthly AI budget is used up. It starts again on the 1st.")).toBeTruthy();
+    expect(screen.getByText(/^The budget is used up. It starts again on the 1st, at midnight UTC/)).toBeTruthy();
     expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("2000000000");
   });
 });

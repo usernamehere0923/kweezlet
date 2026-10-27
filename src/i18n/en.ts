@@ -307,6 +307,8 @@ export const en = {
   "settings.aiMonth": "This month: {cost} of {cap}",
   "settings.aiMonthNoCap": "This month: {cost}, no limit",
   "settings.aiBudget": "Monthly AI budget used",
+  "settings.aiCapUsedUp":
+    "The budget is used up. It starts again on the 1st, at midnight UTC (1 or 2 a.m. in Switzerland).",
   "settings.aiCapHint": "The budget starts again each month on the 1st, at midnight UTC (1 or 2 a.m. in Switzerland).",
   "settings.aiTotal": "All time: {cost}",
   "settings.aiRecent": "Last runs",
@@ -329,6 +331,7 @@ export const en = {
   "ai.draft.discard": "Discard",
   "ai.draft.empty": "This draft has no cards. Try More cards with other pages or instructions, or discard it.",
   "ai.draft.pasted": "Pasted text",
+  "ai.draft.photos": "Photos",
   "ai.draft.regenerateEmptyTitle": "Make the cards anew?",
   "ai.draft.regenerateEmptyText": "The AI tries the same material again.",
   "ai.draft.discardTitle": "Discard this draft?",

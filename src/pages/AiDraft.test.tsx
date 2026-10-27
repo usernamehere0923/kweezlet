@@ -192,22 +192,58 @@ describe("a draft", () => {
     expect(box.checked).toBe(true);
   });
 
-  test("a picked set deleted meanwhile falls back to a new set, and the edit still goes out", async () => {
-    let patches = 0;
-    const { calls } = draftApi(
-      { ...READY, setId: 4 },
-      {
-        "PATCH /api/ai/drafts/9": (body) =>
-          ++patches === 1 && (body as { setId?: number }).setId !== null
-            ? { status: 400, json: { error: "validation", fields: { setId: "invalid_value" } } }
-            : { json: { ok: true } },
-      },
-    );
+  test("a set picked just as it is deleted: no set picked, and the edit still goes out", async () => {
+    const { calls } = draftApi(READY, {
+      // Like the server: only a body that names a set checks it.
+      "PATCH /api/ai/drafts/9": (body) =>
+        typeof (body as { setId?: unknown }).setId === "number"
+          ? { status: 400, json: { error: "validation", fields: { setId: "invalid_value" } } }
+          : { json: { ok: true } },
+    });
     renderApp("/create/ai/9");
-    expect(await screen.findByLabelText("Set")).toBeTruthy();
-    await userEvent.click(within(card(2)).getByRole("checkbox"));
+    await userEvent.click(await screen.findByRole("radio", { name: "Existing set" }));
+    await userEvent.selectOptions(screen.getByLabelText("Set"), "4");
+    await waitFor(() => expect(calls.filter((c) => c.method === "PATCH")).toHaveLength(1));
+    await waitFor(() => expect(screen.getByLabelText<HTMLSelectElement>("Set").value).toBe(""));
+    await userEvent.click(screen.getByRole("button", { name: "Save 1 card" }));
+    expect(await screen.findByText("Choose a set.")).toBeTruthy();
+    expect(calls.some((c) => c.path.endsWith("/save"))).toBe(false);
+  });
+
+  test("a picked set deleted on another device is no longer offered", async () => {
+    let sets = SETS;
+    const { calls } = draftApi({ ...READY, setId: 4 }, { "GET /api/sets": () => ({ json: sets }) });
+    renderApp("/create/ai/9");
+    await waitFor(async () => expect((await screen.findByLabelText<HTMLSelectElement>("Set")).value).toBe("4"));
+    sets = [];
+    await act(async () => FakeSocket.last.receive(JSON.stringify({ topic: "sets", data: {} })));
+    await waitFor(() => expect(screen.getByLabelText<HTMLSelectElement>("Set").value).toBe(""));
+    await userEvent.click(screen.getByRole("button", { name: "Save 1 card" }));
+    expect(screen.getByText("Choose a set.")).toBeTruthy();
+    expect(calls.some((c) => c.path.endsWith("/save"))).toBe(false);
+  });
+
+  test("a reload during a PATCH does not undo it, and Save stops when the edit it waited on was refused", async () => {
+    let release: (answer: { status?: number; json?: unknown }) => void = () => {};
+    const { calls } = draftApi(READY, {
+      "PATCH /api/ai/drafts/9": () => new Promise((resolve) => (release = resolve)),
+    });
+    renderApp("/create/ai/9");
+    const box = within(await screen.findByRole("group", { name: "Card 2" })).getByRole<HTMLInputElement>("checkbox");
+    await waitFor(() => expect(FakeSocket.instances.length).toBeGreaterThan(0));
+    await userEvent.click(box); // the PATCH goes out and waits
+    await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
+    await live(); // a reload reads the card unchecked meanwhile
+    await act(async () => release({ json: { ok: true } }));
+    expect(box.checked).toBe(true);
+
+    // Unchecked again and Save tapped at once: that PATCH is refused, so nothing is saved.
+    await userEvent.click(box);
     await waitFor(() => expect(calls.filter((c) => c.method === "PATCH")).toHaveLength(2));
-    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toMatchObject({ setId: null });
+    await userEvent.click(screen.getByRole("button", { name: "Save 1 card" }));
+    await act(async () => release({ status: 400, json: { error: "validation", fields: { cards: "too_big" } } }));
+    expect(await screen.findByText(/^This change could not be saved/)).toBeTruthy();
+    expect(calls.some((c) => c.path.endsWith("/save"))).toBe(false);
   });
 
   test("picking 'Choose a set' stays on Existing set", async () => {

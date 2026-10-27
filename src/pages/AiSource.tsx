@@ -39,8 +39,18 @@ import {
 type Source = "file" | "text" | "photo";
 type HowMany = "0" | "10" | "25" | "50";
 
-/** The name a draft keeps of its material, as the server stores it (trimmed, at most 200). */
-const draftName = (name: string) => name.slice(0, 200).trim();
+/** The name a draft keeps of its material, as the server stores it (trimmed, at most 200). A long
+ * name keeps its extension, so More cards still knows it came from a file. */
+function draftName(name: string): string {
+  if (name.trim().length <= 200) return name.trim();
+  const ext = /\.[a-z0-9]{1,5}$/i.exec(name.trim())?.[0] ?? "";
+  return (
+    name
+      .trim()
+      .slice(0, 200 - ext.length)
+      .trim() + ext
+  ).trim();
+}
 /** A draft made from a file, not from pasted text ("pasted") or photos (a picture's name). */
 const FROM_FILE = /\.(pdf|docx|pptx|xlsx|txt|md)$/i;
 

@@ -313,6 +313,8 @@ export const deCH: Record<keyof typeof en, string> = {
   "settings.aiMonth": "Diesen Monat: {cost} von {cap}",
   "settings.aiMonthNoCap": "Diesen Monat: {cost}, ohne Limit",
   "settings.aiBudget": "Verbrauchtes KI-Budget des Monats",
+  "settings.aiCapUsedUp":
+    "Das Budget ist aufgebraucht. Es beginnt am 1. um Mitternacht UTC neu (in der Schweiz um 1 oder 2 Uhr).",
   "settings.aiCapHint": "Das Budget beginnt jeden Monat am 1. um Mitternacht UTC neu (in der Schweiz um 1 oder 2 Uhr).",
   "settings.aiTotal": "Insgesamt: {cost}",
   "settings.aiRecent": "Letzte Läufe",
@@ -337,6 +339,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "ai.draft.empty":
     "Dieser Entwurf hat keine Karten. Versuche «Mehr Karten» mit anderen Seiten oder Anweisungen, oder verwirf ihn.",
   "ai.draft.pasted": "Eingefügter Text",
+  "ai.draft.photos": "Fotos",
   "ai.draft.regenerateEmptyTitle": "Karten neu erstellen?",
   "ai.draft.regenerateEmptyText": "Die KI versucht es mit dem gleichen Material nochmals.",
   "ai.draft.discardTitle": "Diesen Entwurf verwerfen?",

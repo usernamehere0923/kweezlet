@@ -1,10 +1,11 @@
-import { useImperativeHandle, useLayoutEffect, useRef, type KeyboardEvent, type Ref } from "react";
+import { useImperativeHandle, useRef, type KeyboardEvent, type Ref } from "react";
 import type { TermProgress } from "../../../worker/progress";
 import { useT } from "../../i18n";
 import { cx } from "../cx";
 import { IconButton } from "../Button";
 import { SpeakButton } from "../speech";
 import { surface } from "../surfaces";
+import { useAutoGrow } from "../useAutoGrow";
 import { TermImage, TermImagePicker } from "./images";
 
 export type TermEditorHandle = { focus: () => void };
@@ -36,13 +37,7 @@ export function Cell({
   maxLength?: number;
 }) {
   const area = useRef<HTMLTextAreaElement>(null);
-  // Browsers without field-sizing (older iOS Safari, Firefox): grown by hand.
-  useLayoutEffect(() => {
-    const el = area.current;
-    if (!el || (typeof CSS !== "undefined" && CSS.supports?.("field-sizing", "content"))) return;
-    el.style.height = "auto";
-    if (el.scrollHeight > 0) el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
-  }, [value]);
+  useAutoGrow(area, value);
   const keys = {
     value,
     maxLength,

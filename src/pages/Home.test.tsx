@@ -119,7 +119,7 @@ describe("home", () => {
       { ...draft, status: "ready", title: "Kantone", cardCount: 12 },
       { ...draft, id: 8, status: "failed", cardCount: 0 },
       { ...draft, id: 7, status: "ready", sourceName: "pasted", cardCount: 3 },
-      { ...draft, id: 6, status: "ready", sourceName: "alt.pdf", cardCount: 1 },
+      { ...draft, id: 6, status: "ready", sourceName: "photo", cardCount: 1 },
     ];
     await waitFor(() => expect(FakeSocket.instances.length).toBeGreaterThan(0));
     await act(async () => FakeSocket.last.receive(JSON.stringify({ topic: "ai", data: {} })));
@@ -129,6 +129,7 @@ describe("home", () => {
     // Every draft is listed (Home is the only way back to one); pasted text has a name.
     expect(screen.getAllByRole("link", { name: "Open" })).toHaveLength(4);
     expect(screen.getByText("Pasted text")).toBeTruthy();
+    expect(screen.getByText("Photos")).toBeTruthy();
 
     drafts = [];
     await act(async () => FakeSocket.last.receive(JSON.stringify({ topic: "ai", data: {} })));

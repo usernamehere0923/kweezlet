@@ -275,7 +275,7 @@ export function AiUsage({
           <Text>{t("settings.aiMonth", { cost: month, cap: formatCost(capNanos) })}</Text>
           {/* The run that crosses the budget still ends: the month can go past it. */}
           <ProgressBar value={Math.min(monthNanos, capNanos)} max={capNanos} label={t("settings.aiBudget")} />
-          <Text variant="small">{t(monthNanos >= capNanos ? "ai.error.capReached" : "settings.aiCapHint")}</Text>
+          <Text variant="small">{t(monthNanos >= capNanos ? "settings.aiCapUsedUp" : "settings.aiCapHint")}</Text>
         </div>
       )}
       <Text variant="muted">{t("settings.aiTotal", { cost: formatCost(totalNanos) })}</Text>
