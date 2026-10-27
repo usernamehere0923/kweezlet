@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import { ownsFolder } from "./folders";
 import { notifyLater } from "./live";
 import { LANGUAGES, type Language } from "./languages";
 import { termProgress } from "./progress";
@@ -14,7 +15,11 @@ const languageSchema = z.enum(LANGUAGES);
 export const ANSWER_WITH = ["both", "term", "definition"] as const;
 export type AnswerWith = (typeof ANSWER_WITH)[number];
 
-const searchQuery = z.object({ q: z.string().trim().max(200).optional() });
+const searchQuery = z.object({
+  q: z.string().trim().max(200).optional(),
+  /** Only the sets in this folder, or in none. */
+  folder: z.union([z.literal("none"), z.coerce.number().int().positive()]).optional(),
+});
 const termShape = z.object({
   /** Present when the term already exists: it is updated, not re-inserted. */
   id: z.coerce.number().int().positive().optional(),
@@ -28,6 +33,8 @@ const setBody = z.object({
   defLang: languageSchema.nullish(),
   /** Left out: a new set asks both ways, an edited one keeps its choice. */
   answerWith: z.enum(ANSWER_WITH).optional(),
+  /** null takes the set out of its folder; left out, an edit keeps it. */
+  folderId: z.number().int().positive().nullish(),
   terms: z.array(termShape).min(1).max(500),
 });
 
@@ -38,6 +45,7 @@ type SetRow = {
   term_lang: string | null;
   def_lang: string | null;
   answer_with: string;
+  folder_id: number | null;
   created_at: number;
   updated_at: number;
 };
@@ -52,7 +60,8 @@ type TermRow = {
 };
 
 /** The columns of SetRow, from the set row `s`. */
-const SET_COLUMNS = "s.id, s.title, s.description, s.term_lang, s.def_lang, s.answer_with, s.created_at, s.updated_at";
+const SET_COLUMNS =
+  "s.id, s.title, s.description, s.term_lang, s.def_lang, s.answer_with, s.folder_id, s.created_at, s.updated_at";
 
 /** Joins a term `t` to the user's mark (ts) and answer stats (st) for it. */
 const TERM_PROGRESS_JOINS = `LEFT JOIN term_state ts ON ts.term_id = t.id AND ts.user_id = t.user_id
@@ -85,6 +94,7 @@ function toSetJson(row: SetRow & CountRow) {
     defLang: row.def_lang as Language | null,
     // Written through the CHECK in migrations/0010_answer_with.sql.
     answerWith: row.answer_with as AnswerWith,
+    folderId: row.folder_id,
     termCount: row.term_count,
     /** Terms known / learning (termProgress); the rest are new. */
     knownCount: row.known_count,
@@ -165,7 +175,7 @@ export const setRoutes = new Hono<AppEnv>()
   // All my sets, newest change first. q searches titles, descriptions and terms.
   .get("/sets", validate("query", searchQuery), async (c) => {
     const user = c.get("user");
-    const q = c.req.valid("query").q ?? "";
+    const { q = "", folder } = c.req.valid("query");
     const like = likePattern(q);
     // Without a search word every set matches: skip the LIKE scan over all terms.
     const search = q
@@ -173,13 +183,14 @@ export const setRoutes = new Hono<AppEnv>()
               OR EXISTS (SELECT 1 FROM terms t WHERE t.set_id = s.id AND t.user_id = s.user_id
                            AND (t.term LIKE ? ESCAPE '\\' OR t.definition LIKE ? ESCAPE '\\')))`
       : "";
+    const inFolder = folder === undefined ? "" : folder === "none" ? "AND s.folder_id IS NULL" : "AND s.folder_id = ?";
     const { results } = await c.env.DB.prepare(
       `SELECT ${SET_COLUMNS}, ${COUNT_COLUMNS}
          FROM sets s
-        WHERE s.user_id = ? ${search}
+        WHERE s.user_id = ? ${inFolder} ${search}
         ORDER BY s.updated_at DESC, s.id DESC`,
     )
-      .bind(user.id, ...(q ? [like, like, like, like] : []))
+      .bind(user.id, ...(typeof folder === "number" ? [folder] : []), ...(q ? [like, like, like, like] : []))
       .all<SetRow & CountRow>();
     return c.json(results.map(toSetJson), 200);
   })
@@ -200,14 +211,19 @@ export const setRoutes = new Hono<AppEnv>()
     if (body.terms.some((t) => t.id !== undefined)) {
       return validationError(c, { terms: "invalid_value" });
     }
+    if (body.folderId && !(await ownsFolder(db, user.id, body.folderId))) {
+      return validationError(c, { folderId: "invalid_value" });
+    }
     // One batch: a failed term insert must not leave an empty set behind. Inside
     // the batch the new set is the user's highest id, so the terms find it.
     const [created] = await db.batch<{ id: number }>([
       db
         .prepare(
-          "INSERT INTO sets (user_id, title, description, term_lang, def_lang, answer_with) VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
+          // The folder through a lookup: one deleted meanwhile leaves the set in none.
+          `INSERT INTO sets (user_id, title, description, term_lang, def_lang, answer_with, folder_id)
+           VALUES (?, ?, ?, ?, ?, ?, (SELECT id FROM folders WHERE id = ? AND user_id = ?)) RETURNING id`,
         )
-        .bind(user.id, ...setFields(body), body.answerWith ?? "both"),
+        .bind(user.id, ...setFields(body), body.answerWith ?? "both", body.folderId ?? null, user.id),
       ...body.terms.map((t, position) =>
         db
           .prepare(
@@ -234,15 +250,28 @@ export const setRoutes = new Hono<AppEnv>()
     if (!allIdsOwned(body.terms, ownedIds)) {
       return validationError(c, { terms: "invalid_value" });
     }
+    if (body.folderId && !(await ownsFolder(db, user.id, body.folderId))) {
+      return validationError(c, { folderId: "invalid_value" });
+    }
     // One batch: the set and its terms change together or not at all.
     await db.batch([
       db
         .prepare(
           `UPDATE sets SET title = ?, description = ?, term_lang = ?, def_lang = ?,
-                answer_with = COALESCE(?, answer_with), updated_at = unixepoch()
+                answer_with = COALESCE(?, answer_with),
+                folder_id = IIF(?, (SELECT id FROM folders WHERE id = ? AND user_id = ?), folder_id),
+                updated_at = unixepoch()
             WHERE id = ? AND user_id = ?`,
         )
-        .bind(...setFields(body), body.answerWith ?? null, id, user.id),
+        .bind(
+          ...setFields(body),
+          body.answerWith ?? null,
+          body.folderId === undefined ? 0 : 1,
+          body.folderId ?? null,
+          user.id,
+          id,
+          user.id,
+        ),
       ...termStatements(db, user.id, id, body.terms, ownedIds),
     ]);
     notifyLater(c, "sets");

@@ -29,6 +29,87 @@ describe("home", () => {
     expect(screen.queryByText("Spanish animals")).toBeNull();
   });
 
+  test("folders filter the sets and name each set's folder", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/folders": () => ({ json: [{ id: 3, name: "Languages", setCount: 1 }] }),
+      "GET /api/sets": (_body, query) => ({
+        json: [
+          { ...SPANISH, folderId: 3 },
+          { ...SWISS, folderId: null },
+        ].filter(
+          (s) => !query.folder || (query.folder === "none" ? s.folderId === null : String(s.folderId) === query.folder),
+        ),
+      }),
+    });
+    renderApp("/");
+    expect(await screen.findByText("Spanish animals")).toBeTruthy();
+    // All sets: each card names its folder.
+    expect(await screen.findByText("Languages", { selector: "span" })).toBeTruthy();
+
+    await userEvent.selectOptions(screen.getByLabelText("Folder"), "3");
+    await waitFor(() => expect(calls.filter((c) => c.path === "/api/sets").at(-1)?.query.folder).toBe("3"));
+    expect(await screen.findByText("Spanish animals")).toBeTruthy();
+    expect(screen.queryByText("Swiss history")).toBeNull();
+    // A picked folder can be edited.
+    expect(screen.getByRole("button", { name: "Edit folder" })).toBeTruthy();
+
+    await userEvent.selectOptions(screen.getByLabelText("Folder"), "none");
+    expect(await screen.findByText("Swiss history")).toBeTruthy();
+    expect(screen.queryByText("Spanish animals")).toBeNull();
+  });
+
+  test("an empty folder says so; its editor renames and deletes it", async () => {
+    let name = "Languages";
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/folders": () => ({ json: name ? [{ id: 3, name, setCount: 0 }] : [] }),
+      "GET /api/sets": (_body, query) => ({ json: query.folder ? [] : [SWISS] }),
+      "PATCH /api/folders/3": (body) =>
+        (body as { name: string }).name === "taken"
+          ? { status: 400, json: { error: "validation", fields: { name: "taken" } } }
+          : { json: { id: 3, name: (name = (body as { name: string }).name) } },
+      "DELETE /api/folders/3": () => {
+        name = "";
+        return { json: { ok: true } };
+      },
+    });
+    renderApp("/?folder=3");
+    expect(await screen.findByText("No sets here")).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("button", { name: "Edit folder" }));
+    const dialog = screen.getByRole("dialog");
+    const field = within(dialog).getByLabelText("Name");
+    expect((field as HTMLInputElement).value).toBe("Languages");
+    await userEvent.clear(field);
+    await userEvent.type(field, "taken");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(await within(dialog).findByText("You already have a folder with this name")).toBeTruthy();
+    await userEvent.clear(field);
+    await userEvent.type(field, "Español");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Folder renamed")).toBeTruthy();
+    expect(calls.find((c) => c.method === "PATCH" && (c.body as { name: string }).name === "Español")).toBeTruthy();
+
+    await userEvent.click(screen.getByRole("button", { name: "Edit folder" }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Delete folder" }));
+    expect(await screen.findByText("Folder deleted")).toBeTruthy();
+    expect(await screen.findByText("Swiss history")).toBeTruthy();
+    expect((screen.queryByLabelText("Folder") as HTMLSelectElement | null)?.value ?? "all").toBe("all");
+  });
+
+  test("a folder that is gone falls back to all sets", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": (_body, query) =>
+        query.folder
+          ? { status: 400, json: { error: "validation", fields: { folder: "invalid_type" } } }
+          : { json: [SWISS] },
+    });
+    renderApp("/?folder=nope");
+    expect(await screen.findByText("Swiss history")).toBeTruthy();
+  });
+
   test("home shows the streak, with a nudge until today is studied", async () => {
     const studied = { streak: 4, studiedToday: false };
     const { calls } = mockApi({

@@ -5,6 +5,7 @@
  */
 export const exportTables: string[] = [
   "sets",
+  "folders",
   "terms",
   "term_images",
   "term_state",

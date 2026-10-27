@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router";
 import type { Language } from "../../worker/languages";
+import type { Folder } from "../../worker/folders";
 import type { AnswerWith } from "../../worker/sets";
 import { useT, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
@@ -37,6 +38,10 @@ export function SetFormPage() {
   const [termLang, setTermLang] = useState<Language | "">("");
   const [defLang, setDefLang] = useState<Language | "">("");
   const [answerWith, setAnswerWith] = useState<AnswerWith>("both");
+  const [folders, setFolders] = useState<Folder[]>([]);
+  // "" = no folder, "new" = make one called newFolder, else a folder id.
+  const [folder, setFolder] = useState("");
+  const [newFolder, setNewFolder] = useState("");
   const { rows, setRows, rowRefs, update, updateImage, next, remove, add, append } = useTermRows();
   const [importing, setImporting] = useState(false);
   const [errors, setErrors] = useState<Record<string, TKey>>({});
@@ -64,6 +69,7 @@ export function SetFormPage() {
           setTermLang(set.termLang ?? "");
           setDefLang(set.defLang ?? "");
           setAnswerWith(set.answerWith);
+          setFolder(set.folderId === null ? "" : String(set.folderId));
           setRows(
             set.terms.map((term) => ({
               id: term.id,
@@ -82,6 +88,28 @@ export function SetFormPage() {
     if (editing) void load();
   }, [editing, load]);
 
+  // The folders to pick from; without them the form simply offers a new one.
+  useEffect(() => {
+    void api.folders.$get().then(async (res) => {
+      if (res.ok) setFolders(await res.json());
+    });
+  }, []);
+
+  /** The folder id to send: a new folder is made first. False when that failed (shown on its field). */
+  async function folderId(): Promise<number | null | false> {
+    if (folder === "") return null;
+    if (folder !== "new") return Number(folder);
+    const res = await api.folders.$post({ json: { name: newFolder.trim() } });
+    if (res.ok) {
+      const made = await res.json();
+      setFolders((list) => [...list, made]);
+      setFolder(String(made.id));
+      return made.id;
+    }
+    setErrors({ folderName: (await fieldErrors(res)).name ?? "validation.invalid" });
+    return false;
+  }
+
   function retry() {
     setLoadFailed(false);
     void load();
@@ -93,14 +121,21 @@ export function SetFormPage() {
     setErrors(titleError ? { title: titleError } : {});
     setFormError(formError);
     if (titleError || formError) return;
+    if (folder === "new" && !newFolder.trim()) {
+      setErrors({ folderName: "validation.too_small" });
+      return;
+    }
     setBusy(true);
     try {
+      const pickedFolder = await folderId();
+      if (pickedFolder === false) return;
       const json = {
         title: title.trim(),
         description: description.trim(),
         termLang: termLang || null,
         defLang: defLang || null,
         answerWith,
+        folderId: pickedFolder,
         terms: kept.map((row) => {
           const term = { term: row.term.trim(), definition: row.definition.trim() };
           return row.id === undefined ? term : { ...term, id: row.id };
@@ -153,6 +188,27 @@ export function SetFormPage() {
             multiline
             maxLength={2000}
           />
+          <Select
+            label={t("folders.label")}
+            value={folder}
+            onChange={setFolder}
+            error={errors.folderId && t(errors.folderId)}
+            options={[
+              { value: "", label: t("folders.none") },
+              ...folders.map((item) => ({ value: String(item.id), label: item.name })),
+              { value: "new", label: t("folders.new") },
+            ]}
+          />
+          {folder === "new" && (
+            <TextField
+              label={t("folders.newName")}
+              value={newFolder}
+              onChange={setNewFolder}
+              error={errors.folderName && t(errors.folderName)}
+              maxLength={60}
+              autoFocus
+            />
+          )}
         </Card>
 
         <Card>

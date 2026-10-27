@@ -39,6 +39,7 @@ describe("set form", () => {
         termLang: null,
         defLang: null,
         answerWith: "both",
+        folderId: null,
         terms: [{ term: "el perro", definition: "the dog" }],
       }),
     );
@@ -99,6 +100,72 @@ describe("set form", () => {
     expect(within(dialog).getByText("2 terms found")).toBeTruthy();
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(screen.getAllByLabelText("Term").map((input) => (input as HTMLInputElement).value)).toEqual([""]);
+  });
+
+  test("a set goes into a folder, or into a new one made on saving", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/folders": () => ({ json: [{ id: 3, name: "Languages", setCount: 1 }] }),
+      "POST /api/folders": (body) =>
+        (body as { name: string }).name === "Languages"
+          ? { status: 400, json: { error: "validation", fields: { name: "taken" } } }
+          : { status: 201, json: { id: 4, name: "Animals", setCount: 0 } },
+      "POST /api/sets": () => ({ status: 201, json: { ...SPANISH_DETAIL, id: 9 } }),
+      "GET /api/sets/9": () => ({ json: { ...SPANISH_DETAIL, id: 9 } }),
+    });
+    renderApp("/sets/new");
+    await userEvent.type(await screen.findByLabelText("Title"), "Spanish animals");
+    await userEvent.type(screen.getByLabelText("Term"), "el perro");
+    await userEvent.type(screen.getByLabelText("Definition"), "the dog");
+    await screen.findByRole("option", { name: "Languages" });
+    await userEvent.selectOptions(screen.getByLabelText("Folder"), "new");
+
+    // An empty name, then a name already taken, are caught on the field.
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Too short")).toBeTruthy();
+    await userEvent.type(screen.getByLabelText("Name of the new folder"), "Languages");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("You already have a folder with this name")).toBeTruthy();
+    expect(calls.some((c) => c.method === "POST" && c.path === "/api/sets")).toBe(false);
+
+    await userEvent.clear(screen.getByLabelText("Name of the new folder"));
+    await userEvent.type(screen.getByLabelText("Name of the new folder"), "Animals");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "POST" && c.path === "/api/sets")?.body).toMatchObject({ folderId: 4 }),
+    );
+  });
+
+  test("editing shows the set's folder and can take it out", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/folders": () => ({ json: [{ id: 3, name: "Languages", setCount: 1 }] }),
+      "GET /api/sets/7": () => ({ json: { ...SPANISH_DETAIL, folderId: 3 } }),
+      "PATCH /api/sets/7": () => ({ json: SPANISH_DETAIL }),
+    });
+    renderApp("/sets/7/edit");
+    await screen.findByRole("option", { name: "Languages" });
+    const picker = screen.getByLabelText("Folder") as HTMLSelectElement;
+    expect(picker.value).toBe("3");
+    await userEvent.selectOptions(picker, "");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toMatchObject({ folderId: null }));
+  });
+
+  test("a folder deleted meanwhile is shown on the picker", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/folders": () => ({ json: [{ id: 3, name: "Languages", setCount: 0 }] }),
+      "POST /api/sets": () => ({ status: 400, json: { error: "validation", fields: { folderId: "invalid_value" } } }),
+    });
+    renderApp("/sets/new");
+    await userEvent.type(await screen.findByLabelText("Title"), "Spanish animals");
+    await userEvent.type(screen.getByLabelText("Term"), "el perro");
+    await userEvent.type(screen.getByLabelText("Definition"), "the dog");
+    await screen.findByRole("option", { name: "Languages" });
+    await userEvent.selectOptions(screen.getByLabelText("Folder"), "3");
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Not an allowed value")).toBeTruthy();
   });
 
   test("a half-filled row is caught before sending", async () => {
