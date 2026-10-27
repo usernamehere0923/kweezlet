@@ -136,39 +136,37 @@ export function useDraft(draftId: string) {
         return taken;
       }
       patches.current++;
-      const send = api.ai.drafts[":id"]
-        .$patch({ param: { id: draftId }, json })
-        .then(async (res): Promise<Outcome> => {
-          if (res.ok) {
-            saved.current = sent;
-            return "ok";
+      const send = api.ai.drafts[":id"].$patch({ param: { id: draftId }, json }).then(async (res): Promise<Outcome> => {
+        if (res.ok) {
+          saved.current = sent;
+          return "ok";
+        }
+        if (res.status === 404) {
+          setMissing(true);
+          return "refused";
+        }
+        if (res.status === 409) {
+          setRefused("running");
+          return "refused";
+        }
+        if (res.status === 400 && (await fieldErrors(res)).setId) {
+          // The set just picked was deleted meanwhile: no set picked, unless
+          // the user already picked another one.
+          if (latest.current!.setId === sent.setId) {
+            latest.current = { ...latest.current!, setId: null };
+            setEdits(latest.current);
           }
-          if (res.status === 404) {
-            setMissing(true);
-            return "refused";
-          }
-          if (res.status === 409) {
-            setRefused("running");
-            return "refused";
-          }
-          if (res.status === 400 && (await fieldErrors(res)).setId) {
-            // The set just picked was deleted meanwhile: no set picked, unless
-            // the user already picked another one.
-            if (latest.current!.setId === sent.setId) {
-              latest.current = { ...latest.current!, setId: null };
-              setEdits(latest.current);
-            }
-            dirty.current = true;
-            return "retry";
-          }
-          if (res.status === 400) {
-            setRefused("invalid");
-            return "refused";
-          }
-          // Offline or a server error: kept, the next edit or the save tries again.
           dirty.current = true;
-          return "kept";
-        });
+          return "retry";
+        }
+        if (res.status === 400) {
+          setRefused("invalid");
+          return "refused";
+        }
+        // Offline or a server error: kept, the next edit or the save tries again.
+        dirty.current = true;
+        return "kept";
+      });
       sending.current = send;
       const outcome = await send;
       sending.current = null;
