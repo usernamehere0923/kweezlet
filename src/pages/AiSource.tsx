@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router";
 import type { DraftDetail } from "../../worker/ai";
 import { useT, type TKey } from "../i18n";
 import { api } from "../lib/api";
-import { kindOptions, type CardKind } from "../lib/choices";
+import { kindOptions, runChoice, type CardKind } from "../lib/choices";
 import { aiRefusal } from "../lib/cost";
 import {
   fits,
@@ -184,7 +184,7 @@ export function AiSourcePage({ more = false }: { more?: boolean }) {
       }
       const json = {
         sourceName: draftName(current.name),
-        kind,
+        ...runChoice(kind),
         maxCards: Number(howMany),
         instructions: instructions.trim(),
         pages,

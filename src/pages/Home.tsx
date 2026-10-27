@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, useSearchParams } from "react-router";
 import type { DraftSummary } from "../../worker/ai";
+import type { Folder } from "../../worker/folders";
 import type { SetSummary } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
@@ -13,13 +14,16 @@ import {
   Card,
   EmptyState,
   Heading,
+  IconButton,
   PageTitle,
   SearchField,
+  Select,
   PageLoading,
   StreakBadge,
   StudySetCard,
   UnfinishedDrafts,
 } from "../ui";
+import { FolderEditor } from "./home/FolderEditor";
 
 /** How long typing has to pause before the search goes out. */
 const SEARCH_PAUSE_MS = 250;
@@ -35,6 +39,15 @@ export function HomePage() {
   const [dueCount, setDueCount] = useState(0);
   const [streak, setStreak] = useState({ streak: 0, studiedToday: false });
   const [drafts, setDrafts] = useState<DraftSummary[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [editing, setEditing] = useState<Folder | null>(null);
+  // The folder filter lives in the URL: back from a set lands in the same folder.
+  const [params, setParams] = useSearchParams();
+  const folder = params.get("folder") ?? "all";
+  const pickFolder = useCallback(
+    (value: string) => setParams(value === "all" ? {} : { folder: value }, { replace: true }),
+    [setParams],
+  );
   const request = useRef(0);
 
   useEffect(() => {
@@ -44,13 +57,28 @@ export function HomePage() {
 
   const reload = useCallback(() => {
     const mine = ++request.current;
-    return api.sets.$get({ query: query ? { q: query } : {} }).then(async (res) => {
-      // An older answer must not overwrite a newer one.
-      if (res.ok && mine === request.current) setSets(await res.json());
-    });
-  }, [query]);
+    return api.sets
+      .$get({ query: { ...(query ? { q: query } : {}), ...(folder !== "all" ? { folder } : {}) } })
+      .then(async (res) => {
+        // An older answer must not overwrite a newer one.
+        if (res.ok && mine === request.current) setSets(await res.json());
+        // A folder deleted elsewhere: back to all sets.
+        else if (res.status === 400) pickFolder("all");
+      });
+  }, [query, folder, pickFolder]);
 
   useEffect(() => void reload(), [reload]);
+
+  const loadFolders = useCallback(
+    () =>
+      api.folders.$get().then(async (res) => {
+        if (res.ok) setFolders(await res.json());
+      }),
+    [],
+  );
+  useEffect(() => void loadFolders(), [loadFolders]);
+  const picked = folders.find((candidate) => String(candidate.id) === folder) ?? null;
+  const folderName = (id: number | null) => folders.find((candidate) => candidate.id === id)?.name;
 
   // How many terms are due for a review today (worker/review.ts). Only the
   // count is needed, so one card. Deleting a set elsewhere changes it too.
@@ -97,6 +125,7 @@ export function HomePage() {
   useLive("sets", () => {
     void reload();
     void loadDue();
+    void loadFolders();
   });
 
   return (
@@ -131,7 +160,7 @@ export function HomePage() {
 
       {sets === null ? (
         <PageLoading />
-      ) : sets.length === 0 && !query && !q ? (
+      ) : sets.length === 0 && !query && !q && folder === "all" ? (
         <EmptyState
           icon="folderPlus"
           title={t("sets.emptyTitle")}
@@ -149,6 +178,22 @@ export function HomePage() {
         />
       ) : (
         <>
+          {folders.length > 0 && (
+            <div className="mb-3 flex items-end gap-2">
+              <Select
+                label={t("folders.label")}
+                value={folder}
+                onChange={pickFolder}
+                className="flex-1"
+                options={[
+                  { value: "all", label: t("folders.all") },
+                  ...folders.map((item) => ({ value: String(item.id), label: item.name })),
+                  { value: "none", label: t("folders.none") },
+                ]}
+              />
+              {picked && <IconButton icon="edit" label={t("folders.editTitle")} onClick={() => setEditing(picked)} />}
+            </div>
+          )}
           {/* The phone: search on its own line, the two ways to a new set under it. */}
           <div className="mb-6 flex flex-wrap items-center gap-2">
             <SearchField
@@ -168,7 +213,11 @@ export function HomePage() {
           </div>
           {/* Same tree position with and without results, so the input keeps focus while typing. */}
           {sets.length === 0 ? (
-            <EmptyState icon="search" title={t("sets.noResults")} text={t("sets.noResultsText")} />
+            query || q ? (
+              <EmptyState icon="search" title={t("sets.noResults")} text={t("sets.noResultsText")} />
+            ) : (
+              <EmptyState icon="folder" title={t("folders.emptyTitle")} text={t("folders.emptyText")} />
+            )
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {sets.map((set, i) => (
@@ -176,6 +225,7 @@ export function HomePage() {
                   key={set.id}
                   index={i}
                   title={set.title}
+                  tag={folder === "all" ? folderName(set.folderId) : undefined}
                   termCount={set.termCount}
                   known={set.knownCount}
                   learning={set.learningCount}
@@ -186,6 +236,14 @@ export function HomePage() {
           )}
         </>
       )}
+      <FolderEditor
+        folder={editing}
+        onClose={() => setEditing(null)}
+        onDeleted={() => {
+          setEditing(null);
+          pickFolder("all");
+        }}
+      />
     </div>
   );
 }

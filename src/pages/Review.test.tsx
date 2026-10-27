@@ -165,6 +165,14 @@ describe("review", () => {
     expect(await screen.findByRole("heading", { name: "the dog" })).toBeTruthy();
   });
 
+  test("a card follows its set's side", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0.99); // would show the term
+    mockApi(reviewApi({ cards: REVIEW_CARDS.map((card) => ({ ...card, answerWith: "term" })), dueCount: 2 }));
+    renderApp("/review");
+
+    expect(await screen.findByText("Which term fits?")).toBeTruthy();
+  });
+
   test("wrong options come from the card's own set", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
     const history = { id: 72, term: "1291", definition: "Bundesbrief", streak: 0, setId: 8, setTitle: "Swiss history" };

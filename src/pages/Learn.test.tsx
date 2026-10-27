@@ -6,7 +6,10 @@ import { renderApp } from "../test/render";
 import { mockApi } from "../test/server";
 
 /** Answers are counted and merged server-side; this fake behaves the same way. */
-function learnApi(detail: { terms: { id: number; term: string; streak: number; status: string }[] }) {
+function learnApi(detail: {
+  terms: { id: number; term: string; streak: number; status: string }[];
+  answerWith?: string;
+}) {
   const stats = new Map(
     detail.terms.map((term) => [term.id, { correct: 0, wrong: 0, streak: term.streak, status: term.status }]),
   );
@@ -62,6 +65,18 @@ describe("learn", () => {
     expect(await screen.findByText("Nice work!")).toBeTruthy();
     expect(screen.getByText("4 of 4 correct")).toBeTruthy();
     expect(calls.filter((c) => c.path.endsWith("/answer"))).toHaveLength(4);
+  });
+
+  test("a set answered with the definition asks for the definition", async () => {
+    // random() = 0 would ask for the term (see above); the set overrides it.
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    mockApi(learnApi({ ...LEARN_DETAIL, answerWith: "definition" }));
+    renderApp("/sets/7/learn");
+
+    expect(await screen.findByText("Which definition fits?")).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "el gato" })).toBeTruthy();
+    await userEvent.click(screen.getByText("the cat"));
+    expect(await screen.findByText("Correct!")).toBeTruthy();
   });
 
   test("Enter after the feedback does not count the answer again", async () => {

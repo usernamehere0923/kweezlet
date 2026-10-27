@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { accountRoutes } from "./account";
 import { aiRoutes } from "./ai";
 import { authRoutes, requireUser } from "./auth";
+import { folderRoutes } from "./folders";
 import { imageRoutes } from "./images";
 import { liveRoutes } from "./live";
 import { matchRoutes } from "./match";
@@ -19,6 +20,7 @@ const app = new Hono<AppEnv>()
   .route("/api/me", accountRoutes)
   .route("/api", liveRoutes)
   .route("/api", setRoutes)
+  .route("/api", folderRoutes)
   .route("/api", imageRoutes)
   .route("/api", matchRoutes)
   .route("/api", reviewRoutes)

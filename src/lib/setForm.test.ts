@@ -1,6 +1,15 @@
 import { describe, expect, test } from "vitest";
 import { mockApi } from "../test/server";
-import { checkSetForm, emptyRow, saveImageChanges } from "./setForm";
+import { act, renderHook } from "@testing-library/react";
+import {
+  checkSetForm,
+  emptyRow,
+  MAX_SIDE,
+  MAX_TERMS,
+  parsePastedTerms,
+  saveImageChanges,
+  useTermRows,
+} from "./setForm";
 
 const row = (term: string, definition: string) => ({ term, definition });
 
@@ -34,6 +43,67 @@ describe("checkSetForm", () => {
       row("el gato", "the cat"),
       imageRow,
     ]);
+  });
+});
+
+describe("checkSetForm limits", () => {
+  test("more terms than a set holds are caught before sending", () => {
+    const many = Array.from({ length: MAX_TERMS + 1 }, (_, i) => row(`t${i}`, `d${i}`));
+    expect(checkSetForm("Big", many).formError).toBe("sets.termsTooMany");
+    expect(checkSetForm("Big", many.slice(1)).formError).toBeNull();
+  });
+
+  test("a side longer than the server takes is caught", () => {
+    expect(checkSetForm("Long", [row("x".repeat(MAX_SIDE + 1), "d")]).formError).toBe("sets.termTooLong");
+    expect(checkSetForm("Long", [row("t", "x".repeat(MAX_SIDE))]).formError).toBeNull();
+  });
+});
+
+describe("parsePastedTerms", () => {
+  test("a Quizlet export: tab between, one term per line", () => {
+    expect(parsePastedTerms("el perro\tthe dog\r\nel gato\tthe cat\n")).toEqual({
+      terms: [row("el perro", "the dog"), row("el gato", "the cat")],
+      skipped: 0,
+    });
+  });
+
+  test("a tab anywhere wins over commas, so definitions keep theirs", () => {
+    expect(parsePastedTerms("Bern\tcapital, since 1848").terms).toEqual([row("Bern", "capital, since 1848")]);
+  });
+
+  test("typed notes with a dash", () => {
+    expect(parsePastedTerms("el perro - the dog\nla vaca – the cow\nwell-known — bekannt").terms).toEqual([
+      row("el perro", "the dog"),
+      row("la vaca", "the cow"),
+      row("well-known", "bekannt"),
+    ]);
+  });
+
+  test("CSV: commas, quoted fields keep their commas and quotes", () => {
+    expect(parsePastedTerms('"Bern, BE",capital\nsay,"he said ""hi"""').terms).toEqual([
+      row("Bern, BE", "capital"),
+      row("say", 'he said "hi"'),
+    ]);
+  });
+
+  test("only the first separator splits", () => {
+    expect(parsePastedTerms("a,b,c", "comma").terms).toEqual([row("a", "b,c")]);
+  });
+
+  test("semicolons between terms, a picked separator", () => {
+    expect(parsePastedTerms("a,1; b,2;;", "comma", "semicolon").terms).toEqual([row("a", "1"), row("b", "2")]);
+    expect(parsePastedTerms("a - 1\tx", "dash").terms).toEqual([row("a", "1\tx")]);
+  });
+
+  test("lines without a separator or with an empty side are counted, not added", () => {
+    expect(parsePastedTerms("Animals\nel perro\tthe dog\nel gato\t \n\n")).toEqual({
+      terms: [row("el perro", "the dog")],
+      skipped: 2,
+    });
+  });
+
+  test("nothing pasted, nothing found", () => {
+    expect(parsePastedTerms("  \n ")).toEqual({ terms: [], skipped: 0 });
   });
 });
 
@@ -74,5 +144,53 @@ describe("saveImageChanges", () => {
 
     await expect(saveImageChanges(kept, [{ id: 70 }])).resolves.toBe(1);
     await expect(saveImageChanges(kept, [])).resolves.toBe(0); // the row never made it to the server
+  });
+});
+
+describe("gap sentences in the form", () => {
+  test("a pasted line with one gap and no tab is a gap sentence", () => {
+    expect(parsePastedTerms("Bern is the {{capital}}.\nel perro\tthe dog").terms).toEqual([
+      { kind: "cloze", term: "Bern is the {{capital}}.", definition: "capital" },
+      row("el perro", "the dog"),
+    ]);
+  });
+
+  test("Anki cloze marks become our gap; several of them are no gap sentence", () => {
+    expect(parsePastedTerms("Bern is the {{c1::capital::city}}.").terms).toEqual([
+      { kind: "cloze", term: "Bern is the {{capital}}.", definition: "capital" },
+    ]);
+    expect(parsePastedTerms("{{c1::Bern}} is the {{c2::capital}}.")).toEqual({ terms: [], skipped: 1 });
+  });
+
+  test("a picked separator wins over a gap in a term/definition line", () => {
+    expect(parsePastedTerms("formula, {{x}} squared", "comma").terms).toEqual([row("formula", "{{x}} squared")]);
+    expect(parsePastedTerms("Bern, they say, is the {{capital}}.").terms).toEqual([
+      { kind: "cloze", term: "Bern, they say, is the {{capital}}.", definition: "capital" },
+    ]);
+  });
+
+  test("a gap sentence needs its gap before sending", () => {
+    const sentence = { kind: "cloze" as const, term: "Bern is the capital.", definition: "" };
+    expect(checkSetForm("Bern", [sentence]).formError).toBe("sets.clozeGap");
+    const marked = { ...sentence, term: "Bern is the {{capital}}.", definition: "capital" };
+    expect(checkSetForm("Bern", [marked]).formError).toBeNull();
+  });
+
+  test("switching a row keeps its text: the gap becomes the definition, and back", () => {
+    const { result } = renderHook(() => useTermRows([{ term: "Bern is the {{capital}}.", definition: "" }]));
+    act(() => result.current.setKind(0, "cloze"));
+    expect(result.current.rows[0]).toMatchObject({ kind: "cloze", definition: "capital" });
+    act(() => result.current.setKind(0, "pair"));
+    expect(result.current.rows[0]).toMatchObject({ kind: "pair", term: "Bern is the capital.", definition: "capital" });
+
+    // A pair tried as a gap sentence and switched back keeps its definition.
+    const { result: pair } = renderHook(() => useTermRows([{ term: "el perro", definition: "the dog" }]));
+    act(() => pair.current.setKind(0, "pair"));
+    expect(pair.current.rows[0]).toMatchObject({ term: "el perro", definition: "the dog" });
+    act(() => pair.current.setKind(0, "cloze"));
+    expect(pair.current.rows[0]).toMatchObject({ kind: "cloze", definition: "" });
+    act(() => pair.current.setKind(0, "cloze"));
+    act(() => pair.current.setKind(0, "pair"));
+    expect(pair.current.rows[0]).toMatchObject({ kind: "pair", term: "el perro", definition: "the dog" });
   });
 });

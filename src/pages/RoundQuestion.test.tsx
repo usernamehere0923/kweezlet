@@ -14,6 +14,7 @@ function roundWith(promptSide: "term" | "definition"): QuestionRound {
       termId: 70,
       prompt: promptSide === "term" ? "el perro" : "the dog",
       promptSide,
+      showImage: promptSide === "term",
       label: promptSide === "term" ? "learn.askDefinition" : "learn.askTerm",
       answer: promptSide === "term" ? "the dog" : "el perro",
       options: [],

@@ -68,8 +68,7 @@ export function TestPaperView({
             {i + 1}. {t(question.label)}
           </Text>
           <Heading className="mb-4">{question.prompt}</Heading>
-          {/* The picture only on questions that show the term: never one that asks for it. */}
-          {question.promptSide === "term" && images?.[question.termId] && (
+          {question.showImage && images?.[question.termId] && (
             <div className="mb-4 flex justify-center">
               <TermImage src={images[question.termId]} alt="" />
             </div>

@@ -1,10 +1,10 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef, useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { renderUi } from "../../test/render";
 import { mockSpeech } from "../../test/speech";
-import { TermEditorRow, TermList, type TermEditorHandle } from "..";
+import { ClozeText, TermEditorRow, TermList, type TermEditorHandle } from "..";
 
 test("TermEditorRow: typing, Enter moves on, delete, focus handle", async () => {
   const onNext = vi.fn();
@@ -58,4 +58,65 @@ describe("TermList", () => {
       ["the cat", "en"],
     ]);
   });
+});
+
+test("ClozeText: a gap for screen readers too, or the answer marked", () => {
+  renderUi(
+    <>
+      <ClozeText text="Bern is the {{capital}}." />
+      <ClozeText text="Bern is the {{capital}}." reveal />
+      <ClozeText text="No gap here." />
+    </>,
+  );
+  expect(screen.getByText("gap")).toBeTruthy();
+  expect(screen.getByText("capital")).toBeTruthy();
+  expect(screen.getByText("No gap here.")).toBeTruthy();
+});
+
+test("TermEditorRow as a gap sentence: Make gap marks the selection, one gap at a time", async () => {
+  const changes: [string, string][] = [];
+  function Row() {
+    const [kind, setKind] = useState<"pair" | "cloze">("pair");
+    const [pair, setPair] = useState(["Bern is the federal city.", ""]);
+    return (
+      <TermEditorRow
+        index={0}
+        kind={kind}
+        onKind={setKind}
+        term={pair[0]}
+        definition={pair[1]}
+        onChange={(a, b) => {
+          changes.push([a, b]);
+          setPair([a, b]);
+        }}
+      />
+    );
+  }
+  renderUi(<Row />);
+  await userEvent.click(screen.getByRole("radio", { name: "Gap sentence" }));
+  const sentence = screen.getByLabelText("Sentence") as HTMLTextAreaElement;
+  expect(screen.getByText(/Select the words to hide/)).toBeTruthy();
+  // Nothing selected: nothing to mark.
+  await userEvent.click(screen.getByRole("button", { name: "Make gap" }));
+  expect(changes).toEqual([]);
+
+  // " federal city": the space at the edge stays outside the gap (a double tap often takes one).
+  sentence.setSelectionRange(11, 24);
+  await userEvent.click(screen.getByRole("button", { name: "Make gap" }));
+  expect(changes.at(-1)).toEqual(["Bern is the {{federal city}}.", "federal city"]);
+  expect(screen.getByText("gap")).toBeTruthy();
+
+  // A second gap replaces the first. The tap may collapse the selection first
+  // (iOS): the last one made in the sentence counts.
+  sentence.setSelectionRange(0, 4); // "Bern"
+  fireEvent.select(sentence);
+  sentence.setSelectionRange(2, 2);
+  await userEvent.click(screen.getByRole("button", { name: "Make gap" }));
+  expect(changes.at(-1)).toEqual(["{{Bern}} is the federal city.", "Bern"]);
+});
+
+test("TermList shows a gap sentence as one line with its answer", () => {
+  renderUi(<TermList terms={[{ kind: "cloze", term: "Bern is the {{capital}}.", definition: "capital" }]} />);
+  expect(screen.getByText("capital")).toBeTruthy();
+  expect(screen.getAllByRole("listitem")).toHaveLength(1);
 });

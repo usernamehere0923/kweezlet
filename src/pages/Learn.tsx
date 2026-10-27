@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { MASTERY, termProgress } from "../../worker/progress";
-import type { SetTerm } from "../../worker/sets";
+import type { SetDetail, SetTerm } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useStudySet } from "../lib/studySet";
@@ -21,29 +21,29 @@ export function LearnPage() {
   // How many of this round's two correct answers each term has.
   const inRound = useRef(new Map<number, number>());
 
-  const askFrom = (terms: SetTerm[]) => (termId: number) => {
+  const askFrom = (set: SetDetail) => (termId: number) => {
     // Terms deleted elsewhere are skipped.
-    const term = terms.find((candidate) => candidate.id === termId);
-    return term ? buildQuestion(terms, term) : null;
+    const term = set.terms.find((candidate) => candidate.id === termId);
+    return term ? buildQuestion(set.terms, term, set.answerWith) : null;
   };
 
-  function startRound(all: SetTerm[], pick: SetTerm[]) {
+  function startRound(set: SetDetail, pick: SetTerm[]) {
     inRound.current = new Map();
     setAllLearned(false);
-    round.start(shuffle(pick.map((term) => term.id)), askFrom(all));
+    round.start(shuffle(pick.map((term) => term.id)), askFrom(set));
   }
 
   /** Start where the user left off: only the terms not learned yet. */
-  function begin(terms: SetTerm[]) {
-    const remaining = terms.filter((term) => term.streak < MASTERY);
+  function begin(set: SetDetail) {
+    const remaining = set.terms.filter((term) => term.streak < MASTERY);
     if (remaining.length === 0) setAllLearned(true);
-    else startRound(terms, remaining);
+    else startRound(set, remaining);
   }
 
   // Another device answered or renamed something: catch up, keep the question.
   const { set, images, updateTerm, failed, retry } = useStudySet(id, ["sets", "study"], {
     onLoad: (data, first) => {
-      if (first) begin(data.terms);
+      if (first) begin(data);
     },
   });
 
@@ -97,13 +97,13 @@ export function LearnPage() {
           icon="learn"
           title={t("learn.allLearnedTitle")}
           text={t("learn.allLearnedText")}
-          action={<Button onClick={() => startRound(set.terms, set.terms)}>{t("learn.studyAnyway")}</Button>}
+          action={<Button onClick={() => startRound(set, set.terms)}>{t("learn.studyAnyway")}</Button>}
         />
       ) : round.done ? (
         <ResultSummary
           correct={round.score.correct}
           total={round.score.total}
-          onStudyAgain={() => startRound(set.terms, set.terms)}
+          onStudyAgain={() => startRound(set, set.terms)}
           onDone={() => navigate(`/sets/${id}`)}
         />
       ) : (
@@ -112,7 +112,7 @@ export function LearnPage() {
           langs={set}
           images={images}
           onAnswer={onAnswer}
-          onContinue={() => round.next(askFrom(set.terms))}
+          onContinue={() => round.next(askFrom(set))}
         />
       )}
     </div>

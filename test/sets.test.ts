@@ -145,6 +145,8 @@ describe("GET /api/sets/:id", () => {
       description: "chapter 1",
       termLang: null,
       defLang: null,
+      answerWith: "both",
+      folderId: null,
       termCount: 2,
       knownCount: 0,
       learningCount: 0,
@@ -154,6 +156,7 @@ describe("GET /api/sets/:id", () => {
       terms: [
         {
           id: expect.any(Number),
+          kind: "pair",
           term: "el perro",
           definition: "the dog",
           position: 0,
@@ -163,6 +166,7 @@ describe("GET /api/sets/:id", () => {
         },
         {
           id: expect.any(Number),
+          kind: "pair",
           term: "el gato",
           definition: "the cat",
           position: 1,
@@ -219,6 +223,8 @@ describe("POST /api/sets", () => {
       description: "chapter 1",
       termLang: "es",
       defLang: "en",
+      answerWith: "both",
+      folderId: null,
       termCount: 2,
       knownCount: 0,
       learningCount: 0,
@@ -228,6 +234,7 @@ describe("POST /api/sets", () => {
       terms: [
         {
           id: expect.any(Number),
+          kind: "pair",
           term: "el perro",
           definition: "the dog",
           position: 0,
@@ -237,6 +244,7 @@ describe("POST /api/sets", () => {
         },
         {
           id: expect.any(Number),
+          kind: "pair",
           term: "el gato",
           definition: "the cat",
           position: 1,
@@ -361,6 +369,7 @@ describe("PATCH /api/sets/:id", () => {
     expect(after.terms).toEqual([
       {
         id: perro.id,
+        kind: "pair",
         term: "el perro",
         definition: "the dog (updated)",
         position: 0,
@@ -370,6 +379,7 @@ describe("PATCH /api/sets/:id", () => {
       },
       {
         id: expect.any(Number),
+        kind: "pair",
         term: "el caballo",
         definition: "the horse",
         position: 1,
@@ -426,6 +436,118 @@ describe("PATCH /api/sets/:id", () => {
       json: { title: "Hijacked", terms: [{ term: "x", definition: "y" }] },
     });
     expect(res.status).toBe(404);
+  });
+});
+
+describe("a set's side (answerWith)", () => {
+  const terms = [{ term: "el perro", definition: "the dog" }];
+  const create = (cookie: string, extra: object = {}) =>
+    api("/api/sets", { method: "POST", cookie, json: { title: "Animals", terms, ...extra } });
+
+  it("is both for a new set unless picked, and comes back with the set", async () => {
+    const { cookie } = await signedIn("anna");
+    const plain = (await (await create(cookie)).json()) as { answerWith: string };
+    expect(plain.answerWith).toBe("both");
+    const picked = (await (await create(cookie, { answerWith: "term" })).json()) as { id: number };
+    const detail = (await (await api(`/api/sets/${picked.id}`, { cookie })).json()) as { answerWith: string };
+    expect(detail.answerWith).toBe("term");
+    const list = (await (await api("/api/sets", { cookie })).json()) as { answerWith: string }[];
+    expect(list.map((set) => set.answerWith).sort()).toEqual(["both", "term"]);
+  });
+
+  it("is changed by an edit that names it and kept by one that doesn't", async () => {
+    const { cookie } = await signedIn("anna");
+    const { id } = (await (await create(cookie)).json()) as { id: number };
+    const patch = (extra: object) =>
+      api(`/api/sets/${id}`, { method: "PATCH", cookie, json: { title: "Animals", terms, ...extra } });
+    expect(((await (await patch({ answerWith: "definition" })).json()) as { answerWith: string }).answerWith).toBe(
+      "definition",
+    );
+    expect(((await (await patch({})).json()) as { answerWith: string }).answerWith).toBe("definition");
+  });
+
+  it("refuses a side that does not exist", async () => {
+    const { cookie } = await signedIn("anna");
+    const res = await create(cookie, { answerWith: "sideways" });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "validation", fields: { answerWith: "invalid_value" } });
+  });
+});
+
+describe("gap sentences (cloze terms)", () => {
+  const SENTENCE = "Bern has been the {{federal city}} since 1848.";
+
+  it("keep their kind; the definition is always the gap", async () => {
+    const { cookie } = await signedIn("anna");
+    const res = await api("/api/sets", {
+      method: "POST",
+      cookie,
+      json: {
+        title: "Bern",
+        terms: [
+          { kind: "cloze", term: SENTENCE, definition: "anything" },
+          { term: "1848", definition: "Bundesverfassung" },
+        ],
+      },
+    });
+    expect(res.status).toBe(201);
+    const set = (await res.json()) as { id: number; terms: { id: number; kind: string; definition: string }[] };
+    expect(set.terms.map((t) => [t.kind, t.definition])).toEqual([
+      ["cloze", "federal city"],
+      ["pair", "Bundesverfassung"],
+    ]);
+
+    // An edit can move the gap, or turn the sentence into a pair.
+    const patched = await api(`/api/sets/${set.id}`, {
+      method: "PATCH",
+      cookie,
+      json: {
+        title: "Bern",
+        terms: [
+          {
+            id: set.terms[0]!.id,
+            kind: "cloze",
+            term: "Bern has been the federal city since {{1848}}.",
+            definition: "x",
+          },
+          { id: set.terms[1]!.id, kind: "pair", term: "1848", definition: "Bundesverfassung" },
+        ],
+      },
+    });
+    const after = (await patched.json()) as { terms: { kind: string; definition: string }[] };
+    expect(after.terms.map((t) => [t.kind, t.definition])).toEqual([
+      ["cloze", "1848"],
+      ["pair", "Bundesverfassung"],
+    ]);
+  });
+
+  it("stay gap sentences when an edit leaves the kind out (an older app)", async () => {
+    const { cookie } = await signedIn("anna");
+    const created = await api("/api/sets", {
+      method: "POST",
+      cookie,
+      json: { title: "Bern", terms: [{ kind: "cloze", term: SENTENCE, definition: "federal city" }] },
+    });
+    const { id, terms } = (await created.json()) as { id: number; terms: { id: number }[] };
+    const res = await api(`/api/sets/${id}`, {
+      method: "PATCH",
+      cookie,
+      json: { title: "Bern", terms: [{ id: terms[0]!.id, term: SENTENCE, definition: "federal city" }] },
+    });
+    expect(((await res.json()) as { terms: { kind: string }[] }).terms[0]!.kind).toBe("cloze");
+  });
+
+  it("need exactly one gap", async () => {
+    const { cookie } = await signedIn("anna");
+    for (const term of ["No gap at all.", "{{Two}} gaps {{here}}.", "An {{ }} empty gap.", "A {{broken} gap."]) {
+      const res = await api("/api/sets", {
+        method: "POST",
+        cookie,
+        json: { title: "Bern", terms: [{ kind: "cloze", term, definition: "x" }] },
+      });
+      expect(res.status, term).toBe(400);
+      expect(await res.json()).toEqual({ error: "validation", fields: { "terms.0.term": "custom" } });
+    }
   });
 });
 

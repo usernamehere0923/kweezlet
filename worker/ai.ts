@@ -8,6 +8,7 @@ import type { DraftCard } from "./ai/extract";
 import { MAX_DRAFT_CARDS, MAX_IMAGE_PAGES, MAX_PAGES, MAX_TEXT_CHARS, pageStatements } from "./ai/pages";
 import type { AiJob, RunChanges } from "./ai/runner";
 import type { ZaiErrorKind } from "./ai/zai";
+import { clozeAnswer } from "./cloze";
 import { LANGUAGES, type Language } from "./languages";
 import { notifyLater } from "./live";
 import type { AppEnv, User } from "./types";
@@ -21,6 +22,8 @@ const DRAFT_DAYS = 30;
 const STALE_RUN_SECONDS = 20 * 60;
 
 const kindSchema = z.enum(["auto", "vocabulary", "questions", "terms"]);
+/** Term/definition pairs, or gap sentences (worker/cloze.ts). */
+const formSchema = z.enum(["pair", "cloze"]);
 const languageSchema = z.enum(LANGUAGES);
 const pageImage = z
   .string()
@@ -50,6 +53,7 @@ const pagesSchema = z
 const createBody = z.object({
   sourceName: z.string().trim().max(200).default(""),
   kind: kindSchema.default("auto"),
+  form: formSchema.default("pair"),
   /** 0 = as many as the material supports. */
   maxCards: z.number().int().min(0).max(60).default(0),
   instructions: z.string().trim().max(500).default(""),
@@ -58,7 +62,7 @@ const createBody = z.object({
   pages: pagesSchema,
 });
 const moreBody = z.object({ pages: pagesSchema, instructions: z.string().trim().max(500).default("") });
-const regenerateBody = z.object({ kind: kindSchema });
+const regenerateBody = z.object({ kind: kindSchema, form: formSchema.optional() });
 const draftCard = z.object({
   // Empty while being edited; only the cards that get saved need both sides.
   term: z.string().trim().max(1000),
@@ -89,6 +93,7 @@ type DraftRow = {
   error: ZaiErrorKind | null;
   source_name: string;
   kind: z.infer<typeof kindSchema>;
+  form: z.infer<typeof formSchema>;
   made_kind: "vocabulary" | "questions" | "terms" | null;
   max_cards: number;
   title: string;
@@ -127,6 +132,7 @@ function draftDetail(
     error: row.error,
     sourceName: row.source_name,
     kind: row.kind,
+    form: row.form,
     madeKind: row.made_kind,
     maxCards: row.max_cards,
     title: row.title,
@@ -264,10 +270,10 @@ export const aiRoutes = new Hono<AppEnv>()
       const [created] = await db.batch<{ id: number }>([
         db
           .prepare(
-            `INSERT INTO ai_drafts (user_id, status, source_name, kind, max_cards, instructions, set_id)
-             VALUES (?, 'running', ?, ?, ?, ?, ?) RETURNING id`,
+            `INSERT INTO ai_drafts (user_id, status, source_name, kind, form, max_cards, instructions, set_id)
+             VALUES (?, 'running', ?, ?, ?, ?, ?, ?) RETURNING id`,
           )
-          .bind(user.id, body.sourceName, body.kind, body.maxCards, body.instructions, body.setId),
+          .bind(user.id, body.sourceName, body.kind, body.form, body.maxCards, body.instructions, body.setId),
         ...pageStatements(db, user.id, "latest", body.pages),
       ]);
       const id = created!.results[0]!.id;
@@ -394,7 +400,8 @@ export const aiRoutes = new Hono<AppEnv>()
     if (!draft) return notFound(c);
     if (draft.status === "running") return runningError(c);
     if (await overCap(c)) return capError(c);
-    const changes = { kind: c.req.valid("json").kind };
+    const { kind, form } = c.req.valid("json");
+    const changes = { kind, form };
     if (!(await startRun(c, fake, { draftId: id, action: "regenerate" }, changes))) return runningError(c);
     notifyLater(c, "ai");
     return c.json({ ok: true as const }, 202);
@@ -443,6 +450,10 @@ export const aiRoutes = new Hono<AppEnv>()
     if (cards.some((card) => !card.term.trim() || !card.definition.trim())) {
       return validationError(c, { cards: "invalid_value" });
     }
+    // Gap sentences: one gap each, and the definition is that gap (an edit may have moved it).
+    const cloze = draft.form === "cloze";
+    if (cloze && cards.some((card) => !clozeAnswer(card.term))) return validationError(c, { cards: "invalid_value" });
+    const definitionOf = (card: DraftCard) => (cloze ? clozeAnswer(card.term)! : card.definition.trim());
     // Two saves at once (a double tap, two devices) both read the draft above.
     // So every insert only happens while the draft still exists, and the draft
     // goes last in the same batch: D1 runs batches one after the other, and the
@@ -463,10 +474,10 @@ export const aiRoutes = new Hono<AppEnv>()
         ...cards.map((card, position) =>
           db
             .prepare(
-              `INSERT INTO terms (user_id, set_id, term, definition, position)
-               SELECT ?, (SELECT MAX(id) FROM sets WHERE user_id = ?), ?, ?, ? WHERE ${draftExists}`,
+              `INSERT INTO terms (user_id, set_id, term, definition, position, kind)
+               SELECT ?, (SELECT MAX(id) FROM sets WHERE user_id = ?), ?, ?, ?, ? WHERE ${draftExists}`,
             )
-            .bind(userId, userId, card.term.trim(), card.definition.trim(), position, id, userId),
+            .bind(userId, userId, card.term.trim(), definitionOf(card), position, draft.form, id, userId),
         ),
         deleteDraft,
       ]);
@@ -490,9 +501,10 @@ export const aiRoutes = new Hono<AppEnv>()
         ...cards.map((card, i) =>
           db
             .prepare(
-              `INSERT INTO terms (user_id, set_id, term, definition, position) SELECT ?, ?, ?, ?, ? WHERE ${draftExists}`,
+              `INSERT INTO terms (user_id, set_id, term, definition, position, kind)
+               SELECT ?, ?, ?, ?, ?, ? WHERE ${draftExists}`,
             )
-            .bind(userId, setId, card.term.trim(), card.definition.trim(), row.last + 1 + i, id, userId),
+            .bind(userId, setId, card.term.trim(), definitionOf(card), row.last + 1 + i, draft.form, id, userId),
         ),
         db.prepare("UPDATE sets SET updated_at = unixepoch() WHERE id = ? AND user_id = ?").bind(setId, userId),
         deleteDraft,

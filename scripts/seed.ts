@@ -37,6 +37,10 @@ const statements: string[] = [
      (${demo}, ${set("Swiss history")}, '1863', 'Red Cross founded in Geneva', 2),
      (${demo}, ${set("Swiss history")}, '1971', 'Frauenstimmrecht, women get the right to vote', 3),
      (${demo}, ${set("Swiss history")}, '2002', 'Switzerland joins the United Nations', 4)`,
+  // One folder holding the animals; history stays in none.
+  `INSERT INTO folders (user_id, name) VALUES (${demo}, 'Languages')`,
+  `UPDATE sets SET folder_id = (SELECT id FROM folders WHERE name = 'Languages' AND user_id = ${demo})
+    WHERE id = ${set("Spanish animals")}`,
   // Two terms learned, one still in progress, one starred for later.
   `INSERT INTO term_state (user_id, term_id, set_id, status, starred) VALUES
      (${demo}, ${term("Spanish animals", "el perro")}, ${set("Spanish animals")}, 'know_it', 0),

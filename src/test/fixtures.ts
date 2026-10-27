@@ -8,6 +8,7 @@ export const SPANISH = {
   description: "chapter 1",
   termLang: "es",
   defLang: "en",
+  answerWith: "both",
   termCount: 2,
   knownCount: 1,
   learningCount: 0,
@@ -21,6 +22,7 @@ export const SWISS = {
   description: "",
   termLang: null,
   defLang: null,
+  answerWith: "both",
   termCount: 1,
   knownCount: 0,
   learningCount: 0,
@@ -28,11 +30,19 @@ export const SWISS = {
   updatedAt: 1,
 };
 
-type Term = { id: number; term: string; definition: string; status: string; starred: boolean; streak: number };
+type Term = {
+  id: number;
+  kind: "pair" | "cloze";
+  term: string;
+  definition: string;
+  status: string;
+  starred: boolean;
+  streak: number;
+};
 
 /** A fresh term: unseen, not starred. `overrides` sets the rest. */
 export function term(id: number, term: string, definition: string, overrides: Partial<Term> = {}): Term {
-  return { id, term, definition, status: "unseen", starred: false, streak: 0, ...overrides };
+  return { id, kind: "pair", term, definition, status: "unseen", starred: false, streak: 0, ...overrides };
 }
 
 /** `set` with these terms, in this order. */
@@ -63,8 +73,24 @@ export const MATCH_DETAIL = { ...LEARN_DETAIL, bestSeconds: null };
 
 /** Due cards as GET /api/review lists them. */
 export const REVIEW_CARDS = [
-  { id: 70, term: "el perro", definition: "the dog", streak: 0, setId: 7, setTitle: "Spanish animals" },
-  { id: 71, term: "el gato", definition: "the cat", streak: 0, setId: 7, setTitle: "Spanish animals" },
+  {
+    id: 70,
+    term: "el perro",
+    definition: "the dog",
+    streak: 0,
+    setId: 7,
+    setTitle: "Spanish animals",
+    answerWith: "both",
+  },
+  {
+    id: 71,
+    term: "el gato",
+    definition: "the cat",
+    streak: 0,
+    setId: 7,
+    setTitle: "Spanish animals",
+    answerWith: "both",
+  },
 ];
 
 /** What every study page of set 7 calls: the user, the set, the study day. */

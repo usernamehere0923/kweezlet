@@ -12,10 +12,27 @@ const PAGES = [
   { n: 5, label: "Anhang", disabled: true },
 ];
 
-const CARDS = [
+type DemoCard = {
+  term: string;
+  definition: string;
+  source: string;
+  page: number | null;
+  verified: boolean;
+  cloze?: boolean;
+};
+
+const CARDS: DemoCard[] = [
   { term: "el perro", definition: "the dog", source: "el perro — the dog", page: 2, verified: true },
   { term: "el gato", definition: "the cat", source: "el gato, la gata", page: 2, verified: false },
   { term: "el caballo", definition: "the horse", source: "", page: null, verified: false },
+  {
+    term: "Bern has been the {{federal city}} since 1848.",
+    definition: "federal city",
+    source: "Bern has been the federal city since 1848.",
+    page: 3,
+    verified: true,
+    cloze: true,
+  },
 ];
 
 const DRAFTS = [
@@ -83,7 +100,8 @@ export function AiKit() {
         code={`<DraftCard index={i} term={card.term} definition={card.definition} onChange={(term, definition) => edit(i, { term, definition })}
   checked={card.checked} onCheck={(checked) => edit(i, { checked })}
   source={card.source} page={card.page} verified={card.verified} onDelete={() => drop(i)} />
-// unverified cards start unchecked (the page does that) and say why`}
+// unverified cards start unchecked (the page does that) and say why
+// cloze: a gap sentence draft, one field, the definition is the {{gap}}`}
       >
         <div className="flex flex-col gap-3">
           {cards.map((card, i) => (

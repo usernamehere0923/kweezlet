@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { LANG_KEY, useT, type TKey } from "../i18n";
 import { api } from "../lib/api";
-import { kindOptions, languageOptions, type CardKind } from "../lib/choices";
+import { draftChoice, kindOptions, languageOptions, runChoice, type CardKind } from "../lib/choices";
 import { aiErrorMessage, aiRefusal, formatCost } from "../lib/cost";
 import { sourceLabel, useDraft, type DraftEdits } from "../lib/draft";
 import { useLive } from "../lib/live";
@@ -88,7 +88,7 @@ export function AiDraftPage() {
     setBusy(why);
     setError(null);
     await forget();
-    const res = await api.ai.drafts[":id"].regenerate.$post({ param: { id: draftId }, json: { kind: as } });
+    const res = await api.ai.drafts[":id"].regenerate.$post({ param: { id: draftId }, json: runChoice(as) });
     setAsking(null);
     if (!res.ok) await explain(res);
     setBusy(null);
@@ -195,7 +195,8 @@ export function AiDraftPage() {
   // "24 cards · 2 unverified · Vocabulary · English → Deutsch"
   const summary = [tn("ai.draft.cards", rows.length)];
   if (unverified > 0) summary.push(tn("ai.draft.unverifiedCount", unverified));
-  if (draft.madeKind) summary.push(t(`ai.kind.${draft.madeKind}`));
+  if (draft.form === "cloze") summary.push(t("ai.kind.cloze"));
+  else if (draft.madeKind) summary.push(t(`ai.kind.${draft.madeKind}`));
   if (edits.termLang && edits.defLang) {
     summary.push(t("ai.draft.languages", { term: t(LANG_KEY[edits.termLang]), def: t(LANG_KEY[edits.defLang]) }));
   }
@@ -223,7 +224,7 @@ export function AiDraftPage() {
               variant="secondary"
               icon="retry"
               loading={busy === "retry"}
-              onClick={() => void regenerate(draft.kind, "retry")}
+              onClick={() => void regenerate(draftChoice(draft), "retry")}
             >
               {t("common.retry")}
             </Button>
@@ -232,7 +233,7 @@ export function AiDraftPage() {
       )}
 
       {/* While a run goes, the cards there are shown but not edited: the run writes them when it ends. */}
-      {running && rows.length > 0 && <TermList terms={rows.map((row) => row.card)} />}
+      {running && rows.length > 0 && <TermList terms={rows.map((row) => ({ ...row.card, kind: draft.form }))} />}
 
       {!running && (rows.length > 0 || draft.status === "ready") && (
         <div className="flex flex-col gap-1">
@@ -272,7 +273,7 @@ export function AiDraftPage() {
                 size="sm"
                 icon="retry"
                 onClick={() => {
-                  setKind(draft.kind);
+                  setKind(draftChoice(draft));
                   setAsking("regenerate");
                 }}
               >
@@ -299,6 +300,7 @@ export function AiDraftPage() {
                 source={row.card.source}
                 page={row.card.page}
                 verified={row.card.verified}
+                cloze={draft.form === "cloze"}
                 checked={row.card.checked}
                 onChange={(term, definition) =>
                   edit((now) => ({

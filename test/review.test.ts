@@ -100,6 +100,16 @@ describe("GET /api/review", () => {
     });
   });
 
+  it("each card carries its set's side", async () => {
+    const { id: anna, cookie } = await signedIn("anna");
+    const { id: animals } = await addSet(anna, "Spanish animals");
+    await env.DB.prepare("UPDATE sets SET answer_with = 'term' WHERE id = ?").bind(animals).run();
+    await addTerm(anna, animals, "el gato", 0, { step: 1, dueInDays: -1 });
+
+    const { cards } = (await (await api("/api/review", { cookie })).json()) as { cards: { answerWith: string }[] };
+    expect(cards).toEqual([expect.objectContaining({ answerWith: "term", kind: "pair" })]);
+  });
+
   it("caps the cards but counts them all", async () => {
     const { id: anna, cookie } = await signedIn("anna");
     const { id: set } = await addSet(anna, "Spanish animals");

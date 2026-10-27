@@ -127,6 +127,34 @@ describe("flashcards", () => {
     expect(onFront("el perro")).toBe(false);
   });
 
+  test("a set answered with the term starts on the definition", async () => {
+    mockApi(flashcardsApi({ ...SPANISH_DETAIL, answerWith: "term" }));
+    renderApp("/sets/7/flashcards");
+    await screen.findByText("el perro");
+    const onFront = (text: string) => screen.getByText(text).closest('[aria-hidden="false"]') !== null;
+    expect(onFront("the dog")).toBe(true);
+    expect((screen.getByRole("radio", { name: "Definition first" }) as HTMLElement).getAttribute("aria-checked")).toBe(
+      "true",
+    );
+    await userEvent.click(screen.getByRole("radio", { name: "Term first" }));
+    expect(onFront("el perro")).toBe(true);
+  });
+
+  test("a gap sentence shows its gap first and the whole sentence behind it; no order to pick", async () => {
+    const gaps = {
+      ...SPANISH_DETAIL,
+      terms: [
+        { ...SPANISH_DETAIL.terms[0]!, kind: "cloze" as const, term: "El {{perro}} ladra.", definition: "perro" },
+      ],
+    };
+    mockApi(flashcardsApi(gaps));
+    renderApp("/sets/7/flashcards");
+    expect(await screen.findByText("Fill in the gap")).toBeTruthy();
+    expect(screen.getByText("Answer")).toBeTruthy();
+    expect(screen.getByText("perro").closest('[aria-hidden="false"]')).toBeNull();
+    expect(screen.queryByRole("radio", { name: "Definition first" })).toBeNull();
+  });
+
   test("shuffling keeps all the cards", async () => {
     mockApi(flashcardsApi());
     renderApp("/sets/7/flashcards");

@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 import type { SetTerm } from "../../worker/sets";
 import {
   buildMatchRound,
+  buildQuestion,
   buildTest,
   gradeQuestion,
   scoreTest,
@@ -14,6 +15,7 @@ import {
 const TERMS: SetTerm[] = [
   {
     id: 1,
+    kind: "pair",
     term: "el perro",
     definition: "the dog",
     position: 0,
@@ -23,6 +25,7 @@ const TERMS: SetTerm[] = [
   },
   {
     id: 2,
+    kind: "pair",
     term: "el gato",
     definition: "the cat",
     position: 1,
@@ -32,6 +35,7 @@ const TERMS: SetTerm[] = [
   },
   {
     id: 3,
+    kind: "pair",
     term: "el caballo",
     definition: "the horse",
     position: 2,
@@ -41,6 +45,7 @@ const TERMS: SetTerm[] = [
   },
   {
     id: 4,
+    kind: "pair",
     term: "el pez",
     definition: "the fish",
     position: 3,
@@ -95,6 +100,39 @@ describe("buildTest", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.99); // the other way round
     const telling = buildTest(TERMS, { count: 1, types: ["choice"], matching: false }).questions[0];
     expect(telling.promptSide).toBe("term");
+  });
+
+  test("a set answered with one side always asks for that side", () => {
+    const sides = (answerWith: "term" | "definition") =>
+      new Set(
+        buildTest(TERMS, { count: 4, types: ["choice", "written"], matching: false, answerWith }).questions.map(
+          (question) => question.promptSide,
+        ),
+      );
+    expect(sides("term")).toEqual(new Set(["definition"]));
+    expect(sides("definition")).toEqual(new Set(["term"]));
+    const paper = buildTest(TERMS, { count: 4, types: ["choice"], matching: false, answerWith: "term" });
+    for (const question of paper.questions) {
+      expect(question.label).toBe("learn.askTerm");
+      expect(TERMS.map((term) => term.term)).toContain(question.answer);
+      expect(question.options.every((option) => TERMS.some((term) => term.term === option))).toBe(true);
+    }
+  });
+
+  test("the picture goes with a prompt showing the term, or any prompt of a set answered with the term", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0); // asks for the term
+    expect(buildTest(TERMS, { count: 1, types: ["choice"], matching: false }).questions[0].showImage).toBe(false);
+    vi.spyOn(Math, "random").mockReturnValue(0.99); // shows the term
+    expect(buildTest(TERMS, { count: 1, types: ["choice"], matching: false }).questions[0].showImage).toBe(true);
+    const termSet = { count: 1, types: ["written" as const], matching: false, answerWith: "term" as const };
+    expect(buildTest(TERMS, termSet).questions[0].showImage).toBe(true);
+    const statement = buildTest(TERMS, { ...termSet, types: ["truefalse"] }).questions[0];
+    expect(statement.showImage).toBe(false);
+  });
+
+  test("buildQuestion follows the set's side too", () => {
+    expect(buildQuestion(TERMS, TERMS[0], "term").answer).toBe("el perro");
+    expect(buildQuestion(TERMS, TERMS[0], "definition").answer).toBe("the dog");
   });
 
   test("a true/false statement has no side: it mixes both languages", () => {
@@ -159,6 +197,7 @@ const choice: TestQuestion = {
   termId: 1,
   prompt: "el perro",
   promptSide: "term",
+  showImage: true,
   label: "learn.askDefinition",
   answer: "the dog",
   options: ["the dog", "the cat"],
@@ -168,6 +207,7 @@ const written: TestQuestion = {
   termId: 1,
   prompt: "el perro",
   promptSide: "term",
+  showImage: true,
   label: "learn.askDefinition",
   answer: "the dog",
   options: [],
@@ -177,6 +217,7 @@ const statement: TestQuestion = {
   termId: 1,
   prompt: "el perro — the cat",
   promptSide: null,
+  showImage: false,
   label: "test.statement",
   answer: "false",
   options: ["true", "false"],
@@ -225,6 +266,7 @@ describe("speechFor", () => {
     termId: 1,
     prompt: "el perro",
     promptSide,
+    showImage: false,
     label: "test.statement",
     answer: "the dog",
     options: [],
@@ -239,5 +281,71 @@ describe("speechFor", () => {
   test("true/false says nothing; unknown languages leave the voice to the browser", () => {
     expect(speechFor(question(null), langs)).toBeUndefined();
     expect(speechFor(question("term"), undefined)).toEqual({ text: "el perro", lang: null });
+  });
+});
+
+describe("gap sentences", () => {
+  const gap = (id: number, term: string): SetTerm => ({
+    id,
+    kind: "cloze",
+    term,
+    definition: /\{\{(.*)\}\}/.exec(term)![1]!,
+    position: id,
+    status: "unseen",
+    starred: false,
+    streak: 0,
+  });
+  const GAPS = [gap(10, "Bern is the {{federal city}}."), gap(11, "The Bundesbrief dates from {{1291}}.")];
+  const MIXED = [...TERMS, ...GAPS];
+
+  test("ask the sentence with its gap, whatever side the set asks for", () => {
+    const question = buildQuestion(MIXED, GAPS[0]!, "term");
+    expect(question).toMatchObject({
+      kind: "choice",
+      label: "learn.askBlank",
+      prompt: "Bern is the _____.",
+      answer: "federal city",
+      promptSide: "term",
+    });
+    // Wrong options come from the other gaps only, never from definitions.
+    expect(question.options.sort()).toEqual(["1291", "federal city"]);
+  });
+
+  test("pairs never get a gap's words as wrong options", () => {
+    for (let i = 0; i < 10; i++) {
+      const question = buildQuestion(MIXED, TERMS[0]!, "definition");
+      expect(question.options).not.toContain("federal city");
+      expect(question.options).not.toContain("1291");
+    }
+  });
+
+  test("a lone gap is typed, and true/false becomes a pick", () => {
+    expect(buildQuestion([...TERMS, GAPS[0]!], GAPS[0]!).kind).toBe("written");
+    const paper = buildTest(GAPS, { count: 2, types: ["truefalse"], matching: false });
+    expect(paper.questions.map((question) => question.kind)).toEqual(["choice", "choice"]);
+  });
+
+  test("other gaps with the same words leave nothing to pick: typed", () => {
+    const twin = gap(12, "The Rütli oath is dated {{1291}}.");
+    const pool = [gap(11, "The Bundesbrief dates from {{1291}}."), twin];
+    expect(buildQuestion(pool, twin)).toMatchObject({ kind: "written", options: [] });
+  });
+
+  test("a gap is read out as a pause", () => {
+    const question = buildQuestion(GAPS, GAPS[0]!);
+    expect(speechFor(question, { termLang: "de", defLang: "en" })).toEqual({ text: "Bern is the ….", lang: "de" });
+  });
+
+  test("Match shows the sentence with its gap against the words", () => {
+    const labels = buildMatchRound([{ ...GAPS[0]!, kind: "cloze" }], 1).map((tile) => tile.label);
+    expect(labels.sort()).toEqual(["Bern is the _____.", "federal city"]);
+  });
+});
+
+describe("a choice without other cards to pick from", () => {
+  test("is typed instead", () => {
+    expect(buildTest(TERMS.slice(0, 1), { count: 1, types: ["choice"], matching: false }).questions[0]!.kind).toBe(
+      "written",
+    );
   });
 });

@@ -3,8 +3,12 @@ import { costNanos, MODEL, NO_USAGE, type Usage } from "./prices";
 /** The z.ai chat endpoint (Bearer auth, OpenAI-style body). */
 export const ZAI_URL = "https://api.z.ai/api/paas/v4/chat/completions";
 
-/** Thinking is always on for GLM-5.3-Flash: 20-60 s is normal, 120 s is the ceiling. */
-export const ZAI_TIMEOUT_MS = 120_000;
+/**
+ * Thinking is always on for GLM-5.3-Flash: pairs take 9-35 s, gap sentences
+ * think longer (55 s measured, and 2 of 3 runs passed 120 s). Two calls of
+ * 300 s still fit the alarm's 15 minutes.
+ */
+export const ZAI_TIMEOUT_MS = 300_000;
 
 /** One message content part: text, a page image, or a whole file (Office). */
 export type ZaiPart =

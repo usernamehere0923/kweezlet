@@ -9,6 +9,7 @@ import type { ZaiMessage } from "../worker/ai/zai";
 
 const OPTIONS: RunOptions = {
   kind: "auto",
+  form: "pair",
   maxCards: 25,
   userLanguage: "de",
   instructions: "",

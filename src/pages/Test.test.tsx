@@ -35,6 +35,22 @@ describe("test mode", () => {
     expect(screen.getByText("3 of 3 correct")).toBeTruthy();
   });
 
+  test("the paper asks for the side picked on the setup, starting from the set's", async () => {
+    mockApi(studyRoutes({ ...LEARN_DETAIL, answerWith: "term" }));
+    renderApp("/sets/7/test");
+
+    const termRadio = await screen.findByRole("radio", { name: "Term" });
+    expect(termRadio.getAttribute("aria-checked")).toBe("true");
+    await userEvent.click(screen.getByRole("radio", { name: "Definition" }));
+    await userEvent.click(screen.getByLabelText("True or false"));
+    await userEvent.click(screen.getByLabelText("Matching"));
+    await userEvent.click(screen.getByRole("radio", { name: "All" }));
+    await userEvent.click(screen.getByRole("button", { name: "Start test" }));
+
+    const prompts = await screen.findAllByRole("heading", { level: 2 });
+    expect(prompts.map((prompt) => prompt.textContent).sort()).toEqual(["el caballo", "el gato", "el perro"]);
+  });
+
   test("a wrong answer costs a point", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0);
     mockApi(studyRoutes(LEARN_DETAIL));
