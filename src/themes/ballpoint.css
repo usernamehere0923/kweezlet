@@ -1,0 +1,66 @@
+/* Ballpoint Blues: a school exercise book. Blue-white paper, navy ink,
+   ballpoint-blue primary, margin-pen violet secondary. One font for
+   everything, built for legibility. Study cards are ruled like index cards. */
+
+/* Atkinson Hyperlegible Next, latin-ext */
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("../fonts/AtkinsonHyperlegibleNext/AtkinsonHyperlegibleNext-latin-ext.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* Atkinson Hyperlegible Next, latin */
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  src: url("../fonts/AtkinsonHyperlegibleNext/AtkinsonHyperlegibleNext-latin.woff2") format("woff2");
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+[data-theme="ballpoint"] {
+  color-scheme: light;
+
+  --theme-bg: #f6f7fb;
+  --theme-surface: #ffffff;
+  --theme-sunken: #eceff6;
+  --theme-line: #dfe3ee;
+  --theme-line-soft: #e9ecf3;
+
+  --theme-ink: #1c2340; /* navy ink */
+  --theme-ink-soft: #343c5a;
+  --theme-muted: #525a73;
+  --theme-faint: #7d849b;
+
+  --theme-accent: #3b6fe0; /* ballpoint blue */
+  --theme-accent-strong: #2a55c2;
+  --theme-accent-deep: #2146a3;
+  --theme-accent-wash: #e3ebfc;
+  --theme-on-accent: #ffffff;
+
+  --theme-teal: #6a45b8; /* margin-pen violet */
+  --theme-teal-strong: #563496;
+  --theme-teal-wash: #ece6f7;
+
+  --theme-correct: #287047;
+  --theme-correct-wash: #def0e4;
+  --theme-wrong: #c23a3a;
+  --theme-wrong-strong: #a42f2f;
+  --theme-wrong-wash: #f8e0df;
+
+  --theme-font-body: "Atkinson Hyperlegible Next", system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --theme-font-display: var(--theme-font-body);
+
+  --theme-shadow-raised: 0 1px 0 #dfe3ee, 0 6px 14px -10px rgb(28 35 64 / 0.22);
+  --theme-shadow-overlay: 0 1px 0 #dfe3ee, 0 18px 36px -14px rgb(28 35 64 / 0.3);
+
+  /* Index-card rules, faint enough to read through. */
+  --theme-card-texture: repeating-linear-gradient(to bottom, transparent 0 27px, #e7edf9 27px 28px) 0 12px;
+}

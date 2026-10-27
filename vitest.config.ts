@@ -41,6 +41,8 @@ export default defineConfig(async () => {
             environment: "jsdom",
             include: ["src/**/*.test.{ts,tsx}"],
             setupFiles: ["./src/test/setup.ts"],
+            // CSS is empty in tests, except the theme files: themes.test.ts reads them.
+            css: { include: [/src\/themes\/.+\.css/] },
           },
         }),
       ],

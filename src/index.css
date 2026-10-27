@@ -66,6 +66,13 @@
   --shadow-overlay: var(--theme-shadow-overlay);
 }
 
+/* Study-card faces (flashcard, question): the surface with the theme's faint
+   pattern on top (--theme-card-texture, none in most themes). Instead of
+   bg-surface, never together with it. */
+@utility bg-card {
+  background: var(--theme-card-texture), var(--theme-surface);
+}
+
 /* The same in every theme. */
 @theme {
   --font-mono: "Anthropic Mono", ui-monospace, "SF Mono", Menlo, monospace;

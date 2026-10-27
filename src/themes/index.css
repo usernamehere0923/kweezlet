@@ -2,3 +2,7 @@
    a later [data-theme] rule of the same specificity wins over it.
    A browser downloads a theme's fonts only once something uses them. */
 @import "./cardigan.css";
+@import "./midnight-cram.css";
+@import "./ballpoint.css";
+@import "./unicorn-sneeze.css";
+@import "./kung-fu.css";

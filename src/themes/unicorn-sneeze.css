@@ -1,0 +1,88 @@
+/* Unicorn Sneeze: the pencil case. Blush paper, aubergine ink, gel-pen pink
+   primary, turquoise secondary, two rounded fonts. Wrong is a tomato red, kept
+   well away from the pink. Study cards get a dot-journal pattern. */
+
+/* Fredoka, latin-ext */
+@font-face {
+  font-family: "Fredoka";
+  src: url("../fonts/Fredoka/Fredoka-latin-ext.woff2") format("woff2");
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* Fredoka, latin */
+@font-face {
+  font-family: "Fredoka";
+  src: url("../fonts/Fredoka/Fredoka-latin.woff2") format("woff2");
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* Nunito, latin-ext */
+@font-face {
+  font-family: "Nunito";
+  src: url("../fonts/Nunito/Nunito-latin-ext.woff2") format("woff2");
+  font-weight: 200 1000;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* Nunito, latin */
+@font-face {
+  font-family: "Nunito";
+  src: url("../fonts/Nunito/Nunito-latin.woff2") format("woff2");
+  font-weight: 200 1000;
+  font-style: normal;
+  font-display: swap;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+[data-theme="unicorn-sneeze"] {
+  color-scheme: light;
+
+  --theme-bg: #fbf4f8; /* blush paper */
+  --theme-surface: #ffffff;
+  --theme-sunken: #f3e6ef;
+  --theme-line: #ecd9e6;
+  --theme-line-soft: #f4e7f0;
+
+  --theme-ink: #2a1838; /* aubergine, never black */
+  --theme-ink-soft: #46324f;
+  --theme-muted: #6c5876;
+  --theme-faint: #94849c;
+
+  --theme-accent: #e0479e; /* gel-pen pink */
+  --theme-accent-strong: #b8287c;
+  --theme-accent-deep: #9a1f67;
+  --theme-accent-wash: #fbe1f0;
+  --theme-on-accent: #ffffff;
+
+  --theme-teal: #0e7f86; /* turquoise gel */
+  --theme-teal-strong: #0a666c;
+  --theme-teal-wash: #d9f1f2;
+
+  --theme-correct: #287047;
+  --theme-correct-wash: #dff2e5;
+  --theme-wrong: #d1452b; /* tomato */
+  --theme-wrong-strong: #ad3520;
+  --theme-wrong-wash: #fde3dc;
+
+  --theme-font-body: "Nunito", system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --theme-font-display: "Fredoka", "Nunito", system-ui, sans-serif;
+
+  --theme-shadow-raised: 0 1px 2px rgb(42 24 56 / 0.05), 0 10px 24px -12px rgb(184 40 124 / 0.25);
+  --theme-shadow-overlay: 0 24px 48px -14px rgb(42 24 56 / 0.3);
+
+  /* Dot journal. */
+  --theme-card-texture: radial-gradient(circle, #f3d7e7 1.2px, transparent 1.5px) 0 0 / 22px 22px;
+}

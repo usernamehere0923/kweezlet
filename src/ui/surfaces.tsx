@@ -6,6 +6,9 @@ import { Heading } from "./Text";
 /** The look of a Card, for pieces that are a card but render their own element. */
 export const surface = "rounded-ui-xl border border-line-soft bg-surface";
 
+/** A study card's face (flashcard, question): a surface with the theme's card pattern. */
+export const studySurface = "rounded-ui-xl border border-line-soft bg-card";
+
 /** The white-ish box everything sits in. With onClick it is a button that lifts on hover. */
 export function Card({
   children,
