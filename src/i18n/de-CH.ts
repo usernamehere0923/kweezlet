@@ -75,6 +75,11 @@ export const deCH: Record<keyof typeof en, string> = {
   "sets.termTooLong": "Ein Begriff oder eine Definition ist zu lang (höchstens 1000 Zeichen).",
   "sets.termsChanged":
     "Diese Begriffe wurden auf einem anderen Gerät geändert. Seite neu laden und nochmals versuchen.",
+  "sets.answerWith": "Antworten mit",
+  "sets.answerWith.both": "Beidem",
+  "sets.answerWith.term": "Begriff",
+  "sets.answerWith.definition": "Definition",
+  "sets.answerWithHint": "Womit du in Lernen, Wiederholen und Test antwortest.",
   "sets.import": "Importieren",
   "sets.importTitle": "Begriffe importieren",
   "sets.importLabel": "Deine Liste",

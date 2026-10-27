@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { Language } from "./languages";
+import type { AnswerWith } from "./sets";
 import type { AppEnv } from "./types";
 import { validate } from "./validate";
 
@@ -18,6 +19,8 @@ export type ReviewCard = {
   /** The set's languages, so the card can be spoken (worker/languages.ts). */
   termLang: Language | null;
   defLang: Language | null;
+  /** The set's choice of which side to ask for (worker/sets.ts). */
+  answerWith: AnswerWith;
 };
 
 type ReviewOverview = {
@@ -39,6 +42,7 @@ export const reviewRoutes = new Hono<AppEnv>()
     const { results } = await c.env.DB.prepare(
       `SELECT t.id, t.term, t.definition, st.streak,
               t.set_id AS setId, s.title AS setTitle, s.term_lang AS termLang, s.def_lang AS defLang,
+              s.answer_with AS answerWith,
               COUNT(*) OVER () AS dueCount
          FROM terms t
          JOIN sets s ON s.id = t.set_id AND s.user_id = t.user_id

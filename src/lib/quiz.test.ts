@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 import type { SetTerm } from "../../worker/sets";
 import {
   buildMatchRound,
+  buildQuestion,
   buildTest,
   gradeQuestion,
   scoreTest,
@@ -97,6 +98,39 @@ describe("buildTest", () => {
     expect(telling.promptSide).toBe("term");
   });
 
+  test("a set answered with one side always asks for that side", () => {
+    const sides = (answerWith: "term" | "definition") =>
+      new Set(
+        buildTest(TERMS, { count: 4, types: ["choice", "written"], matching: false, answerWith }).questions.map(
+          (question) => question.promptSide,
+        ),
+      );
+    expect(sides("term")).toEqual(new Set(["definition"]));
+    expect(sides("definition")).toEqual(new Set(["term"]));
+    const paper = buildTest(TERMS, { count: 4, types: ["choice"], matching: false, answerWith: "term" });
+    for (const question of paper.questions) {
+      expect(question.label).toBe("learn.askTerm");
+      expect(TERMS.map((term) => term.term)).toContain(question.answer);
+      expect(question.options.every((option) => TERMS.some((term) => term.term === option))).toBe(true);
+    }
+  });
+
+  test("the picture goes with a prompt showing the term, or any prompt of a set answered with the term", () => {
+    vi.spyOn(Math, "random").mockReturnValue(0); // asks for the term
+    expect(buildTest(TERMS, { count: 1, types: ["choice"], matching: false }).questions[0].showImage).toBe(false);
+    vi.spyOn(Math, "random").mockReturnValue(0.99); // shows the term
+    expect(buildTest(TERMS, { count: 1, types: ["choice"], matching: false }).questions[0].showImage).toBe(true);
+    const termSet = { count: 1, types: ["written" as const], matching: false, answerWith: "term" as const };
+    expect(buildTest(TERMS, termSet).questions[0].showImage).toBe(true);
+    const statement = buildTest(TERMS, { ...termSet, types: ["truefalse"] }).questions[0];
+    expect(statement.showImage).toBe(false);
+  });
+
+  test("buildQuestion follows the set's side too", () => {
+    expect(buildQuestion(TERMS, TERMS[0], "term").answer).toBe("el perro");
+    expect(buildQuestion(TERMS, TERMS[0], "definition").answer).toBe("the dog");
+  });
+
   test("a true/false statement has no side: it mixes both languages", () => {
     const statement = buildTest(TERMS, { count: 1, types: ["truefalse"], matching: false }).questions[0];
     expect(statement.kind).toBe("truefalse");
@@ -159,6 +193,7 @@ const choice: TestQuestion = {
   termId: 1,
   prompt: "el perro",
   promptSide: "term",
+  showImage: true,
   label: "learn.askDefinition",
   answer: "the dog",
   options: ["the dog", "the cat"],
@@ -168,6 +203,7 @@ const written: TestQuestion = {
   termId: 1,
   prompt: "el perro",
   promptSide: "term",
+  showImage: true,
   label: "learn.askDefinition",
   answer: "the dog",
   options: [],
@@ -177,6 +213,7 @@ const statement: TestQuestion = {
   termId: 1,
   prompt: "el perro — the cat",
   promptSide: null,
+  showImage: false,
   label: "test.statement",
   answer: "false",
   options: ["true", "false"],
@@ -225,6 +262,7 @@ describe("speechFor", () => {
     termId: 1,
     prompt: "el perro",
     promptSide,
+    showImage: false,
     label: "test.statement",
     answer: "the dog",
     options: [],

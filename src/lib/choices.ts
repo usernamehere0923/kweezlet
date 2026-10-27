@@ -1,4 +1,5 @@
 import { LANGUAGES, type Language } from "../../worker/languages";
+import type { AnswerWith } from "../../worker/sets";
 import { LANG_KEY, type TKey } from "../i18n";
 import type { Option } from "../ui";
 
@@ -21,5 +22,14 @@ export function kindOptions(t: Translate): Option<CardKind>[] {
     { value: "vocabulary", label: t("ai.kind.vocabulary") },
     { value: "questions", label: t("ai.kind.questions") },
     { value: "terms", label: t("ai.kind.terms") },
+  ];
+}
+
+/** Which side a set's questions ask for: the set form and the test setup offer the same. */
+export function answerWithOptions(t: Translate): Option<AnswerWith>[] {
+  return [
+    { value: "both", label: t("sets.answerWith.both") },
+    { value: "term", label: t("sets.answerWith.term") },
+    { value: "definition", label: t("sets.answerWith.definition") },
   ];
 }

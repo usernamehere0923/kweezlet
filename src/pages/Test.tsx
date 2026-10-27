@@ -39,6 +39,7 @@ export function TestPage() {
       count: next.count ?? set.terms.length,
       types: next.types,
       matching: next.matching,
+      answerWith: next.answerWith,
     });
     setChoices(next);
     setPaper(built);
@@ -72,7 +73,7 @@ export function TestPage() {
       {set.terms.length === 0 ? (
         <EmptyState icon="checkCircle" title={t("test.emptyTitle")} text={t("test.emptyText")} />
       ) : view === "setup" ? (
-        <TestSetup onStart={start} />
+        <TestSetup answerWith={set.answerWith} onStart={start} />
       ) : view === "paper" && paper ? (
         <TestPaperView
           paper={paper}

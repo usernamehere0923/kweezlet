@@ -25,7 +25,8 @@ type Side = "term" | "definition";
 export function FlashcardsPage() {
   const { t } = useT();
   const { id = "" } = useParams();
-  const [side, setSide] = useState<Side>("term");
+  // Until the user picks a side: the one the set's questions don't ask for.
+  const [pickedSide, setSide] = useState<Side | null>(null);
   const [filter, setFilter] = useState<DeckFilter>("all");
   const [flipped, setFlipped] = useState(false);
   const [started, setStarted] = useState(false);
@@ -34,6 +35,7 @@ export function FlashcardsPage() {
   // Another device marked or renamed something: catch up, keep the position.
   const { set, images, updateTerm, failed, retry } = useStudySet(id, ["sets", "study"]);
   const { deck, at, current, back, goTo: moveTo, reshuffle } = useDeck(set?.terms, filter);
+  const side: Side = pickedSide ?? (set?.answerWith === "term" ? "definition" : "term");
 
   /** Every move shows the next card's front. */
   function goTo(next: number, back?: boolean) {

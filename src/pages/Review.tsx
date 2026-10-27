@@ -39,6 +39,7 @@ export function ReviewPage() {
       return buildQuestion(
         pool.filter((candidate) => candidate.setId === card.setId),
         card,
+        card.answerWith,
       );
     },
     [],

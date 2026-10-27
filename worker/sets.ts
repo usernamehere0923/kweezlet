@@ -10,6 +10,10 @@ import { idParam, validate, validationError } from "./validate";
 
 const languageSchema = z.enum(LANGUAGES);
 
+/** Which side a set's questions ask for; "both" asks either way round. */
+export const ANSWER_WITH = ["both", "term", "definition"] as const;
+export type AnswerWith = (typeof ANSWER_WITH)[number];
+
 const searchQuery = z.object({ q: z.string().trim().max(200).optional() });
 const termShape = z.object({
   /** Present when the term already exists: it is updated, not re-inserted. */
@@ -22,6 +26,8 @@ const setBody = z.object({
   description: z.string().max(2000).optional(),
   termLang: languageSchema.nullish(),
   defLang: languageSchema.nullish(),
+  /** Left out: a new set asks both ways, an edited one keeps its choice. */
+  answerWith: z.enum(ANSWER_WITH).optional(),
   terms: z.array(termShape).min(1).max(500),
 });
 
@@ -31,6 +37,7 @@ type SetRow = {
   description: string;
   term_lang: string | null;
   def_lang: string | null;
+  answer_with: string;
   created_at: number;
   updated_at: number;
 };
@@ -45,7 +52,7 @@ type TermRow = {
 };
 
 /** The columns of SetRow, from the set row `s`. */
-const SET_COLUMNS = "s.id, s.title, s.description, s.term_lang, s.def_lang, s.created_at, s.updated_at";
+const SET_COLUMNS = "s.id, s.title, s.description, s.term_lang, s.def_lang, s.answer_with, s.created_at, s.updated_at";
 
 /** Joins a term `t` to the user's mark (ts) and answer stats (st) for it. */
 const TERM_PROGRESS_JOINS = `LEFT JOIN term_state ts ON ts.term_id = t.id AND ts.user_id = t.user_id
@@ -76,6 +83,8 @@ function toSetJson(row: SetRow & CountRow) {
     // Written through languageSchema, so the text is a known language or null.
     termLang: row.term_lang as Language | null,
     defLang: row.def_lang as Language | null,
+    // Written through the CHECK in migrations/0010_answer_with.sql.
+    answerWith: row.answer_with as AnswerWith,
     termCount: row.term_count,
     /** Terms known / learning (termProgress); the rest are new. */
     knownCount: row.known_count,
@@ -196,9 +205,9 @@ export const setRoutes = new Hono<AppEnv>()
     const [created] = await db.batch<{ id: number }>([
       db
         .prepare(
-          "INSERT INTO sets (user_id, title, description, term_lang, def_lang) VALUES (?, ?, ?, ?, ?) RETURNING id",
+          "INSERT INTO sets (user_id, title, description, term_lang, def_lang, answer_with) VALUES (?, ?, ?, ?, ?, ?) RETURNING id",
         )
-        .bind(user.id, ...setFields(body)),
+        .bind(user.id, ...setFields(body), body.answerWith ?? "both"),
       ...body.terms.map((t, position) =>
         db
           .prepare(
@@ -229,9 +238,11 @@ export const setRoutes = new Hono<AppEnv>()
     await db.batch([
       db
         .prepare(
-          "UPDATE sets SET title = ?, description = ?, term_lang = ?, def_lang = ?, updated_at = unixepoch() WHERE id = ? AND user_id = ?",
+          `UPDATE sets SET title = ?, description = ?, term_lang = ?, def_lang = ?,
+                answer_with = COALESCE(?, answer_with), updated_at = unixepoch()
+            WHERE id = ? AND user_id = ?`,
         )
-        .bind(...setFields(body), id, user.id),
+        .bind(...setFields(body), body.answerWith ?? null, id, user.id),
       ...termStatements(db, user.id, id, body.terms, ownedIds),
     ]);
     notifyLater(c, "sets");

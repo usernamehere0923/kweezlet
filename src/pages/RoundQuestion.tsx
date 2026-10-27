@@ -32,7 +32,7 @@ export function RoundQuestion({
       <QuestionCard
         label={t(question.label)}
         prompt={question.prompt}
-        image={question.promptSide === "term" ? images?.[question.termId] : undefined}
+        image={question.showImage ? images?.[question.termId] : undefined}
         answer={question.answer}
         options={question.options}
         typed={round.typed}

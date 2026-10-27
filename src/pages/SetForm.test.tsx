@@ -38,6 +38,7 @@ describe("set form", () => {
         description: "",
         termLang: null,
         defLang: null,
+        answerWith: "both",
         terms: [{ term: "el perro", definition: "the dog" }],
       }),
     );
@@ -140,6 +141,23 @@ describe("set form", () => {
     await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
     const body = calls.find((c) => c.method === "PATCH")?.body as { terms: { id: number }[] };
     expect(body.terms.map((term) => term.id)).toEqual([70, 71]);
+  });
+
+  test("the set's side is loaded and a new one is saved", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets/7": () => ({ json: { ...SPANISH_DETAIL, answerWith: "term" } }),
+      "PATCH /api/sets/7": () => ({ json: SPANISH_DETAIL }),
+    });
+    renderApp("/sets/7/edit");
+    const group = await screen.findByRole("radiogroup", { name: "Answer with" });
+    expect(within(group).getByRole("radio", { name: "Term" }).getAttribute("aria-checked")).toBe("true");
+    await userEvent.click(within(group).getByRole("radio", { name: "Definition" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "PATCH")?.body).toMatchObject({ answerWith: "definition" }),
+    );
   });
 
   test("the rows show their images, and removing one is saved after the set", async () => {

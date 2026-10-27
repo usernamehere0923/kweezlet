@@ -145,6 +145,7 @@ describe("GET /api/sets/:id", () => {
       description: "chapter 1",
       termLang: null,
       defLang: null,
+      answerWith: "both",
       termCount: 2,
       knownCount: 0,
       learningCount: 0,
@@ -219,6 +220,7 @@ describe("POST /api/sets", () => {
       description: "chapter 1",
       termLang: "es",
       defLang: "en",
+      answerWith: "both",
       termCount: 2,
       knownCount: 0,
       learningCount: 0,
@@ -426,6 +428,41 @@ describe("PATCH /api/sets/:id", () => {
       json: { title: "Hijacked", terms: [{ term: "x", definition: "y" }] },
     });
     expect(res.status).toBe(404);
+  });
+});
+
+describe("a set's side (answerWith)", () => {
+  const terms = [{ term: "el perro", definition: "the dog" }];
+  const create = (cookie: string, extra: object = {}) =>
+    api("/api/sets", { method: "POST", cookie, json: { title: "Animals", terms, ...extra } });
+
+  it("is both for a new set unless picked, and comes back with the set", async () => {
+    const { cookie } = await signedIn("anna");
+    const plain = (await (await create(cookie)).json()) as { answerWith: string };
+    expect(plain.answerWith).toBe("both");
+    const picked = (await (await create(cookie, { answerWith: "term" })).json()) as { id: number };
+    const detail = (await (await api(`/api/sets/${picked.id}`, { cookie })).json()) as { answerWith: string };
+    expect(detail.answerWith).toBe("term");
+    const list = (await (await api("/api/sets", { cookie })).json()) as { answerWith: string }[];
+    expect(list.map((set) => set.answerWith).sort()).toEqual(["both", "term"]);
+  });
+
+  it("is changed by an edit that names it and kept by one that doesn't", async () => {
+    const { cookie } = await signedIn("anna");
+    const { id } = (await (await create(cookie)).json()) as { id: number };
+    const patch = (extra: object) =>
+      api(`/api/sets/${id}`, { method: "PATCH", cookie, json: { title: "Animals", terms, ...extra } });
+    expect(((await (await patch({ answerWith: "definition" })).json()) as { answerWith: string }).answerWith).toBe(
+      "definition",
+    );
+    expect(((await (await patch({})).json()) as { answerWith: string }).answerWith).toBe("definition");
+  });
+
+  it("refuses a side that does not exist", async () => {
+    const { cookie } = await signedIn("anna");
+    const res = await create(cookie, { answerWith: "sideways" });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toEqual({ error: "validation", fields: { answerWith: "invalid_value" } });
   });
 });
 

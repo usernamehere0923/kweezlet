@@ -1,5 +1,7 @@
 import { useState } from "react";
+import type { AnswerWith } from "../../../worker/sets";
 import { useT, type TKey } from "../../i18n";
+import { answerWithOptions } from "../../lib/choices";
 import type { QuestionKind } from "../../lib/quiz";
 import { Button, Card, Checkbox, Heading, SegmentedControl } from "../../ui";
 
@@ -14,6 +16,7 @@ export type TestChoices = {
   matching: boolean;
   /** Minutes on the clock; null = no timer. */
   minutes: number | null;
+  answerWith: AnswerWith;
 };
 
 const KINDS: { kind: QuestionKind; label: TKey }[] = [
@@ -22,13 +25,20 @@ const KINDS: { kind: QuestionKind; label: TKey }[] = [
   { kind: "written", label: "test.written" },
 ];
 
-/** The settings form before a test: length, question types, timer. */
-export function TestSetup({ onStart }: { onStart: (choices: TestChoices) => void }) {
+/** The settings form before a test: length, question types, direction, timer. The set's direction comes first. */
+export function TestSetup({
+  answerWith: fromSet,
+  onStart,
+}: {
+  answerWith: AnswerWith;
+  onStart: (choices: TestChoices) => void;
+}) {
   const { t, tn } = useT();
   const [length, setLength] = useState<LengthChoice>("5");
   const [kinds, setKinds] = useState<Record<QuestionKind, boolean>>({ choice: true, truefalse: true, written: true });
   const [matching, setMatching] = useState(true);
   const [timer, setTimer] = useState<TimerChoice>("off");
+  const [answerWith, setAnswerWith] = useState<AnswerWith>(fromSet);
 
   const types = KINDS.filter(({ kind }) => kinds[kind]).map(({ kind }) => kind);
   const canStart = matching || types.length > 0;
@@ -70,6 +80,18 @@ export function TestSetup({ onStart }: { onStart: (choices: TestChoices) => void
 
       <Card>
         <Heading level={3} className="mb-3">
+          {t("sets.answerWith")}
+        </Heading>
+        <SegmentedControl<AnswerWith>
+          label={t("sets.answerWith")}
+          value={answerWith}
+          onChange={setAnswerWith}
+          options={answerWithOptions(t)}
+        />
+      </Card>
+
+      <Card>
+        <Heading level={3} className="mb-3">
           {t("test.timer")}
         </Heading>
         <SegmentedControl<TimerChoice>
@@ -94,6 +116,7 @@ export function TestSetup({ onStart }: { onStart: (choices: TestChoices) => void
               types,
               matching,
               minutes: timer === "off" ? null : Number(timer),
+              answerWith,
             })
           }
         >

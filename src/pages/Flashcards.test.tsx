@@ -127,6 +127,19 @@ describe("flashcards", () => {
     expect(onFront("el perro")).toBe(false);
   });
 
+  test("a set answered with the term starts on the definition", async () => {
+    mockApi(flashcardsApi({ ...SPANISH_DETAIL, answerWith: "term" }));
+    renderApp("/sets/7/flashcards");
+    await screen.findByText("el perro");
+    const onFront = (text: string) => screen.getByText(text).closest('[aria-hidden="false"]') !== null;
+    expect(onFront("the dog")).toBe(true);
+    expect((screen.getByRole("radio", { name: "Definition first" }) as HTMLElement).getAttribute("aria-checked")).toBe(
+      "true",
+    );
+    await userEvent.click(screen.getByRole("radio", { name: "Term first" }));
+    expect(onFront("el perro")).toBe(true);
+  });
+
   test("shuffling keeps all the cards", async () => {
     mockApi(flashcardsApi());
     renderApp("/sets/7/flashcards");

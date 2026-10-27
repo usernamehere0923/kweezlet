@@ -1,5 +1,5 @@
 import type { Language } from "../../worker/languages";
-import type { SetTerm } from "../../worker/sets";
+import type { AnswerWith, SetTerm } from "../../worker/sets";
 import type { TKey } from "../i18n";
 import type { Speech } from "../ui";
 import { gradeAnswer } from "./grading";
@@ -29,6 +29,12 @@ export type TestQuestion = {
    * for true/false: the statement mixes both languages, so it isn't spoken.
    */
   promptSide: "term" | "definition" | null;
+  /**
+   * Whether the term's picture goes with the prompt: when the prompt is the
+   * term, and when the set is answered with the term (a picture vocabulary
+   * set). A set asked both ways keeps it off questions asking for the term.
+   */
+  showImage: boolean;
   label: TKey;
   /** The right option, the expected typed text, or "true"/"false". */
   answer: string;
@@ -88,12 +94,22 @@ type TestSettings = {
   count: number;
   types: QuestionKind[];
   matching: boolean;
+  /** Which side the questions ask for; "both" when left out. */
+  answerWith?: AnswerWith;
 };
 
-/** One question on `term`; the wrong options come from `pool`. Test picks the kind, Learn and Review go through buildQuestion. */
-function makeQuestion(term: QuestionTerm, pool: QuestionTerm[], kind: QuestionKind): TestQuestion {
-  // Written and multiple choice questions ask both ways round.
-  const askTerm = kind === "truefalse" ? false : Math.random() < 0.5;
+/**
+ * One question on `term`; the wrong options come from `pool`. Test picks the
+ * kind, Learn and Review go through buildQuestion. `answerWith` is the side
+ * the user answers with; true/false states the pair either way.
+ */
+function makeQuestion(
+  term: QuestionTerm,
+  pool: QuestionTerm[],
+  kind: QuestionKind,
+  answerWith: AnswerWith = "both",
+): TestQuestion {
+  const askTerm = kind === "truefalse" ? false : answerWith === "both" ? Math.random() < 0.5 : answerWith === "term";
   const answer = askTerm ? term.term : term.definition;
   const others = pool.filter((candidate) => candidate.id !== term.id);
 
@@ -108,6 +124,7 @@ function makeQuestion(term: QuestionTerm, pool: QuestionTerm[], kind: QuestionKi
       label: "test.statement",
       prompt: `${term.term} — ${shown}`,
       promptSide: null,
+      showImage: false,
       answer: wrong ? "false" : "true",
       options: ["true", "false"],
     };
@@ -122,6 +139,7 @@ function makeQuestion(term: QuestionTerm, pool: QuestionTerm[], kind: QuestionKi
     label: askTerm ? "learn.askTerm" : "learn.askDefinition",
     prompt: askTerm ? term.definition : term.term,
     promptSide: askTerm ? "definition" : "term",
+    showImage: !askTerm || answerWith === "term",
     answer,
     options: kind === "written" ? [] : shuffle([...new Set([answer, ...distractors])]),
   };
@@ -132,8 +150,8 @@ function makeQuestion(term: QuestionTerm, pool: QuestionTerm[], kind: QuestionKi
  * then written. Without other terms there is nothing to choose from, so those
  * are written from the start. Learn and the review queue use it.
  */
-export function buildQuestion(pool: QuestionTerm[], term: QuestionTerm): TestQuestion {
-  return makeQuestion(term, pool, term.streak >= 1 || pool.length < 2 ? "written" : "choice");
+export function buildQuestion(pool: QuestionTerm[], term: QuestionTerm, answerWith?: AnswerWith): TestQuestion {
+  return makeQuestion(term, pool, term.streak >= 1 || pool.length < 2 ? "written" : "choice", answerWith);
 }
 
 /** A fresh paper: shuffled terms, question types in turn, one matching round. */
@@ -149,7 +167,7 @@ export function buildTest(terms: SetTerm[], settings: TestSettings): TestPaper {
     : 0;
   const pick = mixed.slice(pairs, pairs + settings.count);
   return {
-    questions: pick.map((term, i) => makeQuestion(term, terms, kinds[i % kinds.length])),
+    questions: pick.map((term, i) => makeQuestion(term, terms, kinds[i % kinds.length], settings.answerWith)),
     matching: mixed.slice(0, pairs).map(toPair),
   };
 }

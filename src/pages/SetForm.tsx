@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router";
 import type { Language } from "../../worker/languages";
+import type { AnswerWith } from "../../worker/sets";
 import { useT, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
-import { languageOptions } from "../lib/choices";
+import { answerWithOptions, languageOptions } from "../lib/choices";
 import { checkSetForm, saveImageChanges, termsError, useTermRows } from "../lib/setForm";
 import { ImportTerms } from "./setForm/ImportTerms";
 import {
@@ -16,6 +17,7 @@ import {
   Select,
   PageLoadFailed,
   PageLoading,
+  SegmentedControl,
   TermEditorRow,
   Text,
   TextField,
@@ -34,6 +36,7 @@ export function SetFormPage() {
   const [description, setDescription] = useState("");
   const [termLang, setTermLang] = useState<Language | "">("");
   const [defLang, setDefLang] = useState<Language | "">("");
+  const [answerWith, setAnswerWith] = useState<AnswerWith>("both");
   const { rows, setRows, rowRefs, update, updateImage, next, remove, add, append } = useTermRows();
   const [importing, setImporting] = useState(false);
   const [errors, setErrors] = useState<Record<string, TKey>>({});
@@ -60,6 +63,7 @@ export function SetFormPage() {
           setDescription(set.description);
           setTermLang(set.termLang ?? "");
           setDefLang(set.defLang ?? "");
+          setAnswerWith(set.answerWith);
           setRows(
             set.terms.map((term) => ({
               id: term.id,
@@ -96,6 +100,7 @@ export function SetFormPage() {
         description: description.trim(),
         termLang: termLang || null,
         defLang: defLang || null,
+        answerWith,
         terms: kept.map((row) => {
           const term = { term: row.term.trim(), definition: row.definition.trim() };
           return row.id === undefined ? term : { ...term, id: row.id };
@@ -160,6 +165,21 @@ export function SetFormPage() {
           </div>
           <Text variant="small" className="mt-3">
             {t("sets.langHint")}
+          </Text>
+        </Card>
+
+        <Card>
+          <Heading level={3} className="mb-3">
+            {t("sets.answerWith")}
+          </Heading>
+          <SegmentedControl<AnswerWith>
+            label={t("sets.answerWith")}
+            value={answerWith}
+            onChange={setAnswerWith}
+            options={answerWithOptions(t)}
+          />
+          <Text variant="small" className="mt-3">
+            {t("sets.answerWithHint")}
           </Text>
         </Card>
 
