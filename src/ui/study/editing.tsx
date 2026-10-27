@@ -1,4 +1,4 @@
-import { useImperativeHandle, useRef, type KeyboardEvent, type Ref } from "react";
+import { useImperativeHandle, useLayoutEffect, useRef, type KeyboardEvent, type Ref } from "react";
 import type { TermProgress } from "../../../worker/progress";
 import { useT } from "../../i18n";
 import { cx } from "../cx";
@@ -25,6 +25,7 @@ export function Cell({
   onChange,
   onEnter,
   wrap = false,
+  maxLength,
 }: {
   ref?: Ref<HTMLInputElement>;
   label: string;
@@ -32,9 +33,19 @@ export function Cell({
   onChange: (value: string) => void;
   onEnter?: () => void;
   wrap?: boolean;
+  maxLength?: number;
 }) {
+  const area = useRef<HTMLTextAreaElement>(null);
+  // Browsers without field-sizing (older iOS Safari, Firefox): grown by hand.
+  useLayoutEffect(() => {
+    const el = area.current;
+    if (!el || (typeof CSS !== "undefined" && CSS.supports?.("field-sizing", "content"))) return;
+    el.style.height = "auto";
+    if (el.scrollHeight > 0) el.style.height = `${el.scrollHeight + el.offsetHeight - el.clientHeight}px`;
+  }, [value]);
   const keys = {
     value,
+    maxLength,
     onKeyDown: (e: KeyboardEvent) => {
       if (e.key === "Enter") {
         e.preventDefault();
@@ -46,6 +57,7 @@ export function Cell({
     <label className="block">
       {wrap ? (
         <textarea
+          ref={area}
           {...keys}
           rows={1}
           // A pasted line break would end up inside the card: a space instead.

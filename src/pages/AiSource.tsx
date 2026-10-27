@@ -2,8 +2,9 @@ import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useNavigate, useParams } from "react-router";
 import type { DraftDetail } from "../../worker/ai";
 import { useT, type TKey } from "../i18n";
-import { api, offline } from "../lib/api";
-import { aiErrorMessage } from "../lib/cost";
+import { api } from "../lib/api";
+import { kindOptions, type CardKind } from "../lib/choices";
+import { aiRefusal } from "../lib/cost";
 import {
   fits,
   MAX_BODY_CHARS,
@@ -36,8 +37,12 @@ import {
 } from "../ui";
 
 type Source = "file" | "text" | "photo";
-type Kind = "auto" | "vocabulary" | "questions" | "terms";
 type HowMany = "0" | "10" | "25" | "50";
+
+/** The name a draft keeps of its material, as the server stores it (trimmed, at most 200). */
+const draftName = (name: string) => name.slice(0, 200).trim();
+/** A draft made from a file, not from pasted text ("pasted") or photos (a picture's name). */
+const FROM_FILE = /\.(pdf|docx|pptx|xlsx|txt|md)$/i;
 
 const FILE_ERRORS: Record<MaterialErrorCode, TKey> = {
   old_format: "ai.source.error.oldFormat",
@@ -61,7 +66,7 @@ export function AiSourcePage({ more = false }: { more?: boolean }) {
   const [material, setMaterial] = useState<Material | null>(null);
   const [picked, setPicked] = useState<Set<number>>(new Set());
   const [pasted, setPasted] = useState("");
-  const [kind, setKind] = useState<Kind>("auto");
+  const [kind, setKind] = useState<CardKind>("auto");
   const [howMany, setHowMany] = useState<HowMany>("0");
   const [instructions, setInstructions] = useState("");
   const [reading, setReading] = useState(false);
@@ -89,7 +94,7 @@ export function AiSourcePage({ more = false }: { more?: boolean }) {
   // More cards from the draft's own file keep its page numbers (the pages it
   // had are marked, sending one again replaces it). Anything else is numbered
   // after the draft's pages, so it never overwrites the material of its cards.
-  const sameFile = source === "file" && material !== null && material.name.slice(0, 200) === draft?.sourceName;
+  const sameFile = source === "file" && material !== null && draftName(material.name) === draft?.sourceName;
   const used = new Set(sameFile && draft ? draft.pages.map((page) => page.n) : []);
   const offset = !draft || sameFile ? 0 : Math.max(0, ...draft.pages.map((page) => page.n));
 
@@ -168,7 +173,7 @@ export function AiSourcePage({ more = false }: { more?: boolean }) {
         return;
       }
       const json = {
-        sourceName: current.name.slice(0, 200),
+        sourceName: draftName(current.name),
         kind,
         maxCards: Number(howMany),
         instructions: instructions.trim(),
@@ -183,17 +188,7 @@ export function AiSourcePage({ more = false }: { more?: boolean }) {
         navigate(`/create/ai/${(await res.json()).id}`);
         return;
       }
-      if (offline(res) || res.status >= 500) return; // api.ts already says why
-      if ((res.status as number) === 413) {
-        setError(t("ai.source.error.tooLarge"));
-        return;
-      }
-      const body = (await res.json().catch(() => ({}))) as { error?: string; capNanos?: number };
-      setError(
-        body.error === "validation"
-          ? t("ai.source.error.invalid")
-          : aiErrorMessage(t, body.error ?? null, body.capNanos),
-      );
+      setError(await aiRefusal(t, res, () => "ai.source.error.invalid"));
     } catch {
       // Drawing a scanned page failed.
       setError(t("ai.source.error.unreadable"));
@@ -214,23 +209,8 @@ export function AiSourcePage({ more = false }: { more?: boolean }) {
       navigate(`/create/ai/${draftId}`);
       return;
     }
-    if (offline(res) || res.status >= 500) return;
-    if ((res.status as number) === 413) {
-      setError(t("ai.source.error.tooLarge"));
-      return;
-    }
-    const body = (await res.json().catch(() => ({}))) as {
-      error?: string;
-      capNanos?: number;
-      fields?: Record<string, string>;
-    };
-    if (body.error === "validation") {
-      setError(t(body.fields?.cards ? "ai.draft.full" : "ai.source.error.invalid"));
-    } else if (res.status === 404) {
-      setMissing(true);
-    } else {
-      setError(aiErrorMessage(t, body.error ?? null, body.capNanos));
-    }
+    if (res.status === 404) setMissing(true);
+    else setError(await aiRefusal(t, res, (fields) => (fields.cards ? "ai.draft.full" : "ai.source.error.invalid")));
   }
 
   if (missing) {
@@ -248,12 +228,6 @@ export function AiSourcePage({ more = false }: { more?: boolean }) {
     { value: "text", label: t("ai.source.text") },
     { value: "photo", label: t("ai.source.photo") },
   ];
-  const kinds: Option<Kind>[] = [
-    { value: "auto", label: t("ai.kind.auto") },
-    { value: "vocabulary", label: t("ai.kind.vocabulary") },
-    { value: "questions", label: t("ai.kind.questions") },
-    { value: "terms", label: t("ai.kind.terms") },
-  ];
   const amounts: Option<HowMany>[] = [
     { value: "0", label: t("ai.source.howManyAuto") },
     { value: "10", label: "10" },
@@ -268,7 +242,15 @@ export function AiSourcePage({ more = false }: { more?: boolean }) {
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-5">
       {more ? (
-        <PageTitle subtitle={t("ai.more.subtitle", { name: draft?.sourceName ?? "" })}>{t("ai.draft.more")}</PageTitle>
+        <PageTitle
+          subtitle={
+            draft && FROM_FILE.test(draft.sourceName)
+              ? t("ai.more.subtitle", { name: draft.sourceName })
+              : t("ai.more.subtitleOther")
+          }
+        >
+          {t("ai.draft.more")}
+        </PageTitle>
       ) : (
         <PageTitle subtitle={t("ai.source.subtitle")}>{t("ai.source.title")}</PageTitle>
       )}
@@ -361,7 +343,7 @@ export function AiSourcePage({ more = false }: { more?: boolean }) {
         {/* More cards are of the draft's kind and as many as the pages hold. */}
         {!more && (
           <>
-            <Select label={t("ai.source.kind")} value={kind} onChange={setKind} options={kinds} />
+            <Select label={t("ai.source.kind")} value={kind} onChange={setKind} options={kindOptions(t)} />
             <div className="flex flex-col gap-2">
               <Text variant="small" className="font-semibold text-ink-soft">
                 {t("ai.source.howMany")}

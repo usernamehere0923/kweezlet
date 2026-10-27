@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router";
-import { LANGUAGES, type Language } from "../../worker/languages";
-import { LANG_KEY, useT, type TKey } from "../i18n";
+import type { Language } from "../../worker/languages";
+import { useT, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
+import { languageOptions } from "../lib/choices";
 import { checkSetForm, saveImageChanges, termsError, useTermRows } from "../lib/setForm";
 import {
   Button,
@@ -18,7 +19,6 @@ import {
   Text,
   TextField,
   useToast,
-  type Option,
 } from "../ui";
 
 /** Create (no id) or edit (id in the URL) a study set. */
@@ -123,10 +123,7 @@ export function SetFormPage() {
     return <PageLoading />;
   }
 
-  const languageOptions: Option<Language | "">[] = [
-    { value: "", label: t("lang.none") },
-    ...LANGUAGES.map((lang) => ({ value: lang, label: t(LANG_KEY[lang]) })),
-  ];
+  const languages = languageOptions(t);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -156,8 +153,8 @@ export function SetFormPage() {
             {t("sets.languages")}
           </Heading>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Select label={t("sets.langTerms")} value={termLang} onChange={setTermLang} options={languageOptions} />
-            <Select label={t("sets.langDefs")} value={defLang} onChange={setDefLang} options={languageOptions} />
+            <Select label={t("sets.langTerms")} value={termLang} onChange={setTermLang} options={languages} />
+            <Select label={t("sets.langDefs")} value={defLang} onChange={setDefLang} options={languages} />
           </div>
           <Text variant="small" className="mt-3">
             {t("sets.langHint")}

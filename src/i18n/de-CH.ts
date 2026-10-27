@@ -302,8 +302,6 @@ export const deCH: Record<keyof typeof en, string> = {
   "ai.draft.title": "Deine Karten",
   "ai.draft.making": "Karten werden erstellt…",
   "ai.draft.makingHint": "Meist 20 bis 60 Sekunden. Du kannst die App solange schliessen.",
-  "ai.draft.ready_one": "{count} Karte ist bereit.",
-  "ai.draft.ready_other": "{count} Karten sind bereit.",
   "ai.draft.missing": "Dieser Entwurf ist weg",
   "ai.draft.cards_one": "{count} Karte",
   "ai.draft.cards_other": "{count} Karten",
@@ -328,6 +326,10 @@ export const deCH: Record<keyof typeof en, string> = {
   "ai.more.subtitle":
     "Die Datei wird nicht aufbewahrt: Wähle {name} nochmals, um weitere Seiten auszuwählen. Karten, die der Entwurf schon hat, werden übersprungen.",
   "ai.more.create": "Karten hinzufügen",
+  "ai.more.subtitleOther":
+    "Füge Seiten aus einer Datei, weiteren Text oder Fotos hinzu. Karten, die der Entwurf schon hat, werden übersprungen.",
+  "ai.draft.editRefused":
+    "Diese Änderung konnte nicht gespeichert werden. Der Entwurf zeigt jetzt seinen aktuellen Stand.",
   "ai.save.heading": "Speichern in",
   "ai.save.new": "Neues Set",
   "ai.save.existing": "Bestehendes Set",

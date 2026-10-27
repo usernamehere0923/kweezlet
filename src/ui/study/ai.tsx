@@ -101,6 +101,9 @@ export function PageTile({
   );
 }
 
+/** A card side holds at most this many characters (worker/ai.ts draftCard). */
+const MAX_SIDE_CHARS = 1000;
+
 /**
  * One card the AI proposed, on the draft's review screen: keep it or not,
  * edit it, see its source quote. An unverified card (its quote is not in the
@@ -152,8 +155,20 @@ export function DraftCard({
         </span>
       </div>
       <div className="grid gap-5 md:grid-cols-2 md:gap-8">
-        <Cell label={t("study.term")} value={term} onChange={(value) => onChange(value, definition)} wrap />
-        <Cell label={t("study.definition")} value={definition} onChange={(value) => onChange(term, value)} wrap />
+        <Cell
+          label={t("study.term")}
+          value={term}
+          onChange={(value) => onChange(value, definition)}
+          wrap
+          maxLength={MAX_SIDE_CHARS}
+        />
+        <Cell
+          label={t("study.definition")}
+          value={definition}
+          onChange={(value) => onChange(term, value)}
+          wrap
+          maxLength={MAX_SIDE_CHARS}
+        />
       </div>
       {!verified && <p className="mt-3 text-sm text-muted">{t("ai.unverifiedHint")}</p>}
       {source ? (

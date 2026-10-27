@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router";
-import { LANGUAGES, type Language } from "../../worker/languages";
 import { LANG_KEY, useT, type TKey } from "../i18n";
-import { api, offline } from "../lib/api";
-import { aiErrorMessage } from "../lib/cost";
+import { api } from "../lib/api";
+import { kindOptions, languageOptions, type CardKind } from "../lib/choices";
+import { aiErrorMessage, aiRefusal } from "../lib/cost";
 import { useDraft, type DraftEdits } from "../lib/draft";
 import { useLive } from "../lib/live";
 import {
@@ -28,20 +28,20 @@ import {
   type Option,
 } from "../ui";
 
-type Kind = "auto" | "vocabulary" | "questions" | "terms";
 type Target = "new" | "existing";
 
 /** A draft holds at most this many cards (worker/ai/pages.ts MAX_DRAFT_CARDS). */
 const MAX_DRAFT_CARDS = 500;
 
 /** What the save route's validation answers mean here. */
-const SAVE_ERRORS: Record<string, TKey> = {
-  "title:too_small": "ai.save.error.title",
-  "cards:too_small": "ai.save.error.none",
-  "cards:invalid_value": "ai.save.error.bothSides",
-  "cards:too_big": "ai.save.error.tooMany",
-  "setId:invalid_value": "ai.save.error.pickSet",
-};
+function saveError(fields: Record<string, TKey>): TKey {
+  if (fields.title) return "ai.save.error.title";
+  if (fields.setId) return "ai.save.error.pickSet";
+  if (fields.cards === "validation.too_small") return "ai.save.error.none";
+  if (fields.cards === "validation.too_big") return "ai.save.error.tooMany";
+  if (fields.cards) return "ai.save.error.bothSides";
+  return "ai.source.error.invalid";
+}
 
 /**
  * /create/ai/:draftId: the cards the AI made, to check before they become a
@@ -60,7 +60,7 @@ export function AiDraftPage() {
   const [busy, setBusy] = useState<"retry" | "regenerate" | "discard" | "save" | "more" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [asking, setAsking] = useState<"regenerate" | "discard" | null>(null);
-  const [kind, setKind] = useState<Kind>("auto");
+  const [kind, setKind] = useState<CardKind>("auto");
 
   useLive("ai", () => void load());
 
@@ -78,14 +78,12 @@ export function AiDraftPage() {
   const targetNow: Target = target ?? (draft?.setId != null ? "existing" : "new");
 
   /** A run refused or a route that answered with an AI error: say why. */
-  async function explain(res: Response) {
-    if (offline(res) || res.status >= 500) return; // api.ts already says why
-    const body = (await res.json().catch(() => ({}))) as { error?: string; capNanos?: number };
-    setError(aiErrorMessage(t, body.error ?? null, body.capNanos));
+  async function explain(res: Response, validation: (fields: Record<string, TKey>) => TKey = saveError) {
+    setError(await aiRefusal(t, res, validation));
   }
 
   /** Makes the cards anew (a failed first run, or Regenerate). Unsent edits are dropped. */
-  async function regenerate(as: Kind, why: "retry" | "regenerate") {
+  async function regenerate(as: CardKind, why: "retry" | "regenerate") {
     setBusy(why);
     setError(null);
     await forget();
@@ -149,11 +147,7 @@ export function AiDraftPage() {
       navigate(`/sets/${(await res.json()).setId}`);
       return;
     }
-    if (res.status === 400) {
-      const body = (await res.json().catch(() => ({}))) as { fields?: Record<string, string> };
-      const [field, code] = Object.entries(body.fields ?? {})[0] ?? [];
-      setError(t(SAVE_ERRORS[`${field}:${code}`] ?? "ai.source.error.invalid"));
-    } else if (res.status === 404) {
+    if (res.status === 404) {
       await load(); // saved on another device meanwhile: the draft is gone
     } else {
       await explain(res);
@@ -174,18 +168,10 @@ export function AiDraftPage() {
   const running = draft.status === "running";
   const kept = rows.filter((row) => row.card.checked).length;
   const unverified = rows.filter((row) => !row.card.verified).length;
-  const shownError = error ?? (refused && aiErrorMessage(t, refused));
+  const shownError =
+    error ?? (refused && (refused === "running" ? aiErrorMessage(t, "ai_running") : t("ai.draft.editRefused")));
 
-  const languageOptions: Option<Language | "">[] = [
-    { value: "", label: t("lang.none") },
-    ...LANGUAGES.map((lang) => ({ value: lang, label: t(LANG_KEY[lang]) })),
-  ];
-  const kinds: Option<Kind>[] = [
-    { value: "auto", label: t("ai.kind.auto") },
-    { value: "vocabulary", label: t("ai.kind.vocabulary") },
-    { value: "questions", label: t("ai.kind.questions") },
-    { value: "terms", label: t("ai.kind.terms") },
-  ];
+  const languages = languageOptions(t);
   const targets: Option<Target>[] = [
     { value: "new", label: t("ai.save.new") },
     { value: "existing", label: t("ai.save.existing") },
@@ -344,13 +330,13 @@ export function AiDraftPage() {
                     label={t("sets.langTerms")}
                     value={edits.termLang}
                     onChange={(termLang) => edit((now) => ({ ...now, termLang }), true)}
-                    options={languageOptions}
+                    options={languages}
                   />
                   <Select
                     label={t("sets.langDefs")}
                     value={edits.defLang}
                     onChange={(defLang) => edit((now) => ({ ...now, defLang }), true)}
-                    options={languageOptions}
+                    options={languages}
                   />
                 </div>
               </>
@@ -359,7 +345,11 @@ export function AiDraftPage() {
                 label={t("ai.save.set")}
                 hint={t("ai.save.setHint")}
                 value={edits.setId === null ? "" : String(edits.setId)}
-                onChange={(id) => edit((now) => ({ ...now, setId: id ? Number(id) : null }), true)}
+                onChange={(id) => {
+                  // Picked here: stays on "Existing set" even when "Choose a set" clears the pick.
+                  setTarget("existing");
+                  edit((now) => ({ ...now, setId: id ? Number(id) : null }), true);
+                }}
                 options={setOptions}
               />
             )}
@@ -401,7 +391,7 @@ export function AiDraftPage() {
       >
         <div className="flex flex-col gap-4">
           <p>{t(rows.length > 0 ? "ai.draft.regenerateText" : "ai.draft.regenerateEmptyText")}</p>
-          <Select label={t("ai.source.kind")} value={kind} onChange={setKind} options={kinds} />
+          <Select label={t("ai.source.kind")} value={kind} onChange={setKind} options={kindOptions(t)} />
         </div>
       </Modal>
       <Modal

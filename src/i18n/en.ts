@@ -296,8 +296,6 @@ export const en = {
   "ai.draft.title": "Your cards",
   "ai.draft.making": "Making cards…",
   "ai.draft.makingHint": "Usually 20 to 60 seconds. You can close the app meanwhile.",
-  "ai.draft.ready_one": "{count} card is ready.",
-  "ai.draft.ready_other": "{count} cards are ready.",
   "ai.draft.missing": "This draft is gone",
   "ai.draft.cards_one": "{count} card",
   "ai.draft.cards_other": "{count} cards",
@@ -320,6 +318,8 @@ export const en = {
   "ai.more.subtitle":
     "The file is not kept: choose {name} again to pick more pages. Cards the draft already has are skipped.",
   "ai.more.create": "Add cards",
+  "ai.more.subtitleOther": "Add pages from a file, more text or photos. Cards the draft already has are skipped.",
+  "ai.draft.editRefused": "This change could not be saved. The draft shows what it has now.",
   "ai.save.heading": "Save to",
   "ai.save.new": "New set",
   "ai.save.existing": "Existing set",

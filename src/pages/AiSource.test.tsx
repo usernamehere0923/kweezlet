@@ -239,6 +239,7 @@ describe("more cards for a draft", () => {
       }),
     });
     renderApp("/create/ai/9/more");
+    expect(await screen.findByText(/^The file is not kept: choose kurs.pdf again/)).toBeTruthy();
     await userEvent.click(await screen.findByRole("radio", { name: "Text" }));
     await userEvent.type(screen.getByLabelText("Text"), "Der Rhein fliesst durch Basel.");
     await userEvent.click(screen.getByRole("button", { name: "Add cards" }));
@@ -261,6 +262,12 @@ describe("more cards for a draft", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add cards" }));
     expect(await screen.findByText("Cards are already being made. Wait until they are done.")).toBeTruthy();
     unmount();
+
+    // A draft from pasted text has no file to choose again.
+    draft = { status: 200, json: { ...HAD, sourceName: "pasted" } };
+    const second = renderApp("/create/ai/9/more");
+    expect(await screen.findByText(/^Add pages from a file, more text or photos/)).toBeTruthy();
+    second.unmount();
 
     draft = { status: 404, json: {} };
     renderApp("/create/ai/9/more");

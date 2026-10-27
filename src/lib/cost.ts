@@ -1,6 +1,7 @@
 import { MODEL, PRICES } from "../../worker/ai/prices";
 import type { ZaiErrorKind } from "../../worker/ai/zai";
 import type { TKey } from "../i18n";
+import { fieldErrors, offline } from "./api";
 
 /** About this many tokens per character of text (z.ai counts roughly 4 per token). */
 const CHARS_PER_TOKEN = 4;
@@ -58,4 +59,21 @@ export function aiErrorMessage(
     return capNanos === undefined ? t("ai.error.capReached") : t("ai.error.cap", { cap: formatCost(capNanos) });
   }
   return t(AI_ERRORS[code as AiErrorCode] ?? "ai.error.server");
+}
+
+/**
+ * What to tell the user when an AI route said no; null when api.ts already
+ * did (offline, a server error). `validation` picks the message for a 400
+ * from its fields ({ cards: "validation.too_big" }).
+ */
+export async function aiRefusal(
+  t: (key: TKey, vars?: Record<string, string>) => string,
+  res: Response,
+  validation: (fields: Record<string, TKey>) => TKey,
+): Promise<string | null> {
+  if (offline(res) || res.status >= 500) return null;
+  if (res.status === 413) return t("ai.source.error.tooLarge");
+  if (res.status === 400) return t(validation(await fieldErrors(res)));
+  const body = (await res.json().catch(() => ({}))) as { error?: string; capNanos?: number };
+  return aiErrorMessage(t, body.error ?? null, body.capNanos);
 }

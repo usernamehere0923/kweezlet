@@ -95,13 +95,8 @@ describe("a draft", () => {
     await userEvent.clear(term);
     await userEvent.type(term, "el perrito");
     await waitFor(() => expect(calls.filter((c) => c.method === "PATCH")).toHaveLength(1));
-    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({
-      cards: [{ ...DOG, term: "el perrito" }, CAT],
-      title: "Animals",
-      termLang: "es",
-      defLang: "en",
-      setId: null,
-    });
+    // Only what changed goes out.
+    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ cards: [{ ...DOG, term: "el perrito" }, CAT] });
 
     await userEvent.click(within(card(2)).getByRole("checkbox"));
     await waitFor(() => expect(calls.filter((c) => c.method === "PATCH")).toHaveLength(2));
@@ -147,7 +142,7 @@ describe("a draft", () => {
     expect(await screen.findByText("1 card saved")).toBeTruthy();
     const order = calls.filter((c) => c.method !== "GET").map((c) => `${c.method} ${c.path}`);
     expect(order).toEqual(["PATCH /api/ai/drafts/9", "POST /api/ai/drafts/9/save"]);
-    expect(calls.find((c) => c.method === "PATCH")?.body).toMatchObject({ title: "Tiere" });
+    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ title: "Tiere" });
     expect(calls.find((c) => c.path.endsWith("/save"))?.body).toEqual({
       setId: null,
       title: "Tiere",
@@ -174,6 +169,77 @@ describe("a draft", () => {
     await userEvent.click(screen.getByRole("button", { name: "Save 1 card" }));
     expect(await screen.findByText("A set holds at most 500 cards.")).toBeTruthy();
     expect(calls.find((c) => c.path.endsWith("/save"))?.body).toMatchObject({ setId: 4 });
+  });
+
+  test("a reload that started before an edit went out does not undo it", async () => {
+    let hold: (() => void) | null = null;
+    const { state, calls } = draftApi(READY, {
+      "GET /api/ai/drafts/9": () => {
+        const answer = { json: state.draft };
+        // The second GET (a live reload) answers only when released, with what it read then.
+        if (calls.filter((c) => c.method === "GET" && c.path === "/api/ai/drafts/9").length !== 2) return answer;
+        return new Promise((resolve) => (hold = () => resolve(answer)));
+      },
+    });
+    renderApp("/create/ai/9");
+    const box = within(await screen.findByRole("group", { name: "Card 2" })).getByRole<HTMLInputElement>("checkbox");
+    await waitFor(() => expect(FakeSocket.instances.length).toBeGreaterThan(0));
+    await live(); // the reload starts, reads the card unchecked, and waits
+    await userEvent.click(box);
+    await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
+    await act(async () => hold?.());
+    expect(box.checked).toBe(true);
+  });
+
+  test("a picked set deleted meanwhile falls back to a new set, and the edit still goes out", async () => {
+    let patches = 0;
+    const { calls } = draftApi(
+      { ...READY, setId: 4 },
+      {
+        "PATCH /api/ai/drafts/9": (body) =>
+          ++patches === 1 && (body as { setId?: number }).setId !== null
+            ? { status: 400, json: { error: "validation", fields: { setId: "invalid_value" } } }
+            : { json: { ok: true } },
+      },
+    );
+    renderApp("/create/ai/9");
+    expect(await screen.findByLabelText("Set")).toBeTruthy();
+    await userEvent.click(within(card(2)).getByRole("checkbox"));
+    await waitFor(() => expect(calls.filter((c) => c.method === "PATCH")).toHaveLength(2));
+    expect(calls.filter((c) => c.method === "PATCH").at(-1)?.body).toMatchObject({ setId: null });
+  });
+
+  test("picking 'Choose a set' stays on Existing set", async () => {
+    draftApi({ ...READY, setId: 4 });
+    renderApp("/create/ai/9");
+    await userEvent.selectOptions(await screen.findByLabelText("Set"), "");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    await live();
+    expect(screen.getByLabelText("Set")).toBeTruthy();
+    expect(screen.queryByLabelText("Title")).toBeNull();
+  });
+
+  test("an edit the server refuses says so; a later save works without another edit", async () => {
+    let patch = { status: 400, json: { error: "validation", fields: { cards: "too_big" } } as unknown };
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: SETS }),
+      "GET /api/ai/drafts/9": () => ({ json: READY }),
+      "PATCH /api/ai/drafts/9": () => patch,
+      "POST /api/ai/drafts/9/save": () => ({ json: { setId: 5 } }),
+    });
+    renderApp("/create/ai/9");
+    await userEvent.click(within(await screen.findByRole("group", { name: "Card 2" })).getByRole("checkbox"));
+    expect(await screen.findByText(/^This change could not be saved/)).toBeTruthy();
+    // The server's cards are back: card 2 unchecked again.
+    await waitFor(() => expect(within(card(2)).getByRole<HTMLInputElement>("checkbox").checked).toBe(false));
+
+    patch = { status: 409, json: { error: "ai_running" } };
+    await userEvent.click(within(card(2)).getByRole("checkbox"));
+    await waitFor(() => expect(within(card(2)).getByRole<HTMLInputElement>("checkbox").checked).toBe(false));
+    // Nothing waits any more: save goes ahead and says so.
+    await userEvent.click(screen.getByRole("button", { name: "Save 1 card" }));
+    expect(await screen.findByText("1 card saved")).toBeTruthy();
   });
 
   test("a kept card needs both sides, and at least one card is kept", async () => {
