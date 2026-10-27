@@ -4,7 +4,7 @@ import { Button } from "../Button";
 import { cx } from "../cx";
 import { Icon } from "../Icon";
 import { SpeakButton, type Speech } from "../speech";
-import { studySurface } from "../surfaces";
+import { Card } from "../surfaces";
 import { Heading, Text } from "../Text";
 import { useHotkey } from "../useHotkey";
 import { TermImage } from "./images";
@@ -194,7 +194,7 @@ export function QuestionCard({
     !feedback ? "idle" : option === answer ? "correct" : option === picked ? "wrong" : "idle";
   return (
     <>
-      <div className={cx(studySurface, "mb-5 p-5 md:p-6")}>
+      <Card study className="mb-5">
         <div className="flex items-start justify-between gap-2">
           <Text variant="small">{label}</Text>
           {speak && <SpeakButton speech={speak} />}
@@ -205,7 +205,7 @@ export function QuestionCard({
             <TermImage src={image} alt="" />
           </div>
         )}
-      </div>
+      </Card>
 
       {options.length === 0 ? (
         <AnswerInput value={typed} onChange={onTyped} state={feedback ?? "idle"} onSubmit={onSubmitTyped} />

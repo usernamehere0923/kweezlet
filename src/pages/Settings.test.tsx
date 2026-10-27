@@ -2,6 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 import { ME, renderApp } from "../test/render";
+import { clientId } from "../lib/live";
 import { mockApi } from "../test/server";
 
 describe("settings", () => {
@@ -10,7 +11,9 @@ describe("settings", () => {
     renderApp("/settings");
     await userEvent.click(await screen.findByRole("radio", { name: "Deutsch" }));
     expect(await screen.findByLabelText("Aktuelles Passwort")).toBeTruthy();
-    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ locale: "de-CH" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ locale: "de-CH", from: clientId }),
+    );
     expect(await screen.findAllByRole("status")).toHaveLength(1);
   });
 
@@ -26,8 +29,18 @@ describe("settings", () => {
 
     await userEvent.click(screen.getByRole("radio", { name: "Midnight Cram" }));
     expect(document.documentElement.dataset.theme).toBe("midnight-cram");
-    await waitFor(() => expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ theme: "midnight-cram" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ theme: "midnight-cram", from: clientId }),
+    );
     expect(await screen.findAllByRole("status")).toHaveLength(1);
+  });
+
+  test("a theme the server didn't save switches back", async () => {
+    mockApi({ "GET /api/me": () => ({ json: ME }), "PATCH /api/me/settings": () => ({ status: 500, json: {} }) });
+    renderApp("/settings");
+    await userEvent.click(await screen.findByRole("radio", { name: "Ballpoint Blues" }));
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe("cardigan"));
+    expect(screen.getByRole("radio", { name: "Grandma's Cardigan" }).getAttribute("aria-checked")).toBe("true");
   });
 
   async function fillPassword(current: string, next: string, repeat: string) {

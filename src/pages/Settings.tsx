@@ -3,7 +3,7 @@ import type { Theme } from "../../worker/themes";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useT, type Locale, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
-import { useLive } from "../lib/live";
+import { clientId, useLive } from "../lib/live";
 import { useSession, useUser } from "../lib/session";
 import { useTheme } from "../lib/theme";
 import {
@@ -38,15 +38,18 @@ export function SettingsPage() {
 
   async function changeLocale(next: Locale) {
     setLocale(next);
-    const res = await api.me.settings.$patch({ json: { locale: next } });
+    const res = await api.me.settings.$patch({ json: { locale: next, from: clientId } });
     if (res.ok) toast(t("common.saved"), "success");
   }
 
   // Applies at once; the other devices follow through the "settings" topic.
+  // Not saved (api.ts already showed the error): back to the one the account has.
   async function changeTheme(next: Theme) {
+    const previous = theme;
     setTheme(next);
-    const res = await api.me.settings.$patch({ json: { theme: next } });
+    const res = await api.me.settings.$patch({ json: { theme: next, from: clientId } });
     if (res.ok) toast(t("common.saved"), "success");
+    else setTheme(previous);
   }
 
   return (

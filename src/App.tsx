@@ -78,7 +78,10 @@ function LiveSync() {
   const { refresh } = useSession();
   const { t } = useT();
   const toast = useToast();
-  useLive("settings", () => void refresh());
+  // Not our own change coming back: this tab already shows it.
+  useLive("settings", (data) => {
+    if ((data as { from?: string } | undefined)?.from !== clientId) void refresh();
+  });
   useLive("ping", (data) => {
     if ((data as { from?: string } | undefined)?.from !== clientId) toast(t("live.pingReceived"), "info");
   });

@@ -11,13 +11,18 @@ export const accountRoutes = new Hono<AppEnv>()
     return c.json(publicUser(c.get("user")), 200);
   })
 
-  // Either or both; whatever is left out stays as it is.
+  // Either or both; whatever is left out stays as it is. `from` (the page's
+  // clientId) rides along on the notification, so the sending tab skips its
+  // own echo instead of reloading /api/me in the middle of the next change.
   .patch(
     "/settings",
-    validate("json", z.object({ locale: localeSchema.optional(), theme: themeSchema.optional() })),
+    validate(
+      "json",
+      z.object({ locale: localeSchema.optional(), theme: themeSchema.optional(), from: z.string().max(64).optional() }),
+    ),
     async (c) => {
       const user = c.get("user");
-      const { locale, theme } = c.req.valid("json");
+      const { locale, theme, from } = c.req.valid("json");
       const db = c.env.DB;
       const updates = [
         locale && db.prepare("UPDATE users SET locale = ? WHERE id = ?").bind(locale, user.id),
@@ -25,7 +30,7 @@ export const accountRoutes = new Hono<AppEnv>()
       ].filter((s) => !!s);
       if (updates.length) {
         await db.batch(updates);
-        notifyLater(c, "settings");
+        notifyLater(c, "settings", { from });
       }
       return c.json({ locale, theme }, 200);
     },

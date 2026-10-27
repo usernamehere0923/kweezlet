@@ -12,7 +12,9 @@
     <script>
       try {
         var theme = localStorage.getItem("kz_theme");
+        var bg = localStorage.getItem("kz_theme_bg");
         if (theme) document.documentElement.dataset.theme = theme;
+        if (bg) document.querySelector('meta[name="theme-color"]').setAttribute("content", bg);
       } catch (e) {}
     </script>
 

@@ -62,6 +62,8 @@ describe("theme", () => {
     expect(document.documentElement.dataset.theme).toBe("kung-fu");
     expect(localStorage.getItem("kz_theme")).toBe("kung-fu");
     expect(document.querySelector('meta[name="theme-color"]')?.getAttribute("content")).toBe("#050a06");
+    // For index.html's script on the next load, before the CSS is there.
+    expect(localStorage.getItem("kz_theme_bg")).toBe("#050a06");
   });
 
   test("useTheme outside the provider says what is missing", () => {

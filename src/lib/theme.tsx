@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { DEFAULT_THEME, isTheme, type Theme } from "../../worker/themes";
 
-/** Also read by the script in index.html, which sets the theme before the CSS paints. */
+/** Also read by the script in index.html, which sets both before the CSS paints. */
 const STORAGE_KEY = "kz_theme";
+/** The theme's page colour, for the status bar: the script can't read CSS that hasn't loaded. */
+const BG_KEY = "kz_theme_bg";
 
 function initialTheme(): Theme {
   try {
@@ -39,7 +41,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     root.dataset.theme = theme;
     // The phone's status bar takes the page colour.
     const bg = getComputedStyle(root).getPropertyValue("--theme-bg").trim();
-    if (bg) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
+    if (!bg) return;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bg);
+    try {
+      localStorage.setItem(BG_KEY, bg);
+    } catch {
+      // ignore
+    }
   }, [theme]);
 
   const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
