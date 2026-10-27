@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DraftDetail } from "../../worker/ai";
 import type { Language } from "../../worker/languages";
+import type { TKey } from "../i18n";
 import { api, fieldErrors } from "./api";
 
 export type DraftCardData = DraftDetail["cards"][number];
@@ -19,6 +20,11 @@ export type DraftEdits = {
 
 /** Why the server did not take an edit: a run started elsewhere, or the edit itself was refused. */
 export type EditRefused = "running" | "invalid";
+
+/** What a draft is called before it has a title: its file, or "Pasted text" for pasted text. */
+export function sourceLabel(t: (key: TKey) => string, sourceName: string): string {
+  return sourceName === "pasted" || !sourceName ? t("ai.draft.pasted") : sourceName;
+}
 
 /** Typing pauses this long before the edits go out. */
 export const SAVE_PAUSE_MS = 500;

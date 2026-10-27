@@ -4,7 +4,7 @@ import { LANG_KEY, useT, type TKey } from "../i18n";
 import { api } from "../lib/api";
 import { kindOptions, languageOptions, type CardKind } from "../lib/choices";
 import { aiErrorMessage, aiRefusal, formatCost } from "../lib/cost";
-import { useDraft, type DraftEdits } from "../lib/draft";
+import { sourceLabel, useDraft, type DraftEdits } from "../lib/draft";
 import { useLive } from "../lib/live";
 import {
   Button,
@@ -193,7 +193,7 @@ export function AiDraftPage() {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-5">
-      <PageTitle subtitle={draft.sourceName}>{draft.title || t("ai.draft.title")}</PageTitle>
+      <PageTitle subtitle={sourceLabel(t, draft.sourceName)}>{draft.title || t("ai.draft.title")}</PageTitle>
 
       {running && (
         <Card className="flex flex-col items-center gap-3 py-10 text-center">

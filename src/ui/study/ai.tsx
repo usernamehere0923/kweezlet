@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useT } from "../../i18n";
 import { formatCost } from "../../lib/cost";
 import { ButtonLink, IconButton } from "../Button";
@@ -204,16 +204,17 @@ export type DraftItem = {
 };
 
 /**
- * Home's card for AI drafts not saved or discarded yet, newest first: the
- * first `max`, each with how far it is and a way back in.
+ * Home's card for AI drafts not saved or discarded yet, newest first, each
+ * with how far it is and a way back in. All of them: Home is the only way
+ * back to a draft, and untouched ones go after 30 days.
  */
-export function UnfinishedDrafts({ drafts, max = 3 }: { drafts: DraftItem[]; max?: number }) {
+export function UnfinishedDrafts({ drafts }: { drafts: DraftItem[] }) {
   const { t, tn } = useT();
   return (
     <Card className="flex flex-col gap-3">
       <Heading level={3}>{tn("ai.home.drafts", drafts.length)}</Heading>
       <ul className="flex flex-col gap-3">
-        {drafts.slice(0, max).map((draft) => (
+        {drafts.map((draft) => (
           <li key={draft.to} className="flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate font-medium text-ink">{draft.title}</p>
@@ -260,7 +261,10 @@ export function AiUsage({
   runs: AiRun[];
 }) {
   const { t, tn, locale, formatNumber } = useT();
-  const when = new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const when = useMemo(
+    () => new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }),
+    [locale],
+  );
   const month = formatCost(monthNanos);
   return (
     <div className="flex flex-col gap-4">
@@ -269,8 +273,9 @@ export function AiUsage({
       ) : (
         <div className="flex flex-col gap-2">
           <Text>{t("settings.aiMonth", { cost: month, cap: formatCost(capNanos) })}</Text>
-          <ProgressBar value={monthNanos} max={capNanos} label={t("settings.aiBudget")} />
-          <Text variant="small">{t("settings.aiCapHint")}</Text>
+          {/* The run that crosses the budget still ends: the month can go past it. */}
+          <ProgressBar value={Math.min(monthNanos, capNanos)} max={capNanos} label={t("settings.aiBudget")} />
+          <Text variant="small">{t(monthNanos >= capNanos ? "ai.error.capReached" : "settings.aiCapHint")}</Text>
         </div>
       )}
       <Text variant="muted">{t("settings.aiTotal", { cost: formatCost(totalNanos) })}</Text>
@@ -283,7 +288,7 @@ export function AiUsage({
           </Heading>
           <ul className="divide-y divide-line-soft text-sm">
             {runs.map((run, i) => (
-              <li key={i} className="flex items-start justify-between gap-3 py-2">
+              <li key={`${run.at.getTime()}-${i}`} className="flex items-start justify-between gap-3 py-2">
                 <div>
                   <p className="text-ink">{t(RUN_ACTIONS[run.action])}</p>
                   <p className="text-muted">{when.format(run.at)}</p>

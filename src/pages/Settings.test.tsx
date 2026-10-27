@@ -102,4 +102,17 @@ describe("settings", () => {
     expect(screen.queryByRole("progressbar")).toBeNull();
     expect(screen.getByText("No AI runs yet.")).toBeTruthy();
   });
+
+  test("AI usage past the budget says it is used up", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/ai/usage": () => ({
+        json: { monthNanos: 2_030_000_000, totalNanos: 2_030_000_000, capNanos: 2_000_000_000, recent: [] },
+      }),
+    });
+    renderApp("/settings");
+    expect(await screen.findByText("This month: $2.03 of $2.00")).toBeTruthy();
+    expect(screen.getByText("The monthly AI budget is used up. It starts again on the 1st.")).toBeTruthy();
+    expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBe("2000000000");
+  });
 });

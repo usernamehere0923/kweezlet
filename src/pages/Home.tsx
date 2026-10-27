@@ -4,6 +4,7 @@ import type { DraftSummary } from "../../worker/ai";
 import type { SetSummary } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
+import { sourceLabel } from "../lib/draft";
 import { useLive } from "../lib/live";
 import { useUser } from "../lib/session";
 import { localDay } from "../lib/studyDay";
@@ -73,13 +74,16 @@ export function HomePage() {
   useEffect(() => void loadStreak(), [loadStreak]);
 
   // AI drafts not saved or discarded yet: found again here (also from the other device).
-  const loadDrafts = useCallback(
-    () =>
-      api.ai.drafts.$get().then(async (res) => {
-        if (res.ok) setDrafts((await res.json()).drafts);
-      }),
-    [],
-  );
+  const draftsRequest = useRef(0);
+  const loadDrafts = useCallback(() => {
+    const mine = ++draftsRequest.current;
+    return api.ai.drafts.$get().then(async (res) => {
+      // Two live events close together: the older answer must not land last.
+      if (!res.ok) return;
+      const { drafts } = await res.json();
+      if (mine === draftsRequest.current) setDrafts(drafts);
+    });
+  }, []);
   useEffect(() => void loadDrafts(), [loadDrafts]);
   useLive("ai", () => void loadDrafts());
 
@@ -117,7 +121,7 @@ export function HomePage() {
           <UnfinishedDrafts
             drafts={drafts.map((draft) => ({
               to: `/create/ai/${draft.id}`,
-              title: draft.title || draft.sourceName,
+              title: draft.title || sourceLabel(t, draft.sourceName),
               status: draft.status,
               cardCount: draft.cardCount,
             }))}

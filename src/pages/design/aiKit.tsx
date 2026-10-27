@@ -101,8 +101,8 @@ export function AiKit() {
 
       <Section
         title="UnfinishedDrafts"
-        code={`<UnfinishedDrafts drafts={drafts.map((d) => ({ to: \`/create/ai/\${d.id}\`, title: d.title || d.sourceName, status: d.status, cardCount: d.cardCount }))} />
-// Home, above the sets: the newest 3 (max), each with how far it is`}
+        code={`<UnfinishedDrafts drafts={drafts.map((d) => ({ to: \`/create/ai/\${d.id}\`, title: d.title || sourceLabel(t, d.sourceName), status: d.status, cardCount: d.cardCount }))} />
+// Home, above the sets: every unfinished draft, newest first (Home is the only way back to one)`}
       >
         <UnfinishedDrafts drafts={DRAFTS} />
       </Section>
@@ -110,10 +110,11 @@ export function AiKit() {
       <Section
         title="AiUsage"
         code={`<AiUsage monthNanos={u.monthNanos} totalNanos={u.totalNanos} capNanos={u.capNanos} runs={runs} />
-// Settings → "AI usage"; capNanos null (admins): "no limit", no bar`}
+// Settings → "AI usage"; capNanos null (admins): "no limit", no bar; past the budget: says it is used up`}
       >
         <div className="flex flex-col gap-6">
           <AiUsage monthNanos={16_720_000} totalNanos={52_000_000} capNanos={2_000_000_000} runs={RUNS} />
+          <AiUsage monthNanos={2_030_000_000} totalNanos={2_030_000_000} capNanos={2_000_000_000} runs={RUNS} />
           <AiUsage monthNanos={0} totalNanos={0} capNanos={null} runs={[]} />
         </div>
       </Section>
