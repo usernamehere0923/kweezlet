@@ -168,6 +168,28 @@ describe("set form", () => {
     expect(await screen.findByText("Not an allowed value")).toBeTruthy();
   });
 
+  test("a row turned into a gap sentence is saved as one; without its gap it is caught first", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "POST /api/sets": () => ({ status: 201, json: { ...SPANISH_DETAIL, id: 9 } }),
+      "GET /api/sets/9": () => ({ json: { ...SPANISH_DETAIL, id: 9 } }),
+    });
+    renderApp("/sets/new");
+    await userEvent.type(await screen.findByLabelText("Title"), "Bern");
+    await userEvent.click(screen.getByRole("radio", { name: "Gap sentence" }));
+    fireEvent.change(screen.getByLabelText("Sentence"), { target: { value: "Bern is the federal city." } });
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText(/Every gap sentence needs exactly one gap/)).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Sentence"), { target: { value: "Bern is the {{federal city}}." } });
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({
+        terms: [{ kind: "cloze", term: "Bern is the {{federal city}}.", definition: "federal city" }],
+      }),
+    );
+  });
+
   test("a half-filled row is caught before sending", async () => {
     const { calls } = mockApi({
       "GET /api/me": () => ({ json: ME }),

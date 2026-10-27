@@ -26,6 +26,7 @@ export async function fakeZai(call: ZaiCall, delayMs = FAKE_DELAY_MS): Promise<Z
   const header = texts[0] ?? "";
   const wanted = /<kind>(\w+)<\/kind>/.exec(header)?.[1] ?? "auto";
   const max = Number(/<max_cards>(\d+)<\/max_cards>/.exec(header)?.[1] ?? MAX_CARDS);
+  const cloze = header.includes("<form>cloze</form>");
 
   const pairs: FakeCard[] = [];
   const sentences: FakeCard[] = [];
@@ -48,12 +49,21 @@ export async function fakeZai(call: ZaiCall, delayMs = FAKE_DELAY_MS): Promise<Z
         const words = sentence.trim().split(/\s+/);
         if (words.length < 4) continue;
         const quote = sentence.trim().slice(0, 200);
-        sentences.push({ term: `${words.slice(0, 3).join(" ")} …`, definition: quote, source: quote, page });
+        if (cloze) {
+          // The longest word becomes the gap.
+          const gap = words.reduce(
+            (long, word) => (word.replace(/\W/g, "").length > long.length ? word.replace(/\W/g, "") : long),
+            "",
+          );
+          const term = sentence.trim().replace(gap, `{{${gap}}}`);
+          sentences.push({ term, definition: gap, source: quote, page });
+        } else sentences.push({ term: `${words.slice(0, 3).join(" ")} …`, definition: quote, source: quote, page });
       }
     }
   }
   const kind = wanted !== "auto" ? wanted : pairs.length >= sentences.length ? "vocabulary" : "terms";
-  const cards = [...pairs, ...sentences].slice(0, max);
+  // Gap sentences only come from sentences.
+  const cards = (cloze ? sentences : [...pairs, ...sentences]).slice(0, max);
   const content = JSON.stringify({
     kind,
     title: "Stand-in cards",

@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { clozeAnswer, clozeParts, filled, type TermKind } from "../../worker/cloze";
 import type { TKey } from "../i18n";
 import type { TermEditorHandle } from "../ui";
 import { api } from "./api";
@@ -8,6 +9,8 @@ export type Row = {
   /** Stays with the row while rows above it come and go (React key, image picks). */
   uid?: number;
   id?: number;
+  /** Left out: a term/definition pair. "cloze": `term` is a sentence with one {{gap}}, `definition` its words. */
+  kind?: TermKind;
   term: string;
   definition: string;
   /** The row's picture (a data URL); null when it has none. */
@@ -41,6 +44,18 @@ export function useTermRows(initial: Row[] = [emptyRow]) {
     rowRefs,
     update: (i: number, term: string, definition: string) =>
       setRawRows((list) => list.map((row, j) => (j === i ? { ...row, term, definition } : row))),
+    /**
+     * A row turned into a gap sentence or back. The text stays: a sentence
+     * keeps its marked gap, a pair gets the sentence back without the marker.
+     */
+    setKind: (i: number, kind: TermKind) =>
+      setRawRows((list) =>
+        list.map((row, j) => {
+          if (j !== i) return row;
+          if (kind === "cloze") return { ...row, kind, definition: clozeAnswer(row.term) ?? "" };
+          return { ...row, kind, term: filled(row.term), definition: clozeParts(row.term) ? "" : row.definition };
+        }),
+      ),
     /**
      * A picked picture (or null, when it was removed) on one row. By uid, not
      * index: shrinking a photo takes a while, and rows above may go meanwhile.
@@ -77,6 +92,9 @@ export function checkSetForm(
   const kept = rows.filter((row) => row.term.trim() || row.definition.trim() || row.image);
   if (!title.trim()) return { kept, titleError: "validation.too_small", formError: null };
   if (kept.length === 0) return { kept, titleError: null, formError: "sets.termsNeeded" };
+  if (kept.some((row) => row.kind === "cloze" && !clozeAnswer(row.term))) {
+    return { kept, titleError: null, formError: "sets.clozeGap" };
+  }
   if (kept.some((row) => !row.term.trim() || !row.definition.trim())) {
     return { kept, titleError: null, formError: "sets.termsIncomplete" };
   }
@@ -165,6 +183,12 @@ export function parsePastedTerms(
   const terms: Row[] = [];
   let skipped = 0;
   for (const line of lines) {
+    // A line with one {{gap}} and nothing else is a gap sentence.
+    const gap = !line.includes("\t") && clozeAnswer(line);
+    if (gap) {
+      terms.push({ kind: "cloze", term: line, definition: gap });
+      continue;
+    }
     const at = firstSeparator(line, split);
     const term = at ? unquote(line.slice(0, at[0])) : "";
     const definition = at ? unquote(line.slice(at[0] + at[1])) : "";

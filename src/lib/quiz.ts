@@ -1,4 +1,5 @@
 import type { Language } from "../../worker/languages";
+import { BLANK, blanked } from "../../worker/cloze";
 import type { AnswerWith, SetTerm } from "../../worker/sets";
 import type { TKey } from "../i18n";
 import type { Speech } from "../ui";
@@ -17,7 +18,7 @@ export function shuffle<T>(list: T[]): T[] {
 export type QuestionKind = "choice" | "truefalse" | "written";
 
 /** The bits of a term a question needs. SetTerm has them all. */
-type QuestionTerm = Pick<SetTerm, "id" | "term" | "definition" | "streak">;
+type QuestionTerm = Pick<SetTerm, "id" | "kind" | "term" | "definition" | "streak">;
 
 export type TestQuestion = {
   kind: QuestionKind;
@@ -52,10 +53,11 @@ export type SetLangs = { termLang: Language | null; defLang: Language | null };
 export function speechFor(question: TestQuestion, langs: SetLangs | undefined): Speech | undefined {
   if (!question.promptSide) return undefined;
   const lang = langs ? (question.promptSide === "term" ? langs.termLang : langs.defLang) : null;
-  return { text: question.prompt, lang };
+  // A cloze gap is read as a pause, not as underscores.
+  return { text: question.prompt.replaceAll(BLANK, "…"), lang };
 }
 
-export type MatchPair = { id: number; term: string; definition: string };
+export type MatchPair = { id: number; kind?: SetTerm["kind"]; term: string; definition: string };
 
 /** One tile in a Match round. `pairId` links the term tile to its definition. */
 export type MatchTileData = { key: string; pairId: number; kind: "term" | "definition"; label: string };
@@ -74,7 +76,7 @@ export function buildMatchRound(pairs: MatchPair[], count: number): MatchTileDat
     key: `${kind}${pair.id}`,
     pairId: pair.id,
     kind,
-    label: kind === "term" ? pair.term : pair.definition,
+    label: kind === "definition" ? pair.definition : pair.kind === "cloze" ? blanked(pair.term) : pair.term,
   });
   return shuffle(
     shuffle(pairs)
@@ -109,9 +111,14 @@ function makeQuestion(
   kind: QuestionKind,
   answerWith: AnswerWith = "both",
 ): TestQuestion {
+  // Wrong options and lying statements come from cards of the same kind:
+  // a cloze gap among definitions (or the other way round) gives itself away.
+  const others = pool.filter((candidate) => candidate.id !== term.id && candidate.kind === term.kind);
+  // Nothing to choose from: typed instead.
+  if (kind === "choice" && others.length === 0) kind = "written";
+  if (term.kind === "cloze") return clozeQuestion(term, others, kind);
   const askTerm = kind === "truefalse" ? false : answerWith === "both" ? Math.random() < 0.5 : answerWith === "term";
   const answer = askTerm ? term.term : term.definition;
-  const others = pool.filter((candidate) => candidate.id !== term.id);
 
   if (kind === "truefalse") {
     // Half the statements are wrong: they carry another term's definition.
@@ -146,6 +153,28 @@ function makeQuestion(
 }
 
 /**
+ * A cloze question: always the sentence with its gap, the answer is the hidden
+ * part. A true/false statement makes no sense for a gap, so it becomes a pick
+ * (or a typed answer, without other gaps to pick from).
+ */
+function clozeQuestion(term: QuestionTerm, others: QuestionTerm[], kind: QuestionKind): TestQuestion {
+  const typed = kind === "written" || others.length === 0;
+  const distractors = shuffle(others)
+    .slice(0, 3)
+    .map((candidate) => candidate.definition);
+  return {
+    kind: typed ? "written" : "choice",
+    termId: term.id,
+    label: "learn.askBlank",
+    prompt: blanked(term.term),
+    promptSide: "term",
+    showImage: true,
+    answer: term.definition,
+    options: typed ? [] : shuffle([...new Set([term.definition, ...distractors])]),
+  };
+}
+
+/**
  * A Learn-style question: multiple choice until the first correct answer,
  * then written. Without other terms there is nothing to choose from, so those
  * are written from the start. Learn and the review queue use it.
@@ -173,7 +202,7 @@ export function buildTest(terms: SetTerm[], settings: TestSettings): TestPaper {
 }
 
 function toPair(term: SetTerm): MatchPair {
-  return { id: term.id, term: term.term, definition: term.definition };
+  return { id: term.id, kind: term.kind, term: term.term, definition: term.definition };
 }
 
 /** One question, one given answer. Written answers use the smart grader. */

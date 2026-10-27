@@ -7,6 +7,8 @@ import { Checkbox } from "../fields";
 import { Icon } from "../Icon";
 import { Card, surface, Tag } from "../surfaces";
 import { Heading, Text } from "../Text";
+import { clozeAnswer } from "../../../worker/cloze";
+import { ClozeText } from "./cloze";
 import { Cell } from "./editing";
 import { ProgressBar } from "./ProgressBar";
 
@@ -121,11 +123,14 @@ export function DraftCard({
   source,
   page,
   verified,
+  cloze = false,
   onDelete,
 }: {
   index: number;
   term: string;
   definition: string;
+  /** A gap sentence: one field, the definition is the {{gap}}. */
+  cloze?: boolean;
   onChange: (term: string, definition: string) => void;
   checked: boolean;
   onCheck: (checked: boolean) => void;
@@ -156,22 +161,37 @@ export function DraftCard({
           {onDelete && <IconButton icon="trash" size="sm" label={t("study.deleteTerm")} onClick={onDelete} />}
         </span>
       </div>
-      <div className="grid gap-5 md:grid-cols-2 md:gap-8">
-        <Cell
-          label={t("study.term")}
-          value={term}
-          onChange={(value) => onChange(value, definition)}
-          wrap
-          maxLength={MAX_SIDE_CHARS}
-        />
-        <Cell
-          label={t("study.definition")}
-          value={definition}
-          onChange={(value) => onChange(term, value)}
-          wrap
-          maxLength={MAX_SIDE_CHARS}
-        />
-      </div>
+      {cloze ? (
+        <div className="flex flex-col gap-2">
+          <Cell
+            label={t("study.clozeSentence")}
+            value={term}
+            onChange={(value) => onChange(value, clozeAnswer(value) ?? "")}
+            wrap
+            maxLength={MAX_SIDE_CHARS}
+          />
+          <span className="text-sm text-muted">
+            {clozeAnswer(term) ? <ClozeText text={term} /> : t("ai.clozeBroken")}
+          </span>
+        </div>
+      ) : (
+        <div className="grid gap-5 md:grid-cols-2 md:gap-8">
+          <Cell
+            label={t("study.term")}
+            value={term}
+            onChange={(value) => onChange(value, definition)}
+            wrap
+            maxLength={MAX_SIDE_CHARS}
+          />
+          <Cell
+            label={t("study.definition")}
+            value={definition}
+            onChange={(value) => onChange(term, value)}
+            wrap
+            maxLength={MAX_SIDE_CHARS}
+          />
+        </div>
+      )}
       {!verified && <p className="mt-3 text-sm text-muted">{t("ai.unverifiedHint")}</p>}
       {source ? (
         <div className="mt-3">

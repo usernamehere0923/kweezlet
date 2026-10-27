@@ -1,6 +1,15 @@
 import { describe, expect, test } from "vitest";
 import { mockApi } from "../test/server";
-import { checkSetForm, emptyRow, MAX_SIDE, MAX_TERMS, parsePastedTerms, saveImageChanges } from "./setForm";
+import { act, renderHook } from "@testing-library/react";
+import {
+  checkSetForm,
+  emptyRow,
+  MAX_SIDE,
+  MAX_TERMS,
+  parsePastedTerms,
+  saveImageChanges,
+  useTermRows,
+} from "./setForm";
 
 const row = (term: string, definition: string) => ({ term, definition });
 
@@ -135,5 +144,33 @@ describe("saveImageChanges", () => {
 
     await expect(saveImageChanges(kept, [{ id: 70 }])).resolves.toBe(1);
     await expect(saveImageChanges(kept, [])).resolves.toBe(0); // the row never made it to the server
+  });
+});
+
+describe("gap sentences in the form", () => {
+  test("a pasted line with one gap and no tab is a gap sentence", () => {
+    expect(parsePastedTerms("Bern is the {{capital}}.\nel perro\tthe dog").terms).toEqual([
+      { kind: "cloze", term: "Bern is the {{capital}}.", definition: "capital" },
+      row("el perro", "the dog"),
+    ]);
+  });
+
+  test("a gap sentence needs its gap before sending", () => {
+    const sentence = { kind: "cloze" as const, term: "Bern is the capital.", definition: "" };
+    expect(checkSetForm("Bern", [sentence]).formError).toBe("sets.clozeGap");
+    const marked = { ...sentence, term: "Bern is the {{capital}}.", definition: "capital" };
+    expect(checkSetForm("Bern", [marked]).formError).toBeNull();
+  });
+
+  test("switching a row keeps its text: the gap becomes the definition, and back", () => {
+    const { result } = renderHook(() => useTermRows([{ term: "Bern is the {{capital}}.", definition: "" }]));
+    act(() => result.current.setKind(0, "cloze"));
+    expect(result.current.rows[0]).toMatchObject({ kind: "cloze", definition: "capital" });
+    act(() => result.current.setKind(0, "pair"));
+    expect(result.current.rows[0]).toMatchObject({ kind: "pair", term: "Bern is the capital.", definition: "" });
+
+    const { result: pair } = renderHook(() => useTermRows([{ term: "el perro", definition: "the dog" }]));
+    act(() => pair.current.setKind(0, "pair"));
+    expect(pair.current.rows[0]).toMatchObject({ term: "el perro", definition: "the dog" });
   });
 });

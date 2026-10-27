@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useParams } from "react-router";
+import { BLANK, blanked, filled } from "../../worker/cloze";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
 import { useStudySet } from "../lib/studySet";
@@ -7,6 +8,7 @@ import { inDeck, useDeck, type DeckFilter } from "../lib/deck";
 import { useStudyDay } from "../lib/studyDay";
 import {
   CardNav,
+  ClozeText,
   EmptyState,
   FlipCard,
   Heading,
@@ -75,13 +77,19 @@ export function FlashcardsPage() {
 
   const known = set.terms.filter((term) => term.status === "know_it").length;
   // The speaker says the face that is showing, in that side's language.
-  const showingTerm = side === "term" ? !flipped : flipped;
+  // A gap sentence is always asked the same way: the gap first, the whole sentence behind it.
+  const cloze = current?.kind === "cloze";
+  const showingTerm = cloze || (side === "term" ? !flipped : flipped);
+  const termText = (term: string) => (!cloze ? term : flipped ? filled(term) : blanked(term).replaceAll(BLANK, "…"));
   const speak = current
-    ? { text: showingTerm ? current.term : current.definition, lang: showingTerm ? set.termLang : set.defLang }
+    ? {
+        text: showingTerm ? termText(current.term) : current.definition,
+        lang: showingTerm ? set.termLang : set.defLang,
+      }
     : undefined;
   // The picture belongs to the term's face only: on the other one it would
   // answer the question before it is asked.
-  const termFace = (text: string) =>
+  const termFace = (text: ReactNode) =>
     current && images[current.id] ? (
       <span className="flex flex-col items-center gap-3">
         <TermImage src={images[current.id]} alt="" />
@@ -90,6 +98,20 @@ export function FlashcardsPage() {
     ) : (
       text
     );
+  const faces =
+    current && cloze
+      ? {
+          front: termFace(<ClozeText text={current.term} />),
+          back: termFace(<ClozeText text={current.term} reveal />),
+          frontLabel: t("learn.askBlank"),
+          backLabel: t("study.answer"),
+        }
+      : current && {
+          front: side === "term" ? termFace(current.term) : current.definition,
+          back: side === "term" ? current.definition : termFace(current.term),
+          frontLabel: t(side === "term" ? "study.term" : "study.definition"),
+          backLabel: t(side === "term" ? "study.definition" : "study.term"),
+        };
   const learning = set.terms.filter((term) => term.status === "still_learning").length;
 
   return (
@@ -111,16 +133,19 @@ export function FlashcardsPage() {
       <ProgressBar value={known} learning={learning} max={set.terms.length} />
 
       <div className="my-4 flex flex-wrap items-center gap-2">
-        <SegmentedControl<Side>
-          label={t("study.cardOrder")}
-          value={side}
-          onChange={setSide}
-          size="sm"
-          options={[
-            { value: "term", label: t("study.termFirst") },
-            { value: "definition", label: t("study.definitionFirst") },
-          ]}
-        />
+        {/* Gap sentences have one way round: no order to pick when there are only those. */}
+        {set.terms.some((term) => term.kind !== "cloze") && (
+          <SegmentedControl<Side>
+            label={t("study.cardOrder")}
+            value={side}
+            onChange={setSide}
+            size="sm"
+            options={[
+              { value: "term", label: t("study.termFirst") },
+              { value: "definition", label: t("study.definitionFirst") },
+            ]}
+          />
+        )}
         <SegmentedControl<DeckFilter>
           label={t("study.filterLabel")}
           value={filter}
@@ -143,10 +168,7 @@ export function FlashcardsPage() {
           {/* The old card slides away as it was, flipped or not: its answer never shows on the next one. */}
           <SlideSwap id={current.id} back={back}>
             <FlipCard
-              front={side === "term" ? termFace(current.term) : current.definition}
-              back={side === "term" ? current.definition : termFace(current.term)}
-              frontLabel={t(side === "term" ? "study.term" : "study.definition")}
-              backLabel={t(side === "term" ? "study.definition" : "study.term")}
+              {...faces!}
               flipped={flipped}
               speak={speak}
               onFlip={(next) => {

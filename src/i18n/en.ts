@@ -69,6 +69,7 @@ export const en = {
   "sets.langHint": "Optional. Used for audio.",
   "sets.termsNeeded": "Add at least one term.",
   "sets.termsIncomplete": "Fill in both fields of a term, or delete the row.",
+  "sets.clozeGap": "Every gap sentence needs exactly one gap: select the words to hide and tap Make gap.",
   "sets.imagesFailed": "Some images could not be saved. Add them again.",
   "sets.termsTooMany": "A set can have at most 500 terms.",
   "sets.termTooLong": "A term or definition is too long (at most 1000 characters).",
@@ -113,6 +114,7 @@ export const en = {
 
   "learn.askDefinition": "Which definition fits?",
   "learn.askTerm": "Which term fits?",
+  "learn.askBlank": "Fill in the gap",
   "learn.remaining": "Remaining",
   "learn.allLearnedTitle": "Everything learned!",
   "learn.allLearnedText": "You answered every term correctly twice.",
@@ -215,6 +217,14 @@ export const en = {
 
   "search.placeholder": "Search",
 
+  "study.gap": "gap",
+  "study.answer": "Answer",
+  "study.kind": "Card type",
+  "study.kind.pair": "Term + definition",
+  "study.kind.cloze": "Gap sentence",
+  "study.clozeSentence": "Sentence",
+  "study.clozeHint": "Select the words to hide, then tap Make gap.",
+  "study.makeGap": "Make gap",
   "study.term": "Term",
   "study.definition": "Definition",
   "study.terms_one": "{count} term",
@@ -296,10 +306,12 @@ export const en = {
   "ai.error.capReached": "The monthly AI budget is used up. It starts again on the 1st.",
   "ai.error.running": "Cards are already being made. Wait until they are done.",
 
+  "ai.clozeBroken": "This sentence needs exactly one gap: put {{ }} around the words to hide.",
   "ai.kind.auto": "Auto",
   "ai.kind.vocabulary": "Vocabulary",
   "ai.kind.questions": "Questions",
   "ai.kind.terms": "Terms",
+  "ai.kind.cloze": "Gap sentences",
   "ai.source.title": "Cards from material",
   "ai.source.subtitle": "Pick a file, paste text or take a photo. You check every card before it becomes a set.",
   "ai.source.mode": "Material",

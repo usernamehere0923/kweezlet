@@ -22,6 +22,18 @@ First decide the kind (unless <kind> is given, then use it):
 - terms: glossaries, dates, formulas, names. term = the term/date/name;
   definition = its meaning in at most 20 words.
 
+If <form>cloze</form> is given, every card is a gap sentence instead (the kind
+still names the material):
+- term = one sentence taken from the material, self-contained, with exactly
+  one key part wrapped in double braces, e.g.
+  "Bern has been the {{federal city}} of Switzerland since 1848.";
+  definition = exactly the words inside the braces.
+- The gap is 1 to 4 words that are worth knowing: a name, a number, a date, a
+  term, a key word. Never a filler word ("the", "is", "very").
+- The gap cannot be guessed from the rest of the sentence, and the sentence
+  never contains its own answer elsewhere.
+- One gap per sentence; for another fact in the same sentence, make another card.
+
 The material comes as <page n="…"> blocks. <existing> lists cards that
 already exist: never make a card that repeats one of them.
 
@@ -64,6 +76,8 @@ export const MAX_OUTPUT_TOKENS = 24_000;
 /** What the user asks for. `kind: "auto"` lets the AI classify the material. */
 export type RunOptions = {
   kind: "auto" | "vocabulary" | "questions" | "terms";
+  /** "cloze": gap sentences instead of term/definition pairs. */
+  form: "pair" | "cloze";
   /**
    * The "how many" preset; 0 = as many as the material supports (the draft's
    * max_cards default). Anything above the hard cap of 60 is 60.
@@ -139,7 +153,7 @@ function cardLimit(maxCards: number): number {
  * The "<" of such a tag becomes the full-width "＜", which the model reads
  * as text; NFKC turns it back into "<", so a quote of it still verifies.
  */
-const OUR_TAGS = /<(\/?\s*(?:page|instructions|existing|kind|max_cards|user_language)\b)/gi;
+const OUR_TAGS = /<(\/?\s*(?:page|instructions|existing|kind|form|max_cards|user_language)\b)/gi;
 function defused(text: string): string {
   return text.replace(OUR_TAGS, "＜$1");
 }
@@ -147,6 +161,7 @@ function defused(text: string): string {
 function header(options: RunOptions): string {
   const lines = [
     `<kind>${options.kind}</kind>`,
+    ...(options.form === "cloze" ? ["<form>cloze</form>"] : []),
     `<max_cards>${cardLimit(options.maxCards)}</max_cards>`,
     `<user_language>${options.userLanguage}</user_language>`,
   ];

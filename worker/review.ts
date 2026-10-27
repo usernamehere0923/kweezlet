@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import type { TermKind } from "./cloze";
 import type { Language } from "./languages";
 import type { AnswerWith } from "./sets";
 import type { AppEnv } from "./types";
@@ -10,6 +11,7 @@ const reviewQuery = z.object({ limit: z.coerce.number().int().positive().max(100
 /** One card in the review queue: a due term, and the set it lives in. */
 export type ReviewCard = {
   id: number;
+  kind: TermKind;
   term: string;
   definition: string;
   /** Correct answers in a row (worker/study.ts). */
@@ -40,7 +42,7 @@ export const reviewRoutes = new Hono<AppEnv>()
     const limit = c.req.valid("query").limit ?? 20;
     // COUNT(*) OVER () sees the whole result before LIMIT caps the rows.
     const { results } = await c.env.DB.prepare(
-      `SELECT t.id, t.term, t.definition, st.streak,
+      `SELECT t.id, t.kind, t.term, t.definition, st.streak,
               t.set_id AS setId, s.title AS setTitle, s.term_lang AS termLang, s.def_lang AS defLang,
               s.answer_with AS answerWith,
               COUNT(*) OVER () AS dueCount

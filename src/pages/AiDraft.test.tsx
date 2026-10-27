@@ -10,6 +10,7 @@ const DRAFT = {
   error: null,
   sourceName: "kurs.pdf",
   kind: "auto",
+  form: "pair",
   madeKind: null,
   maxCards: 0,
   title: "",
@@ -87,6 +88,22 @@ describe("a draft", () => {
     expect(screen.getByRole("button", { name: "Save 1 card" })).toBeTruthy();
     // Only a More cards run says what it added.
     expect(screen.queryByText(/^Last run/)).toBeNull();
+  });
+
+  test("a gap sentence draft edits one sentence; its gap becomes the definition", async () => {
+    const GAP = { ...DOG, term: "Bern is the {{federal city}}.", definition: "federal city", source: "" };
+    const { state } = draftApi({ ...READY, form: "cloze", cards: [GAP] });
+    renderApp("/create/ai/9");
+
+    const sentence = await within(await waitFor(() => card(1))).findByLabelText("Sentence");
+    expect(screen.getAllByText("Gap sentences", { exact: false }).length).toBeGreaterThan(0);
+    expect(within(card(1)).queryByLabelText("Definition")).toBeNull();
+    fireEvent.change(sentence, { target: { value: "Bern is the federal {{city}}." } });
+    await waitFor(() =>
+      expect((state.draft.cards as { definition: string }[])[0]).toMatchObject({ definition: "city" }),
+    );
+    fireEvent.change(sentence, { target: { value: "Bern is the federal city." } });
+    expect(await within(card(1)).findByText(/needs exactly one gap/)).toBeTruthy();
   });
 
   test("edits save as the user goes: typing after a pause, a tap at once", async () => {
@@ -309,7 +326,9 @@ describe("a draft", () => {
     await userEvent.click(screen.getByRole("button", { name: "Make anew" }));
     await userEvent.selectOptions(within(screen.getByRole("dialog")).getByLabelText("What to make"), "questions");
     await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Make anew" }));
-    await waitFor(() => expect(calls.find((c) => c.path.endsWith("/regenerate"))?.body).toEqual({ kind: "questions" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.path.endsWith("/regenerate"))?.body).toEqual({ kind: "questions", form: "pair" }),
+    );
   });
 
   test("discard asks first and deletes the draft", async () => {
@@ -386,7 +405,7 @@ describe("a draft", () => {
     answer = { status: 202, json: { ok: true } };
     await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(calls.filter((c) => c.path.endsWith("/regenerate"))).toHaveLength(2));
-    expect(calls.find((c) => c.path.endsWith("/regenerate"))?.body).toEqual({ kind: "auto" });
+    expect(calls.find((c) => c.path.endsWith("/regenerate"))?.body).toEqual({ kind: "auto", form: "pair" });
   });
 
   test("a failed More cards keeps its cards editable and offers no retry", async () => {

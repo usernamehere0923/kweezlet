@@ -42,7 +42,7 @@ export function SetFormPage() {
   // "" = no folder, "new" = make one called newFolder, else a folder id.
   const [folder, setFolder] = useState("");
   const [newFolder, setNewFolder] = useState("");
-  const { rows, setRows, rowRefs, update, updateImage, next, remove, add, append } = useTermRows();
+  const { rows, setRows, rowRefs, update, setKind, updateImage, next, remove, add, append } = useTermRows();
   const [importing, setImporting] = useState(false);
   const [errors, setErrors] = useState<Record<string, TKey>>({});
   const [formError, setFormError] = useState<TKey | null>(null);
@@ -73,6 +73,7 @@ export function SetFormPage() {
           setRows(
             set.terms.map((term) => ({
               id: term.id,
+              kind: term.kind,
               term: term.term,
               definition: term.definition,
               image: images[term.id] ?? null,
@@ -137,7 +138,11 @@ export function SetFormPage() {
         answerWith,
         folderId: pickedFolder,
         terms: kept.map((row) => {
-          const term = { term: row.term.trim(), definition: row.definition.trim() };
+          const term = {
+            ...(row.kind === "cloze" ? { kind: "cloze" as const } : {}),
+            term: row.term.trim(),
+            definition: row.definition.trim(),
+          };
           return row.id === undefined ? term : { ...term, id: row.id };
         }),
       };
@@ -249,6 +254,8 @@ export function SetFormPage() {
                   rowRefs.current[i] = el;
                 }}
                 index={i}
+                kind={row.kind}
+                onKind={(kind) => setKind(i, kind)}
                 term={row.term}
                 definition={row.definition}
                 image={row.image}

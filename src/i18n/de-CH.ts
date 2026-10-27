@@ -71,6 +71,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "sets.langHint": "Optional. Wird für Audio verwendet.",
   "sets.termsNeeded": "Füge mindestens einen Begriff hinzu.",
   "sets.termsIncomplete": "Fülle beide Felder eines Begriffs aus, oder lösche die Zeile.",
+  "sets.clozeGap": "Jeder Lückensatz braucht genau eine Lücke: Markiere die Wörter und tippe auf Lücke machen.",
   "sets.imagesFailed": "Einige Bilder konnten nicht gespeichert werden. Füge sie erneut hinzu.",
   "sets.termsTooMany": "Ein Set kann höchstens 500 Begriffe haben.",
   "sets.termTooLong": "Ein Begriff oder eine Definition ist zu lang (höchstens 1000 Zeichen).",
@@ -116,6 +117,7 @@ export const deCH: Record<keyof typeof en, string> = {
 
   "learn.askDefinition": "Welche Definition passt?",
   "learn.askTerm": "Welcher Begriff passt?",
+  "learn.askBlank": "Fülle die Lücke",
   "learn.remaining": "Übrig",
   "learn.allLearnedTitle": "Alles gelernt!",
   "learn.allLearnedText": "Du hast jeden Begriff zweimal richtig beantwortet.",
@@ -219,6 +221,14 @@ export const deCH: Record<keyof typeof en, string> = {
 
   "search.placeholder": "Suchen",
 
+  "study.gap": "Lücke",
+  "study.answer": "Antwort",
+  "study.kind": "Kartentyp",
+  "study.kind.pair": "Begriff + Definition",
+  "study.kind.cloze": "Lückensatz",
+  "study.clozeSentence": "Satz",
+  "study.clozeHint": "Markiere die Wörter, die verschwinden sollen, und tippe auf Lücke machen.",
+  "study.makeGap": "Lücke machen",
   "study.term": "Begriff",
   "study.definition": "Definition",
   "study.terms_one": "{count} Begriff",
@@ -300,10 +310,12 @@ export const deCH: Record<keyof typeof en, string> = {
   "ai.error.capReached": "Das monatliche KI-Budget ist aufgebraucht. Es beginnt am 1. wieder neu.",
   "ai.error.running": "Es werden schon Karten erstellt. Warte, bis sie fertig sind.",
 
+  "ai.clozeBroken": "Dieser Satz braucht genau eine Lücke: Setze {{ }} um die Wörter, die verschwinden sollen.",
   "ai.kind.auto": "Automatisch",
   "ai.kind.vocabulary": "Vokabeln",
   "ai.kind.questions": "Fragen",
   "ai.kind.terms": "Begriffe",
+  "ai.kind.cloze": "Lückensätze",
   "ai.source.title": "Karten aus Material",
   "ai.source.subtitle":
     "Wähle eine Datei, füge Text ein oder mach ein Foto. Du prüfst jede Karte, bevor sie ein Set wird.",

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useT } from "../../i18n";
 import { parsePastedTerms, type PasteBetween, type PasteRows, type Row } from "../../lib/setForm";
-import { Button, Modal, Select, Text, TextField } from "../../ui";
+import { Button, ClozeText, Modal, Select, Text, TextField } from "../../ui";
 
 const BETWEEN: PasteBetween[] = ["auto", "tab", "comma", "dash"];
 const ROWS: PasteRows[] = ["newline", "semicolon"];
@@ -78,7 +78,11 @@ export function ImportTerms({
               <ul className="mt-1 flex flex-col gap-0.5 text-sm text-ink-soft">
                 {terms.slice(0, 3).map((term, i) => (
                   <li key={i} className="truncate">
-                    {term.term} → {term.definition}
+                    {term.kind === "cloze" ? (
+                      <ClozeText text={term.term} reveal />
+                    ) : (
+                      `${term.term} → ${term.definition}`
+                    )}
                   </li>
                 ))}
                 {terms.length > 3 && <li aria-hidden>…</li>}

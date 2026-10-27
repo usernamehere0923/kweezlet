@@ -603,6 +603,73 @@ describe("what a run may get", () => {
   });
 });
 
+describe("gap sentences (form cloze)", () => {
+  const PAGE = "Bern has been the federal city of Switzerland since 1848.";
+  const GAP = { term: "Bern has been the {{federal city}} of Switzerland since 1848.", source: PAGE, page: 1 };
+
+  it("the run asks for them; cards without exactly one gap are dropped, the definition is the gap", async () => {
+    const { cookie } = await signedIn("anna");
+    const { bodies } = stubZai(
+      answer([
+        { ...GAP, definition: "whatever the model said" },
+        { term: "No gap in this sentence.", definition: "x", source: PAGE, page: 1 },
+        { term: "{{Two}} gaps {{here}}.", definition: "x", source: PAGE, page: 1 },
+      ]),
+    );
+    const id = await createDraft(cookie, { sourceName: "Bern.txt", form: "cloze", pages: [{ n: 1, text: PAGE }] });
+
+    const body = await settled(cookie, id);
+    expect(body).toMatchObject({ status: "ready", form: "cloze", added: 1 });
+    expect(body.cards).toEqual([{ ...GAP, definition: "federal city", verified: true, checked: true }]);
+    expect(JSON.stringify(bodies[0]!.messages)).toContain("<form>cloze</form>");
+  });
+
+  it("pairs are asked for as before, without the form line", async () => {
+    const { cookie } = await signedIn("anna");
+    const { bodies } = stubZai(answer([DOG]));
+    await settled(cookie, await createDraft(cookie));
+    // The system prompt explains the tag; the user message only carries it for gap sentences.
+    expect(JSON.stringify(bodies[0]!.messages.find((m) => m.role === "user"))).not.toContain("<form>");
+  });
+
+  it("are saved as cloze terms, the definition taken from the gap of the edited sentence", async () => {
+    const { cookie } = await signedIn("anna");
+    stubZai(answer([{ ...GAP, definition: "federal city" }]));
+    const id = await createDraft(cookie, { sourceName: "Bern.txt", form: "cloze", pages: [{ n: 1, text: PAGE }] });
+    const { cards } = await settled(cookie, id);
+    const moved = { ...cards[0], term: "Bern has been the federal city of {{Switzerland}} since 1848." };
+    await api(`/api/ai/drafts/${id}`, { method: "PATCH", cookie, json: { cards: [moved] } });
+
+    const saved = await post(cookie, `/api/ai/drafts/${id}/save`, { setId: null, title: "Bern" });
+    const { setId } = (await saved.json()) as { setId: number };
+    const set = (await (await api(`/api/sets/${setId}`, { cookie })).json()) as {
+      terms: { kind: string; term: string; definition: string }[];
+    };
+    expect(set.terms).toEqual([expect.objectContaining({ kind: "cloze", definition: "Switzerland" })]);
+  });
+
+  it("a sentence that lost its gap is not saved", async () => {
+    const { cookie } = await signedIn("anna");
+    stubZai(answer([{ ...GAP, definition: "federal city" }]));
+    const id = await createDraft(cookie, { sourceName: "Bern.txt", form: "cloze", pages: [{ n: 1, text: PAGE }] });
+    const { cards } = await settled(cookie, id);
+    await api(`/api/ai/drafts/${id}`, { method: "PATCH", cookie, json: { cards: [{ ...cards[0], term: PAGE }] } });
+
+    const saved = await post(cookie, `/api/ai/drafts/${id}/save`, { setId: null, title: "Bern" });
+    expect(await saved.json()).toEqual({ error: "validation", fields: { cards: "invalid_value" } });
+  });
+
+  it("regenerate can switch a draft between pairs and gap sentences", async () => {
+    const { cookie } = await signedIn("anna");
+    stubZai(answer([DOG]), answer([{ ...GAP, definition: "federal city" }]));
+    const id = await createDraft(cookie);
+    expect(await settled(cookie, id)).toMatchObject({ form: "pair" });
+
+    await post(cookie, `/api/ai/drafts/${id}/regenerate`, { kind: "auto", form: "cloze" });
+    expect(await settled(cookie, id)).toMatchObject({ form: "cloze", kind: "auto" });
+  });
+});
+
 describe("the stand-in AI (ZAI_FAKE, local dev only)", () => {
   it("turns pairs and sentences into cards that pass the real pipeline", async () => {
     const userId = await addUser("anna", "secret-pw");
@@ -632,6 +699,31 @@ describe("the stand-in AI (ZAI_FAKE, local dev only)", () => {
       ["Bern ist die …", true],
     ]);
     expect(await usageRows(userId)).toMatchObject([{ model: "fake", calls: 1 }]);
+  });
+
+  it("makes gap sentences from the sentences when asked for them", async () => {
+    const userId = await addUser("anna", "secret-pw");
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO ai_drafts (user_id, status, kind, form) VALUES (?, 'running', 'auto', 'cloze')").bind(
+        userId,
+      ),
+      env.DB.prepare("INSERT INTO ai_draft_pages (user_id, draft_id, n, text) VALUES (?, 1, 1, ?)").bind(
+        userId,
+        "el perro — the dog\nBern ist die Hauptstadt der Schweiz.",
+      ),
+    ]);
+    const job: AiJob = { userId, draftId: 1, action: "create", userLanguage: "en", fake: true, startedAt: Date.now() };
+    await runJob(env.DB, job, (call) => fakeZai(call, 0));
+
+    const row = await env.DB.prepare("SELECT cards_json FROM ai_drafts WHERE id = 1").first<{ cards_json: string }>();
+    const cards = JSON.parse(row!.cards_json) as { term: string; definition: string; verified: boolean }[];
+    expect(cards).toEqual([
+      expect.objectContaining({
+        term: "Bern ist die {{Hauptstadt}} der Schweiz.",
+        definition: "Hauptstadt",
+        verified: true,
+      }),
+    ]);
   });
 
   it("is only ever on for the dev server's hosts", () => {

@@ -107,7 +107,7 @@ describe("GET /api/review", () => {
     await addTerm(anna, animals, "el gato", 0, { step: 1, dueInDays: -1 });
 
     const { cards } = (await (await api("/api/review", { cookie })).json()) as { cards: { answerWith: string }[] };
-    expect(cards).toEqual([expect.objectContaining({ answerWith: "term" })]);
+    expect(cards).toEqual([expect.objectContaining({ answerWith: "term", kind: "pair" })]);
   });
 
   it("caps the cards but counts them all", async () => {

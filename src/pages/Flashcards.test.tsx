@@ -140,6 +140,21 @@ describe("flashcards", () => {
     expect(onFront("el perro")).toBe(true);
   });
 
+  test("a gap sentence shows its gap first and the whole sentence behind it; no order to pick", async () => {
+    const gaps = {
+      ...SPANISH_DETAIL,
+      terms: [
+        { ...SPANISH_DETAIL.terms[0]!, kind: "cloze" as const, term: "El {{perro}} ladra.", definition: "perro" },
+      ],
+    };
+    mockApi(flashcardsApi(gaps));
+    renderApp("/sets/7/flashcards");
+    expect(await screen.findByText("Fill in the gap")).toBeTruthy();
+    expect(screen.getByText("Answer")).toBeTruthy();
+    expect(screen.getByText("perro").closest('[aria-hidden="false"]')).toBeNull();
+    expect(screen.queryByRole("radio", { name: "Definition first" })).toBeNull();
+  });
+
   test("shuffling keeps all the cards", async () => {
     mockApi(flashcardsApi());
     renderApp("/sets/7/flashcards");

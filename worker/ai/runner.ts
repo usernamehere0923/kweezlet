@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { clozeAnswer } from "../cloze";
 import { normalizeAnswer } from "../grading";
 import { notify } from "../live";
 import { ExtractError, parseResult, type AiCardResult, type DraftCard } from "./extract";
@@ -27,7 +28,7 @@ export type AiJob = {
 };
 
 /** What a run changes on its draft before it starts: written by start(), under the lock. */
-export type RunChanges = { kind?: RunOptions["kind"]; pages?: PageInput[] };
+export type RunChanges = { kind?: RunOptions["kind"]; form?: RunOptions["form"]; pages?: PageInput[] };
 
 /** An alarm runs at most 15 minutes (Cloudflare's limit): a job older than this died with it. */
 const STALE_JOB_MS = 20 * 60_000;
@@ -61,10 +62,11 @@ export class AiRunner extends DurableObject<Env> {
         await db.batch([
           db
             .prepare(
-              `UPDATE ai_drafts SET status = 'running', error = NULL, kind = COALESCE(?, kind), updated_at = unixepoch()
+              `UPDATE ai_drafts SET status = 'running', error = NULL, kind = COALESCE(?, kind),
+                      form = COALESCE(?, form), updated_at = unixepoch()
                 WHERE id = ? AND user_id = ?`,
             )
-            .bind(changes.kind ?? null, job.draftId, job.userId),
+            .bind(changes.kind ?? null, changes.form ?? null, job.draftId, job.userId),
           ...pageStatements(db, job.userId, job.draftId, changes.pages ?? []),
         ]);
         await this.ctx.storage.deleteAll();
@@ -124,6 +126,7 @@ const NO_SPEND: Spend = { calls: 0, usage: NO_USAGE, costNanos: 0, durationMs: 0
 
 type DraftRow = {
   kind: RunOptions["kind"];
+  form: RunOptions["form"];
   max_cards: number;
   instructions: string;
   set_id: number | null;
@@ -159,7 +162,9 @@ async function runRun(
   const image = more ? `CASE WHEN n IN (${runPages.map(() => "?").join(", ") || "NULL"}) THEN image END` : "image";
   const [draftRes, pagesRes] = await db.batch([
     db
-      .prepare("SELECT kind, max_cards, instructions, set_id, cards_json FROM ai_drafts WHERE id = ? AND user_id = ?")
+      .prepare(
+        "SELECT kind, form, max_cards, instructions, set_id, cards_json FROM ai_drafts WHERE id = ? AND user_id = ?",
+      )
       .bind(job.draftId, job.userId),
     db
       .prepare(`SELECT n, text, ${image} AS image FROM ai_draft_pages WHERE draft_id = ? AND user_id = ? ORDER BY n`)
@@ -173,6 +178,7 @@ async function runRun(
   const existing = more ? [...current, ...(await setTerms(db, job.userId, draft.set_id))] : [];
   const options: RunOptions = {
     kind: draft.kind,
+    form: draft.form,
     maxCards: draft.max_cards,
     userLanguage: job.userLanguage,
     instructions: more ? (job.instructions ?? "") : draft.instructions,
@@ -220,7 +226,15 @@ async function runRun(
 
   // Only text pages can prove a quote: scans and photos stay unverified.
   const texts: PageTexts = new Map(pages.flatMap((page) => (page.text !== null ? [[page.n, page.text]] : [])));
-  const made = verifyCards(result.cards, texts);
+  // A gap sentence without exactly one gap is no card; its definition is always the gap.
+  const shaped =
+    options.form === "cloze"
+      ? result.cards.flatMap((card) => {
+          const gap = clozeAnswer(card.term);
+          return gap ? [{ ...card, definition: gap }] : [];
+        })
+      : result.cards;
+  const made = verifyCards(shaped, texts);
   const unique = more ? withoutRepeats(made, existing) : made;
   // A draft holds at most 500 cards (what the review screen can edit and save).
   const fresh = more ? unique.slice(0, Math.max(0, MAX_DRAFT_CARDS - current.length)) : unique;

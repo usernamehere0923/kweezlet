@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   CardNav,
+  ClozeText,
   FeedbackBanner,
   FlipCard,
   KnowItButtons,
@@ -30,6 +31,8 @@ import { ANIMALS, Chapter, Section } from "./layout";
 import { MatchDemo } from "./MatchDemo";
 import { MotionSection } from "./motion";
 import { QuestionDemo } from "./QuestionDemo";
+
+const CLOZE = "Bern has been the {{federal city}} of Switzerland since 1848.";
 
 export function StudyKit() {
   const { t } = useT();
@@ -249,13 +252,25 @@ export function StudyKit() {
       </Section>
 
       <Section
+        title="ClozeText"
+        code={`<ClozeText text="Bern has been the {{federal city}} since 1848." />          // the gap
+<ClozeText text="Bern has been the {{federal city}} since 1848." reveal />   // the answer, marked`}
+      >
+        <div className="flex flex-col gap-2 text-lg text-ink">
+          <ClozeText text={CLOZE} />
+          <ClozeText text={CLOZE} reveal />
+        </div>
+      </Section>
+
+      <Section
         title="TermEditorRow · TermList"
         code={`const { rows, rowRefs, update, next, remove, add } = useTermRows();   // src/lib/setForm.ts
 <TermEditorRow ref={(el) => (rowRefs.current[i] = el)} index={i} term={row.term} definition={row.definition}
   onChange={(term, definition) => update(i, term, definition)}
   onNext={() => next(i)}   // Enter in "definition": next row, or a new one
   onDelete={() => remove(i)} />
-<TermList terms={terms} />   // progress: "known" | "learning" | "new" adds a TermProgressDot
+// kind + onKind: switch a row to a gap sentence ("Bern is the {{capital}}."); Make gap marks the selection
+<TermList terms={terms} />   // progress: "known" | "learning" | "new" adds a TermProgressDot; kind "cloze" shows the sentence
 <TermProgressDot progress="learning" />`}
       >
         <div className="flex flex-col gap-3">
@@ -266,6 +281,8 @@ export function StudyKit() {
                 termRows.rowRefs.current[i] = el;
               }}
               index={i}
+              kind={row.kind}
+              onKind={(kind) => termRows.setKind(i, kind)}
               term={row.term}
               definition={row.definition}
               onChange={(term, definition) => termRows.update(i, term, definition)}
@@ -278,7 +295,7 @@ export function StudyKit() {
           </Button>
         </div>
         <div className="mt-6">
-          <TermList terms={ANIMALS} />
+          <TermList terms={[...ANIMALS, { kind: "cloze", term: CLOZE, definition: "federal city" }]} />
           <TermList
             terms={ANIMALS.slice(0, 3).map((item, i) => ({
               ...item,

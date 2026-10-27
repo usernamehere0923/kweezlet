@@ -73,6 +73,7 @@ describe("cards from material", () => {
     expect(calls.find((c) => c.method === "POST")?.body).toEqual({
       sourceName: "pasted",
       kind: "vocabulary",
+      form: "pair",
       maxCards: 25,
       instructions: "answers in German",
       pages: [{ n: 1, text: "el perro — the dog" }],
@@ -106,6 +107,7 @@ describe("cards from material", () => {
     expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({
       sourceName: "kurs.pdf",
       kind: "auto",
+      form: "pair",
       maxCards: 0,
       pages: [
         { n: 1, text: "Kapitel 1: Bern ist die Hauptstadt der Schweiz." },

@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import { clozeAnswer, TERM_KINDS, type TermKind } from "./cloze";
 import { ownsFolder } from "./folders";
 import { notifyLater } from "./live";
 import { LANGUAGES, type Language } from "./languages";
@@ -20,12 +21,18 @@ const searchQuery = z.object({
   /** Only the sets in this folder, or in none. */
   folder: z.union([z.literal("none"), z.coerce.number().int().positive()]).optional(),
 });
-const termShape = z.object({
-  /** Present when the term already exists: it is updated, not re-inserted. */
-  id: z.coerce.number().int().positive().optional(),
-  term: z.string().trim().min(1).max(1000),
-  definition: z.string().trim().min(1).max(1000),
-});
+const termShape = z
+  .object({
+    /** Present when the term already exists: it is updated, not re-inserted. */
+    id: z.coerce.number().int().positive().optional(),
+    /** A cloze term is a sentence with one {{hidden part}}; its definition is that part (worker/cloze.ts). */
+    kind: z.enum(TERM_KINDS).optional(),
+    term: z.string().trim().min(1).max(1000),
+    definition: z.string().trim().min(1).max(1000),
+  })
+  .refine((t) => t.kind !== "cloze" || clozeAnswer(t.term) !== null, { path: ["term"], message: "cloze" })
+  // The definition of a cloze term is always its hidden part, whatever was sent.
+  .transform((t) => (t.kind === "cloze" ? { ...t, definition: clozeAnswer(t.term)! } : t));
 const setBody = z.object({
   title: z.string().trim().min(1).max(200),
   description: z.string().max(2000).optional(),
@@ -51,6 +58,7 @@ type SetRow = {
 };
 type TermRow = {
   id: number;
+  kind: TermKind;
   term: string;
   definition: string;
   position: number;
@@ -118,6 +126,8 @@ function likePattern(q: string): string {
 export type SetSummary = ReturnType<typeof toSetJson>;
 export type SetTerm = {
   id: number;
+  /** "cloze": the term is a sentence with one {{hidden part}}, the definition that part. */
+  kind: TermKind;
   term: string;
   definition: string;
   position: number;
@@ -145,7 +155,7 @@ async function loadSetDetail(db: D1Database, userId: number, id: number): Promis
       .bind(id, userId),
     db
       .prepare(
-        `SELECT t.id, t.term, t.definition, t.position, ts.status, COALESCE(ts.starred, 0) AS starred,
+        `SELECT t.id, t.kind, t.term, t.definition, t.position, ts.status, COALESCE(ts.starred, 0) AS starred,
                 COALESCE(st.streak, 0) AS streak
            FROM terms t
            ${TERM_PROGRESS_JOINS}
@@ -227,10 +237,10 @@ export const setRoutes = new Hono<AppEnv>()
       ...body.terms.map((t, position) =>
         db
           .prepare(
-            `INSERT INTO terms (user_id, set_id, term, definition, position)
-             VALUES (?, (SELECT MAX(id) FROM sets WHERE user_id = ?), ?, ?, ?)`,
+            `INSERT INTO terms (user_id, set_id, term, definition, position, kind)
+             VALUES (?, (SELECT MAX(id) FROM sets WHERE user_id = ?), ?, ?, ?, ?)`,
           )
-          .bind(user.id, user.id, t.term, t.definition, position),
+          .bind(user.id, user.id, t.term, t.definition, position, t.kind ?? "pair"),
       ),
     ]);
     const setId = created!.results[0]!.id;

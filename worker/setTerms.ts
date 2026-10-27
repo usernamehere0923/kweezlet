@@ -1,7 +1,7 @@
 // Keeping a set's stored terms in step with an edited list (PATCH /sets/:id).
 
 /** A term as the set form sends it: with an id when it already exists. */
-type TermInput = { id?: number; term: string; definition: string };
+type TermInput = { id?: number; kind?: "pair" | "cloze"; term: string; definition: string };
 
 /** The ids of this user's terms in this set, or null when the set is not theirs. One query. */
 export async function ownedTermIds(db: D1Database, userId: number, setId: number): Promise<Set<number> | null> {
@@ -37,13 +37,14 @@ export function termStatements(
     statements.push(
       t.id === undefined
         ? db
-            .prepare("INSERT INTO terms (user_id, set_id, term, definition, position) VALUES (?, ?, ?, ?, ?)")
-            .bind(userId, setId, t.term, t.definition, position)
+            .prepare("INSERT INTO terms (user_id, set_id, term, definition, position, kind) VALUES (?, ?, ?, ?, ?, ?)")
+            .bind(userId, setId, t.term, t.definition, position, t.kind ?? "pair")
         : db
             .prepare(
-              "UPDATE terms SET term = ?, definition = ?, position = ? WHERE id = ? AND set_id = ? AND user_id = ?",
+              `UPDATE terms SET term = ?, definition = ?, position = ?, kind = ?
+                WHERE id = ? AND set_id = ? AND user_id = ?`,
             )
-            .bind(t.term, t.definition, position, t.id, setId, userId),
+            .bind(t.term, t.definition, position, t.kind ?? "pair", t.id, setId, userId),
     );
   });
   return statements;

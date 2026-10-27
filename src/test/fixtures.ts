@@ -30,11 +30,19 @@ export const SWISS = {
   updatedAt: 1,
 };
 
-type Term = { id: number; term: string; definition: string; status: string; starred: boolean; streak: number };
+type Term = {
+  id: number;
+  kind: "pair" | "cloze";
+  term: string;
+  definition: string;
+  status: string;
+  starred: boolean;
+  streak: number;
+};
 
 /** A fresh term: unseen, not starred. `overrides` sets the rest. */
 export function term(id: number, term: string, definition: string, overrides: Partial<Term> = {}): Term {
-  return { id, term, definition, status: "unseen", starred: false, streak: 0, ...overrides };
+  return { id, kind: "pair", term, definition, status: "unseen", starred: false, streak: 0, ...overrides };
 }
 
 /** `set` with these terms, in this order. */
