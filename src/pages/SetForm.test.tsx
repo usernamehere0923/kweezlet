@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 import { fileToDataUrl } from "../lib/images";
@@ -43,6 +43,61 @@ describe("set form", () => {
     );
     expect(await screen.findByRole("heading", { level: 1, name: "Spanish animals" })).toBeTruthy();
     expect(await screen.findByText("Saved")).toBeTruthy();
+  });
+
+  test("a pasted list is added after the filled rows, and saved with them", async () => {
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "POST /api/sets": () => ({ status: 201, json: { ...SPANISH_DETAIL, id: 9 } }),
+      "GET /api/sets/9": () => ({ json: { ...SPANISH_DETAIL, id: 9 } }),
+    });
+    renderApp("/sets/new");
+    await userEvent.type(await screen.findByLabelText("Title"), "Spanish animals");
+    await userEvent.type(screen.getByLabelText("Term"), "el perro");
+    await userEvent.type(screen.getByLabelText("Definition"), "the dog");
+    await userEvent.click(screen.getByRole("button", { name: "Add a term" }));
+    await userEvent.click(screen.getByRole("button", { name: "Import" }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Paste a list to see its terms here.")).toBeTruthy();
+    expect((within(dialog).getByRole("button", { name: "Add 0 terms" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(within(dialog).getByLabelText("Your list"), {
+      target: { value: "Animals\nel gato\tthe cat\nla vaca\tthe cow" },
+    });
+    expect(within(dialog).getByText("2 terms found")).toBeTruthy();
+    expect(within(dialog).getByText("el gato → the cat")).toBeTruthy();
+    expect(within(dialog).getByText("1 line without a definition is left out.")).toBeTruthy();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add 2 terms" }));
+
+    // The empty row added before the import made room for the imported ones.
+    expect(screen.getAllByLabelText("Term").map((input) => (input as HTMLInputElement).value)).toEqual([
+      "el perro",
+      "el gato",
+      "la vaca",
+    ]);
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({
+        terms: [
+          { term: "el perro", definition: "the dog" },
+          { term: "el gato", definition: "the cat" },
+          { term: "la vaca", definition: "the cow" },
+        ],
+      }),
+    );
+  });
+
+  test("the import separators can be picked, and cancel adds nothing", async () => {
+    mockApi({ "GET /api/me": () => ({ json: ME }) });
+    renderApp("/sets/new");
+    await userEvent.click(await screen.findByRole("button", { name: "Import" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Your list"), { target: { value: "a,1;b,2" } });
+    await userEvent.selectOptions(within(dialog).getByLabelText("Between term and definition"), "comma");
+    await userEvent.selectOptions(within(dialog).getByLabelText("Between terms"), "semicolon");
+    expect(within(dialog).getByText("2 terms found")).toBeTruthy();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.getAllByLabelText("Term").map((input) => (input as HTMLInputElement).value)).toEqual([""]);
   });
 
   test("a half-filled row is caught before sending", async () => {

@@ -5,6 +5,7 @@ import { useT, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
 import { languageOptions } from "../lib/choices";
 import { checkSetForm, saveImageChanges, termsError, useTermRows } from "../lib/setForm";
+import { ImportTerms } from "./setForm/ImportTerms";
 import {
   Button,
   ButtonLink,
@@ -33,7 +34,8 @@ export function SetFormPage() {
   const [description, setDescription] = useState("");
   const [termLang, setTermLang] = useState<Language | "">("");
   const [defLang, setDefLang] = useState<Language | "">("");
-  const { rows, setRows, rowRefs, update, updateImage, next, remove, add } = useTermRows();
+  const { rows, setRows, rowRefs, update, updateImage, next, remove, add, append } = useTermRows();
+  const [importing, setImporting] = useState(false);
   const [errors, setErrors] = useState<Record<string, TKey>>({});
   const [formError, setFormError] = useState<TKey | null>(null);
   const [busy, setBusy] = useState(false);
@@ -180,11 +182,17 @@ export function SetFormPage() {
                 onImage={(image) => updateImage(row.uid, image)}
               />
             ))}
-            <Button variant="secondary" icon="plus" onClick={add}>
-              {t("study.addTerm")}
-            </Button>
+            <div className="grid grid-cols-2 gap-3">
+              <Button variant="secondary" icon="plus" onClick={add}>
+                {t("study.addTerm")}
+              </Button>
+              <Button variant="secondary" icon="upload" onClick={() => setImporting(true)}>
+                {t("sets.import")}
+              </Button>
+            </div>
           </div>
           {formError && <FormError className="mt-3">{t(formError)}</FormError>}
+          <ImportTerms open={importing} onClose={() => setImporting(false)} onImport={append} />
         </section>
 
         <div className="flex items-center gap-2">

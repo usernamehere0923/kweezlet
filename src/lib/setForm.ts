@@ -18,6 +18,10 @@ export type Row = {
 
 export const emptyRow: Row = { term: "", definition: "" };
 
+/** At most this many terms in a set, and characters on one side of a term (as in worker/sets.ts). */
+export const MAX_TERMS = 500;
+export const MAX_SIDE = 1000;
+
 let lastUid = 0;
 const withUid = (row: Row): Row => (row.uid === undefined ? { ...row, uid: ++lastUid } : row);
 
@@ -52,6 +56,12 @@ export function useTermRows(initial: Row[] = [emptyRow]) {
     },
     remove: (i: number) => setRawRows((list) => (list.length > 1 ? list.filter((_, j) => j !== i) : list)),
     add: () => setRawRows((list) => [...list, withUid(emptyRow)]),
+    /** Imported rows go after the filled ones; rows still completely empty make room. */
+    append: (more: Row[]) =>
+      setRawRows((list) => [
+        ...list.filter((row) => row.term.trim() || row.definition.trim() || row.image),
+        ...more.map(withUid),
+      ]),
   };
 }
 
@@ -69,6 +79,11 @@ export function checkSetForm(
   if (kept.length === 0) return { kept, titleError: null, formError: "sets.termsNeeded" };
   if (kept.some((row) => !row.term.trim() || !row.definition.trim())) {
     return { kept, titleError: null, formError: "sets.termsIncomplete" };
+  }
+  // The server's limits (worker/sets.ts), caught here so a big import says so at once.
+  if (kept.length > MAX_TERMS) return { kept, titleError: null, formError: "sets.termsTooMany" };
+  if (kept.some((row) => row.term.trim().length > MAX_SIDE || row.definition.trim().length > MAX_SIDE)) {
+    return { kept, titleError: null, formError: "sets.termTooLong" };
   }
   return { kept, titleError: null, formError: null };
 }
@@ -92,6 +107,71 @@ export async function saveImageChanges(kept: Row[], savedTerms: { id: number }[]
     ),
   );
   return results.filter((res) => !res.ok).length;
+}
+
+/** What splits a term from its definition in a pasted list; "auto" picks one for the whole text. */
+export type PasteBetween = "auto" | "tab" | "comma" | "dash";
+/** What splits one term from the next in a pasted list. */
+export type PasteRows = "newline" | "semicolon";
+
+const DASH = / [-–—] /;
+
+/** The quote marks of a field that is fully quoted ("a, b" → a, b; "" → "). */
+function unquote(field: string): string {
+  const trimmed = field.trim();
+  return trimmed.length >= 2 && trimmed.startsWith('"') && trimmed.endsWith('"')
+    ? trimmed.slice(1, -1).replaceAll('""', '"').trim()
+    : trimmed;
+}
+
+/** Where the first separator outside quotes starts, and how long it is; null when there is none. */
+function firstSeparator(line: string, between: Exclude<PasteBetween, "auto">): [number, number] | null {
+  if (between === "dash") {
+    const match = DASH.exec(line);
+    return match ? [match.index, match[0].length] : null;
+  }
+  const separator = between === "tab" ? "\t" : ",";
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === '"') quoted = !quoted;
+    else if (!quoted && line[i] === separator) return [i, 1];
+  }
+  return null;
+}
+
+/**
+ * Terms from a pasted list (a Quizlet or Anki export, a spreadsheet column
+ * pair, typed notes). One term per line (or per semicolon), the first
+ * separator splits term from definition; fields in quotes may hold the
+ * separator. Lines without one, or with an empty side, are counted as skipped.
+ */
+export function parsePastedTerms(
+  text: string,
+  between: PasteBetween = "auto",
+  rows: PasteRows = "newline",
+): { terms: Row[]; skipped: number } {
+  const lines = text
+    .split(rows === "newline" ? /\r?\n/ : ";")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const split =
+    between !== "auto"
+      ? between
+      : lines.some((line) => line.includes("\t"))
+        ? "tab"
+        : lines.some((line) => DASH.test(line))
+          ? "dash"
+          : "comma";
+  const terms: Row[] = [];
+  let skipped = 0;
+  for (const line of lines) {
+    const at = firstSeparator(line, split);
+    const term = at ? unquote(line.slice(0, at[0])) : "";
+    const definition = at ? unquote(line.slice(at[0] + at[1])) : "";
+    if (term && definition) terms.push({ term, definition });
+    else skipped++;
+  }
+  return { terms, skipped };
 }
 
 /** The message for the server's errors on the terms, or null when there are none. */
