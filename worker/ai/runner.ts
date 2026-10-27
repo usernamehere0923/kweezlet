@@ -35,7 +35,7 @@ const STALE_JOB_MS = 20 * 60_000;
 
 /**
  * One instance per user: runs that user's AI jobs, one at a time. A run takes
- * 20-120 s, so it does not wait inside a request (Safari in the background
+ * 10-300 s, so it does not wait inside a request (Safari in the background
  * kills it): the route stores the draft and hands the job over, the alarm
  * calls z.ai and writes the result to D1, the user's devices hear "ai".
  * Being one object per user is also the lock: two taps cannot pay twice.

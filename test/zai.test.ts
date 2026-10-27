@@ -165,6 +165,9 @@ describe("callZai", () => {
     const err = (await callZai(undefined, { messages: MESSAGES, maxTokens: 10 }).catch((e: unknown) => e)) as ZaiError;
     expect(err.kind).toBe("ai_key");
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(ZAI_TIMEOUT_MS).toBe(120_000);
+  });
+
+  test("two calls at the timeout still fit an alarm's 15 minutes", () => {
+    expect(2 * ZAI_TIMEOUT_MS).toBeLessThan(15 * 60_000);
   });
 });

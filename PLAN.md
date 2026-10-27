@@ -1,6 +1,19 @@
 # kweezlet plan
 
-Phases 0 to 7: done (PRs #3 to #23). Phase 8: in progress, see "Status" and "What's next" below.
+Phases 0 to 7: done (PRs #3 to #23). Phase 8: merged (PR #24), not shipped yet. Phase 9: branch `phase-9-gaps`.
+
+## Phase 9: the missing pieces
+
+Built (one commit each, branch `phase-9-gaps`):
+
+1. **Import terms** into the set form: paste a Quizlet/Anki/spreadsheet list; tab, comma or " - " between term and definition (detected or picked), new line or semicolon between terms, quoted CSV fields; lines without a definition are left out. The form now catches more than 500 terms and sides over 1000 characters before sending.
+2. **Answer direction** per set (`0010_answer_with.sql`): term, definition or both (both = as before). Learn, Review and Test follow it, Test can change it per paper, Flashcards start on the other side. Stats stay per term, not per direction. A set answered with the term shows the term's picture with the definition; sets asked both ways keep the old rule (no picture on a question asking for the term).
+3. **Folders** (`0011_folders.sql`): one level, a set in at most one. Home filters by folder (`?folder=` in the URL), names each set's folder, renames and deletes folders (sets stay). The set form picks a folder or makes one. In "Download my data" and the seed.
+4. **Gap sentences** (`0012_cloze.sql`): `terms.kind` pair/cloze; a cloze term is a sentence with one `{{gap}}`, its definition is the gap (the server derives it, `worker/cloze.ts`). Editor: switch a row, select words, "Make gap". Flashcards: gap, then the sentence. Learn/Review/Test: the sentence, picks from other gaps only (never definitions), never true/false. Match: sentence against gap. AI: "Gap sentences" in "What to make" (`ai_drafts.form`, not a new `kind`: changing that CHECK would rebuild the table and cascade into `ai_draft_pages`); cards without exactly one gap are dropped.
+
+Real runs (2026-10-27, z.ai, 390px): gap sentences from pasted German text, 9 cards, 55 s, $0.0025; from a one-page text PDF, 9 cards all verified, 74 s, $0.0037. The same PDF as pairs: 33 s, $0.0015. Gap sentences think longer: 2 of 3 first tries passed the old 120 s z.ai timeout, so it is 300 s now (two calls still fit the alarm's 15 minutes).
+
+Ship: after merging, with phase 8: Settings → "Download my data", `npm run db:migrate:remote` (0009-0012), `npm run deploy`.
 
 ## Phase 8: AI-made kweezlets
 
