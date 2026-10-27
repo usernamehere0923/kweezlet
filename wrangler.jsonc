@@ -13,6 +13,10 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"],
   },
+  // AI-made sets: a monthly spending cap in USD (checked before every AI call;
+  // admins are exempt). The z.ai key itself is the ZAI_API_KEY secret, never
+  // here: .dev.vars locally, `wrangler secret put ZAI_API_KEY` for live.
+  "vars": { "AI_MONTHLY_CAP_USD": "2" },
   "d1_databases": [
     {
       "binding": "DB",
@@ -22,7 +26,14 @@
     },
   ],
   "durable_objects": {
-    "bindings": [{ "name": "USER_CHANNEL", "class_name": "UserChannel" }],
+    "bindings": [
+      { "name": "USER_CHANNEL", "class_name": "UserChannel" },
+      // One per user: runs that user's AI jobs from an alarm (worker/ai/runner.ts).
+      { "name": "AI_RUNNER", "class_name": "AiRunner" },
+    ],
   },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["UserChannel"] }],
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["UserChannel"] },
+    { "tag": "v2", "new_sqlite_classes": ["AiRunner"] },
+  ],
 }

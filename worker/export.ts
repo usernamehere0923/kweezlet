@@ -11,6 +11,9 @@ export const exportTables: string[] = [
   "study_days",
   "term_stats",
   "match_best",
+  "ai_drafts",
+  "ai_draft_pages",
+  "ai_usage",
 ];
 
 /** Tables that have a user_id but must never be exported (secrets, plumbing). */

@@ -11,7 +11,32 @@ export default tseslint.config(
     files: ["src/**/*.{ts,tsx}"],
     languageOptions: { globals: globals.browser },
     plugins: { "react-hooks": reactHooks },
-    rules: reactHooks.configs.recommended.rules,
+    rules: {
+      ...reactHooks.configs.recommended.rules,
+      // Whatever the UI imports at runtime ships to the browser. From the worker
+      // only these pure files may: the AI client and anything near a secret
+      // (ZAI_API_KEY) must never end up in the bundle. Types are fine.
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/worker/**",
+                "!**/worker/languages",
+                "!**/worker/progress",
+                "!**/worker/grading",
+                "!**/worker/ai/",
+                "**/worker/ai/*",
+                "!**/worker/ai/prices",
+              ],
+              allowTypeImports: true,
+              message: "The UI may only import types from worker/ (plus languages, progress, grading, ai/prices).",
+            },
+          ],
+        },
+      ],
+    },
   },
   {
     files: ["scripts/**/*.ts", "*.config.{js,ts}"],

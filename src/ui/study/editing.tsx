@@ -1,10 +1,11 @@
-import { useImperativeHandle, useRef, type Ref } from "react";
+import { useImperativeHandle, useRef, type KeyboardEvent, type Ref } from "react";
 import type { TermProgress } from "../../../worker/progress";
 import { useT } from "../../i18n";
 import { cx } from "../cx";
 import { IconButton } from "../Button";
 import { SpeakButton } from "../speech";
 import { surface } from "../surfaces";
+import { useAutoGrow } from "../useAutoGrow";
 import { TermImage, TermImagePicker } from "./images";
 
 export type TermEditorHandle = { focus: () => void };
@@ -12,34 +13,55 @@ export type TermEditorHandle = { focus: () => void };
 const cell =
   "w-full border-0 border-b-2 border-line bg-transparent px-0 pt-1 pb-1.5 text-base text-ink outline-none transition-colors focus:border-accent";
 
-/** One input of a TermEditorRow, its caption under it. Enter runs onEnter instead of submitting. */
-function Cell({
+/**
+ * One input of a TermEditorRow (and of a DraftCard), its caption under it.
+ * Enter runs onEnter instead of submitting. `wrap`: grows to show all of a
+ * long text (an AI answer), still one line per Enter-less entry. Not exported
+ * from src/ui: rows only.
+ */
+export function Cell({
   ref,
   label,
   value,
   onChange,
   onEnter,
+  wrap = false,
+  maxLength,
 }: {
-  ref: Ref<HTMLInputElement>;
+  ref?: Ref<HTMLInputElement>;
   label: string;
   value: string;
   onChange: (value: string) => void;
-  onEnter: () => void;
+  onEnter?: () => void;
+  wrap?: boolean;
+  maxLength?: number;
 }) {
+  const area = useRef<HTMLTextAreaElement>(null);
+  useAutoGrow(area, value);
+  const keys = {
+    value,
+    maxLength,
+    onKeyDown: (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        onEnter?.();
+      }
+    },
+  };
   return (
     <label className="block">
-      <input
-        ref={ref}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            e.preventDefault();
-            onEnter();
-          }
-        }}
-        className={cell}
-      />
+      {wrap ? (
+        <textarea
+          ref={area}
+          {...keys}
+          rows={1}
+          // A pasted line break would end up inside the card: a space instead.
+          onChange={(e) => onChange(e.target.value.replace(/\r?\n/g, " "))}
+          className={cx(cell, "field-sizing-content resize-none")}
+        />
+      ) : (
+        <input ref={ref} {...keys} onChange={(e) => onChange(e.target.value)} className={cell} />
+      )}
       <span className="mt-1.5 block text-xs font-semibold tracking-wide text-faint uppercase">{label}</span>
     </label>
   );

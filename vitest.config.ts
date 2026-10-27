@@ -17,7 +17,15 @@ export default defineConfig(async () => {
           plugins: [
             cloudflareTest({
               wrangler: { configPath: "./wrangler.jsonc" },
-              miniflare: { bindings: { TEST_MIGRATIONS: migrations } },
+              miniflare: {
+                bindings: {
+                  TEST_MIGRATIONS: migrations,
+                  // A dummy key: tests stub the z.ai fetch, never call the real API.
+                  ZAI_API_KEY: "test-key",
+                  // The stand-in AI stays off, whatever .dev.vars on this machine says.
+                  ZAI_FAKE: "",
+                },
+              },
             }),
           ],
           test: {

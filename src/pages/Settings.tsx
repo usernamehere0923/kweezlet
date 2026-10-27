@@ -1,8 +1,10 @@
-import { useState, type ReactNode } from "react";
+import type { InferResponseType } from "hono/client";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { useT, type Locale, type TKey } from "../i18n";
 import { api, fieldErrors } from "../lib/api";
+import { useLive } from "../lib/live";
 import { useSession, useUser } from "../lib/session";
-import { Button, ButtonLink, Card, Heading, PageTitle, LocalePicker, Text, TextField, useToast } from "../ui";
+import { AiUsage, Button, ButtonLink, Card, Heading, PageTitle, LocalePicker, Text, TextField, useToast } from "../ui";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -38,6 +40,10 @@ export function SettingsPage() {
 
         <Section title={t("settings.password")}>
           <PasswordForm />
+        </Section>
+
+        <Section title={t("settings.ai")}>
+          <AiUsageSection />
         </Section>
 
         <Section title={t("settings.data")}>
@@ -131,5 +137,37 @@ function PasswordForm() {
         </Button>
       </div>
     </form>
+  );
+}
+
+/** What the AI cost, loaded here and shown by AiUsage. */
+function AiUsageSection() {
+  const { t } = useT();
+  const [usage, setUsage] = useState<InferResponseType<typeof api.ai.usage.$get, 200> | null>(null);
+
+  const load = useCallback(
+    () =>
+      api.ai.usage.$get().then(async (res) => {
+        if (res.ok) setUsage(await res.json());
+      }),
+    [],
+  );
+  useEffect(() => void load(), [load]);
+  // A run on another device (or in another tab) adds a row.
+  useLive("ai", () => void load());
+
+  if (!usage) return <Text variant="muted">{t("common.loading")}</Text>;
+  return (
+    <AiUsage
+      monthNanos={usage.monthNanos}
+      totalNanos={usage.totalNanos}
+      capNanos={usage.capNanos}
+      runs={usage.recent.map((run) => ({
+        at: new Date(run.createdAt * 1000),
+        action: run.action,
+        tokens: run.inputTokens + run.outputTokens,
+        nanos: run.costNanos,
+      }))}
+    />
   );
 }

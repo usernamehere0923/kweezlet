@@ -1,10 +1,19 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
-import { LOCALES, type Locale } from "../../worker/languages";
+import { LOCALES, type Language, type Locale } from "../../worker/languages";
 import { deCH } from "./de-CH";
 import { en } from "./en";
 
 export { LOCALES, type Locale };
 export type TKey = keyof typeof en;
+
+/** The name of each card language, for pickers and labels: t(LANG_KEY[lang]). */
+export const LANG_KEY: Record<Language, TKey> = {
+  en: "lang.en",
+  de: "lang.de",
+  fr: "lang.fr",
+  it: "lang.it",
+  es: "lang.es",
+};
 /** Keys that come as a _one/_other pair, without the suffix: "study.terms". */
 type TPluralKey = TKey extends infer K ? (K extends `${infer B}_one` ? B : never) : never;
 type Vars = Record<string, string | number>;

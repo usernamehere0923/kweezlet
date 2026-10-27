@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
+import type { DraftSummary } from "../../worker/ai";
 import type { SetSummary } from "../../worker/sets";
 import { useT } from "../i18n";
 import { api } from "../lib/api";
+import { sourceLabel } from "../lib/draft";
 import { useLive } from "../lib/live";
 import { useUser } from "../lib/session";
 import { localDay } from "../lib/studyDay";
@@ -16,6 +18,7 @@ import {
   PageLoading,
   StreakBadge,
   StudySetCard,
+  UnfinishedDrafts,
 } from "../ui";
 
 /** How long typing has to pause before the search goes out. */
@@ -31,6 +34,7 @@ export function HomePage() {
   const [sets, setSets] = useState<SetSummary[] | null>(null);
   const [dueCount, setDueCount] = useState(0);
   const [streak, setStreak] = useState({ streak: 0, studiedToday: false });
+  const [drafts, setDrafts] = useState<DraftSummary[]>([]);
   const request = useRef(0);
 
   useEffect(() => {
@@ -69,6 +73,20 @@ export function HomePage() {
   );
   useEffect(() => void loadStreak(), [loadStreak]);
 
+  // AI drafts not saved or discarded yet: found again here (also from the other device).
+  const draftsRequest = useRef(0);
+  const loadDrafts = useCallback(() => {
+    const mine = ++draftsRequest.current;
+    return api.ai.drafts.$get().then(async (res) => {
+      // Two live events close together: the older answer must not land last.
+      if (!res.ok) return;
+      const { drafts } = await res.json();
+      if (mine === draftsRequest.current) setDrafts(drafts);
+    });
+  }, []);
+  useEffect(() => void loadDrafts(), [loadDrafts]);
+  useLive("ai", () => void loadDrafts());
+
   // Marks and answers elsewhere move the bars, the due count and the streak;
   // editing or deleting a set moves the bars and the due count.
   useLive("study", () => {
@@ -98,6 +116,19 @@ export function HomePage() {
         </Card>
       )}
 
+      {drafts.length > 0 && (
+        <div className="mb-6">
+          <UnfinishedDrafts
+            drafts={drafts.map((draft) => ({
+              to: `/create/ai/${draft.id}`,
+              title: draft.title || sourceLabel(t, draft.sourceName),
+              status: draft.status,
+              cardCount: draft.cardCount,
+            }))}
+          />
+        </div>
+      )}
+
       {sets === null ? (
         <PageLoading />
       ) : sets.length === 0 && !query && !q ? (
@@ -106,24 +137,33 @@ export function HomePage() {
           title={t("sets.emptyTitle")}
           text={t("sets.emptyText")}
           action={
-            <ButtonLink to="/sets/new" icon="plus">
-              {t("sets.emptyAction")}
-            </ButtonLink>
+            <div className="flex flex-wrap justify-center gap-2">
+              <ButtonLink to="/sets/new" icon="plus">
+                {t("sets.emptyAction")}
+              </ButtonLink>
+              <ButtonLink to="/create/ai" icon="bulb" variant="secondary">
+                {t("home.fromMaterial")}
+              </ButtonLink>
+            </div>
           }
         />
       ) : (
         <>
-          <div className="mb-6 flex items-center gap-2">
+          {/* The phone: search on its own line, the two ways to a new set under it. */}
+          <div className="mb-6 flex flex-wrap items-center gap-2">
             <SearchField
               value={q}
               onChange={setQ}
               label={t("sets.searchLabel")}
               placeholder={t("search.placeholder")}
               clearLabel={t("common.clear")}
-              className="flex-1"
+              className="basis-full sm:flex-1 sm:basis-auto"
             />
             <ButtonLink to="/sets/new" icon="plus" variant={dueCount > 0 ? "secondary" : "primary"}>
               {t("sets.new")}
+            </ButtonLink>
+            <ButtonLink to="/create/ai" icon="bulb" variant="secondary">
+              {t("home.fromMaterial")}
             </ButtonLink>
           </div>
           {/* Same tree position with and without results, so the input keeps focus while typing. */}

@@ -1,9 +1,9 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test } from "vitest";
 import { SPANISH, SWISS } from "../test/fixtures";
 import { ME, renderApp } from "../test/render";
-import { mockApi } from "../test/server";
+import { FakeSocket, mockApi } from "../test/server";
 
 describe("home", () => {
   test("home lists my sets and finds them by search", async () => {
@@ -98,5 +98,47 @@ describe("home", () => {
     expect(await screen.findByText("Nothing matches your search")).toBeTruthy();
     expect(document.activeElement).toBe(box);
     expect((box as HTMLInputElement).value).toBe("sx");
+  });
+
+  test("unfinished AI drafts are found again here, and follow their runs", async () => {
+    const draft = { id: 9, status: "running", title: "", sourceName: "kurs.pdf", cardCount: 0, updatedAt: 0 };
+    let drafts = [draft];
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [SPANISH] }),
+      "GET /api/ai/drafts": () => ({ json: { drafts } }),
+    });
+    renderApp("/");
+    const card = (await screen.findByRole("heading", { name: "1 unfinished AI draft" })).parentElement!;
+    expect(within(card).getByText("kurs.pdf")).toBeTruthy();
+    expect(within(card).getByText("Making cards…")).toBeTruthy();
+    expect(within(card).getByRole("link", { name: "Open" }).getAttribute("href")).toBe("/create/ai/9");
+    expect(screen.getByRole("link", { name: "From material" }).getAttribute("href")).toBe("/create/ai");
+
+    drafts = [
+      { ...draft, status: "ready", title: "Kantone", cardCount: 12 },
+      { ...draft, id: 8, status: "failed", cardCount: 0 },
+      { ...draft, id: 7, status: "ready", sourceName: "pasted", cardCount: 3 },
+      { ...draft, id: 6, status: "ready", sourceName: "photo", cardCount: 1 },
+    ];
+    await waitFor(() => expect(FakeSocket.instances.length).toBeGreaterThan(0));
+    await act(async () => FakeSocket.last.receive(JSON.stringify({ topic: "ai", data: {} })));
+    expect(await screen.findByRole("heading", { name: "4 unfinished AI drafts" })).toBeTruthy();
+    expect(screen.getByText("12 cards")).toBeTruthy();
+    expect(screen.getByText("Failed")).toBeTruthy();
+    // Every draft is listed (Home is the only way back to one); pasted text has a name.
+    expect(screen.getAllByRole("link", { name: "Open" })).toHaveLength(4);
+    expect(screen.getByText("Pasted text")).toBeTruthy();
+    expect(screen.getByText("Photos")).toBeTruthy();
+
+    drafts = [];
+    await act(async () => FakeSocket.last.receive(JSON.stringify({ topic: "ai", data: {} })));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: /unfinished AI draft/ })).toBeNull());
+  });
+
+  test("with no sets yet, a set can also come from material", async () => {
+    mockApi({ "GET /api/me": () => ({ json: ME }), "GET /api/sets": () => ({ json: [] }) });
+    renderApp("/");
+    expect((await screen.findByRole("link", { name: "From material" })).getAttribute("href")).toBe("/create/ai");
   });
 });

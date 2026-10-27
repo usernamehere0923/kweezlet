@@ -1,5 +1,6 @@
 import { useT } from "../../i18n";
 import { PageTitle } from "../../ui";
+import { AiKit } from "./aiKit";
 import { Controls } from "./controls";
 import { Foundations } from "./foundations";
 import { LiveDemo } from "./live";
@@ -14,6 +15,7 @@ export function DesignSystemPage() {
       <Foundations />
       <Controls />
       <StudyKit />
+      <AiKit />
       <LiveDemo />
     </div>
   );

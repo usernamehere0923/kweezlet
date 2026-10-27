@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { accountRoutes } from "./account";
+import { aiRoutes } from "./ai";
 import { authRoutes, requireUser } from "./auth";
 import { imageRoutes } from "./images";
 import { liveRoutes } from "./live";
@@ -23,6 +24,7 @@ const app = new Hono<AppEnv>()
   .route("/api", reviewRoutes)
   .route("/api", studyRoutes)
   .route("/api", streakRoutes)
+  .route("/api", aiRoutes)
   .all("/api/*", (c) => c.json({ error: "not_found" as const }, 404));
 
 app.onError((err, c) => {
@@ -31,5 +33,6 @@ app.onError((err, c) => {
 });
 
 export type AppType = typeof app;
+export { AiRunner } from "./ai/runner";
 export { UserChannel } from "./live";
 export default app;
