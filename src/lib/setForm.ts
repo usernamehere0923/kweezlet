@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { clozeAnswer, clozeParts, filled, type TermKind } from "../../worker/cloze";
+import { clozeAnswer, filled, fromAnki, type TermKind } from "../../worker/cloze";
 import type { TKey } from "../i18n";
 import type { TermEditorHandle } from "../ui";
 import { api } from "./api";
@@ -13,6 +13,8 @@ export type Row = {
   kind?: TermKind;
   term: string;
   definition: string;
+  /** A pair's definition while the row is a gap sentence: switching back brings it back. */
+  pairDefinition?: string;
   /** The row's picture (a data URL); null when it has none. */
   image?: string | null;
   /** The user picked or removed an image: it has to be saved. */
@@ -52,8 +54,14 @@ export function useTermRows(initial: Row[] = [emptyRow]) {
       setRawRows((list) =>
         list.map((row, j) => {
           if (j !== i) return row;
-          if (kind === "cloze") return { ...row, kind, definition: clozeAnswer(row.term) ?? "" };
-          return { ...row, kind, term: filled(row.term), definition: clozeParts(row.term) ? "" : row.definition };
+          if (kind === row.kind || (kind === "pair" && !row.kind)) return row;
+          if (kind === "cloze") {
+            return { ...row, kind, pairDefinition: row.definition, definition: clozeAnswer(row.term) ?? "" };
+          }
+          const { pairDefinition = "", ...rest } = row;
+          // A sentence with its gap becomes a pair with the gap as definition; without one the old definition is back.
+          const gap = clozeAnswer(row.term);
+          return { ...rest, kind, term: filled(row.term), definition: gap ?? pairDefinition };
         }),
       ),
     /**
@@ -182,14 +190,16 @@ export function parsePastedTerms(
           : "comma";
   const terms: Row[] = [];
   let skipped = 0;
-  for (const line of lines) {
-    // A line with one {{gap}} and nothing else is a gap sentence.
-    const gap = !line.includes("\t") && clozeAnswer(line);
-    if (gap) {
+  for (const raw of lines) {
+    const line = fromAnki(raw);
+    const at = firstSeparator(line, split);
+    // A line with one {{gap}} is a gap sentence: always when the separator is
+    // detected (sentences hold commas), only without one when it was picked.
+    const gap = clozeAnswer(line);
+    if (gap && !line.includes("\t") && (between === "auto" || !at)) {
       terms.push({ kind: "cloze", term: line, definition: gap });
       continue;
     }
-    const at = firstSeparator(line, split);
     const term = at ? unquote(line.slice(0, at[0])) : "";
     const definition = at ? unquote(line.slice(at[0] + at[1])) : "";
     if (term && definition) terms.push({ term, definition });

@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { createRef, useState } from "react";
 import { describe, expect, test, vi } from "vitest";
@@ -100,13 +100,17 @@ test("TermEditorRow as a gap sentence: Make gap marks the selection, one gap at 
   await userEvent.click(screen.getByRole("button", { name: "Make gap" }));
   expect(changes).toEqual([]);
 
-  sentence.setSelectionRange(12, 24); // "federal city"
+  // " federal city": the space at the edge stays outside the gap (a double tap often takes one).
+  sentence.setSelectionRange(11, 24);
   await userEvent.click(screen.getByRole("button", { name: "Make gap" }));
   expect(changes.at(-1)).toEqual(["Bern is the {{federal city}}.", "federal city"]);
   expect(screen.getByText("gap")).toBeTruthy();
 
-  // A second gap replaces the first.
+  // A second gap replaces the first. The tap may collapse the selection first
+  // (iOS): the last one made in the sentence counts.
   sentence.setSelectionRange(0, 4); // "Bern"
+  fireEvent.select(sentence);
+  sentence.setSelectionRange(2, 2);
   await userEvent.click(screen.getByRole("button", { name: "Make gap" }));
   expect(changes.at(-1)).toEqual(["{{Bern}} is the federal city.", "Bern"]);
 });

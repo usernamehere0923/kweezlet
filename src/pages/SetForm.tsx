@@ -139,7 +139,7 @@ export function SetFormPage() {
         folderId: pickedFolder,
         terms: kept.map((row) => {
           const term = {
-            ...(row.kind === "cloze" ? { kind: "cloze" as const } : {}),
+            kind: row.kind ?? ("pair" as const),
             term: row.term.trim(),
             definition: row.definition.trim(),
           };

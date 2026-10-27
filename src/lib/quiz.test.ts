@@ -325,6 +325,12 @@ describe("gap sentences", () => {
     expect(paper.questions.map((question) => question.kind)).toEqual(["choice", "choice"]);
   });
 
+  test("other gaps with the same words leave nothing to pick: typed", () => {
+    const twin = gap(12, "The Rütli oath is dated {{1291}}.");
+    const pool = [gap(11, "The Bundesbrief dates from {{1291}}."), twin];
+    expect(buildQuestion(pool, twin)).toMatchObject({ kind: "written", options: [] });
+  });
+
   test("a gap is read out as a pause", () => {
     const question = buildQuestion(GAPS, GAPS[0]!);
     expect(speechFor(question, { termLang: "de", defLang: "en" })).toEqual({ text: "Bern is the ….", lang: "de" });

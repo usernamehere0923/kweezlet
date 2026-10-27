@@ -2,7 +2,8 @@
 // part marked as {{the hidden part}}; the definition is that part. Shared by
 // the API (it derives the definition) and the UI (it draws the blank).
 
-const MARKER = /\{\{([^{}]*)\}\}/g;
+/** One {{gap}} in a sentence; global, so use it with matchAll / replace. */
+export const MARKER = /\{\{([^{}]*)\}\}/g;
 
 export const TERM_KINDS = ["pair", "cloze"] as const;
 export type TermKind = (typeof TERM_KINDS)[number];
@@ -24,6 +25,14 @@ export function clozeParts(text: string): { before: string; answer: string; afte
 /** The hidden part of a cloze sentence (the card's definition), or null when the marker is missing or doubled. */
 export function clozeAnswer(text: string): string | null {
   return clozeParts(text)?.answer ?? null;
+}
+
+/**
+ * Anki's cloze marks ({{c1::answer}}, {{c1::answer::hint}}) as plain gaps.
+ * Several of them stay several gaps: not a gap sentence of ours.
+ */
+export function fromAnki(text: string): string {
+  return text.replace(/\{\{c\d+::([^{}]*?)(?:::[^{}]*)?\}\}/g, "{{$1}}");
 }
 
 /** What a gap looks like in plain text (Match tiles, true/false, the read-out prompt). */

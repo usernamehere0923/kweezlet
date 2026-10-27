@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { clozeAnswer } from "../cloze";
+import { clozeAnswer, filled } from "../cloze";
 import { normalizeAnswer } from "../grading";
 import { notify } from "../live";
 import { ExtractError, parseResult, type AiCardResult, type DraftCard } from "./extract";
@@ -235,7 +235,7 @@ async function runRun(
         })
       : result.cards;
   const made = verifyCards(shaped, texts);
-  const unique = more ? withoutRepeats(made, existing) : made;
+  const unique = more ? withoutRepeats(made, existing, options.form === "cloze") : made;
   // A draft holds at most 500 cards (what the review screen can edit and save).
   const fresh = more ? unique.slice(0, Math.max(0, MAX_DRAFT_CARDS - current.length)) : unique;
   const outcome: Outcome = {
@@ -261,12 +261,20 @@ async function setTerms(db: D1Database, userId: number, setId: number | null) {
  * New cards minus those that repeat a known one: same term or same definition
  * as written answers compare (normalizeAnswer), also among the new cards.
  */
-function withoutRepeats(cards: DraftCard[], known: { term: string; definition: string }[]): DraftCard[] {
-  const seen = new Set(
-    known.flatMap((card) => [`t:${normalizeAnswer(card.term)}`, `d:${normalizeAnswer(card.definition)}`]),
-  );
+function withoutRepeats(
+  cards: DraftCard[],
+  known: { term: string; definition: string }[],
+  cloze: boolean,
+): DraftCard[] {
+  // A gap's words (a year, a name) are often the same in different sentences:
+  // gap sentences repeat only when the whole sentence does.
+  const keysOf = (card: { term: string; definition: string }) =>
+    cloze
+      ? [`t:${normalizeAnswer(filled(card.term))}`]
+      : [`t:${normalizeAnswer(card.term)}`, `d:${normalizeAnswer(card.definition)}`];
+  const seen = new Set(known.flatMap(keysOf));
   return cards.filter((card) => {
-    const keys = [`t:${normalizeAnswer(card.term)}`, `d:${normalizeAnswer(card.definition)}`];
+    const keys = keysOf(card);
     if (keys.some((key) => seen.has(key))) return false;
     for (const key of keys) seen.add(key);
     return true;

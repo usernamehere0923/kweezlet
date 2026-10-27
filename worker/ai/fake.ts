@@ -50,12 +50,12 @@ export async function fakeZai(call: ZaiCall, delayMs = FAKE_DELAY_MS): Promise<Z
         if (words.length < 4) continue;
         const quote = sentence.trim().slice(0, 200);
         if (cloze) {
-          // The longest word becomes the gap.
-          const gap = words.reduce(
-            (long, word) => (word.replace(/\W/g, "").length > long.length ? word.replace(/\W/g, "") : long),
-            "",
-          );
-          const term = sentence.trim().replace(gap, `{{${gap}}}`);
+          // The longest word becomes the gap: letters and digits of any language, a whole word only.
+          const gap = words
+            .map((word) => word.replace(/[^\p{L}\p{N}]/gu, ""))
+            .reduce((long, word) => (word.length > long.length ? word : long), "");
+          const whole = new RegExp(`(?<![\\p{L}\\p{N}])${gap}(?![\\p{L}\\p{N}])`, "u");
+          const term = sentence.trim().replace(whole, `{{${gap}}}`);
           sentences.push({ term, definition: gap, source: quote, page });
         } else sentences.push({ term: `${words.slice(0, 3).join(" ")} …`, definition: quote, source: quote, page });
       }

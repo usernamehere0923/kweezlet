@@ -155,6 +155,20 @@ describe("gap sentences in the form", () => {
     ]);
   });
 
+  test("Anki cloze marks become our gap; several of them are no gap sentence", () => {
+    expect(parsePastedTerms("Bern is the {{c1::capital::city}}.").terms).toEqual([
+      { kind: "cloze", term: "Bern is the {{capital}}.", definition: "capital" },
+    ]);
+    expect(parsePastedTerms("{{c1::Bern}} is the {{c2::capital}}.")).toEqual({ terms: [], skipped: 1 });
+  });
+
+  test("a picked separator wins over a gap in a term/definition line", () => {
+    expect(parsePastedTerms("formula, {{x}} squared", "comma").terms).toEqual([row("formula", "{{x}} squared")]);
+    expect(parsePastedTerms("Bern, they say, is the {{capital}}.").terms).toEqual([
+      { kind: "cloze", term: "Bern, they say, is the {{capital}}.", definition: "capital" },
+    ]);
+  });
+
   test("a gap sentence needs its gap before sending", () => {
     const sentence = { kind: "cloze" as const, term: "Bern is the capital.", definition: "" };
     expect(checkSetForm("Bern", [sentence]).formError).toBe("sets.clozeGap");
@@ -167,10 +181,16 @@ describe("gap sentences in the form", () => {
     act(() => result.current.setKind(0, "cloze"));
     expect(result.current.rows[0]).toMatchObject({ kind: "cloze", definition: "capital" });
     act(() => result.current.setKind(0, "pair"));
-    expect(result.current.rows[0]).toMatchObject({ kind: "pair", term: "Bern is the capital.", definition: "" });
+    expect(result.current.rows[0]).toMatchObject({ kind: "pair", term: "Bern is the capital.", definition: "capital" });
 
+    // A pair tried as a gap sentence and switched back keeps its definition.
     const { result: pair } = renderHook(() => useTermRows([{ term: "el perro", definition: "the dog" }]));
     act(() => pair.current.setKind(0, "pair"));
     expect(pair.current.rows[0]).toMatchObject({ term: "el perro", definition: "the dog" });
+    act(() => pair.current.setKind(0, "cloze"));
+    expect(pair.current.rows[0]).toMatchObject({ kind: "cloze", definition: "" });
+    act(() => pair.current.setKind(0, "cloze"));
+    act(() => pair.current.setKind(0, "pair"));
+    expect(pair.current.rows[0]).toMatchObject({ kind: "pair", term: "el perro", definition: "the dog" });
   });
 });

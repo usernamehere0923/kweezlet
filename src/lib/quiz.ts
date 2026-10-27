@@ -158,10 +158,12 @@ function makeQuestion(
  * (or a typed answer, without other gaps to pick from).
  */
 function clozeQuestion(term: QuestionTerm, others: QuestionTerm[], kind: QuestionKind): TestQuestion {
-  const typed = kind === "written" || others.length === 0;
   const distractors = shuffle(others)
     .slice(0, 3)
     .map((candidate) => candidate.definition);
+  const options = shuffle([...new Set([term.definition, ...distractors])]);
+  // Other gaps with the same words leave nothing to choose from: typed instead.
+  const typed = kind === "written" || options.length < 2;
   return {
     kind: typed ? "written" : "choice",
     termId: term.id,
@@ -170,7 +172,7 @@ function clozeQuestion(term: QuestionTerm, others: QuestionTerm[], kind: Questio
     promptSide: "term",
     showImage: true,
     answer: term.definition,
-    options: typed ? [] : shuffle([...new Set([term.definition, ...distractors])]),
+    options: typed ? [] : options,
   };
 }
 

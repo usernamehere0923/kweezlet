@@ -40,7 +40,7 @@ describe("set form", () => {
         defLang: null,
         answerWith: "both",
         folderId: null,
-        terms: [{ term: "el perro", definition: "the dog" }],
+        terms: [{ kind: "pair", term: "el perro", definition: "the dog" }],
       }),
     );
     expect(await screen.findByRole("heading", { level: 1, name: "Spanish animals" })).toBeTruthy();

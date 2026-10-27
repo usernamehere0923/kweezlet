@@ -233,7 +233,7 @@ export function AiDraftPage() {
       )}
 
       {/* While a run goes, the cards there are shown but not edited: the run writes them when it ends. */}
-      {running && rows.length > 0 && <TermList terms={rows.map((row) => row.card)} />}
+      {running && rows.length > 0 && <TermList terms={rows.map((row) => ({ ...row.card, kind: draft.form }))} />}
 
       {!running && (rows.length > 0 || draft.status === "ready") && (
         <div className="flex flex-col gap-1">

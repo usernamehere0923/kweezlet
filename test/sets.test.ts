@@ -521,6 +521,22 @@ describe("gap sentences (cloze terms)", () => {
     ]);
   });
 
+  it("stay gap sentences when an edit leaves the kind out (an older app)", async () => {
+    const { cookie } = await signedIn("anna");
+    const created = await api("/api/sets", {
+      method: "POST",
+      cookie,
+      json: { title: "Bern", terms: [{ kind: "cloze", term: SENTENCE, definition: "federal city" }] },
+    });
+    const { id, terms } = (await created.json()) as { id: number; terms: { id: number }[] };
+    const res = await api(`/api/sets/${id}`, {
+      method: "PATCH",
+      cookie,
+      json: { title: "Bern", terms: [{ id: terms[0]!.id, term: SENTENCE, definition: "federal city" }] },
+    });
+    expect(((await res.json()) as { terms: { kind: string }[] }).terms[0]!.kind).toBe("cloze");
+  });
+
   it("need exactly one gap", async () => {
     const { cookie } = await signedIn("anna");
     for (const term of ["No gap at all.", "{{Two}} gaps {{here}}.", "An {{ }} empty gap.", "A {{broken} gap."]) {

@@ -1,5 +1,5 @@
 import { useImperativeHandle, useRef, type KeyboardEvent, type Ref, type RefObject } from "react";
-import { clozeAnswer, clozeParts, filled, type TermKind } from "../../../worker/cloze";
+import { clozeAnswer, clozeParts, filled, MARKER, type TermKind } from "../../../worker/cloze";
 import type { TermProgress } from "../../../worker/progress";
 import { useT } from "../../i18n";
 import { cx } from "../cx";
@@ -25,6 +25,7 @@ const cell =
 export function Cell({
   ref,
   areaRef,
+  onSelectText,
   label,
   value,
   onChange,
@@ -35,6 +36,8 @@ export function Cell({
   ref?: Ref<HTMLInputElement>;
   /** The text area of a `wrap` cell (to read its selection). */
   areaRef?: RefObject<HTMLTextAreaElement | null>;
+  /** A `wrap` cell's selection changed: start and end. */
+  onSelectText?: (start: number, end: number) => void;
   label: string;
   value: string;
   onChange: (value: string) => void;
@@ -62,6 +65,7 @@ export function Cell({
             area.current = el;
             if (areaRef) areaRef.current = el;
           }}
+          onSelect={(e) => onSelectText?.(e.currentTarget.selectionStart, e.currentTarget.selectionEnd)}
           {...keys}
           rows={1}
           // A pasted line break would end up inside the card: a space instead.
@@ -122,14 +126,25 @@ export function TermEditorRow({
     focus: () => (kind === "cloze" ? sentenceRef.current : termRef.current)?.focus(),
   }));
 
+  // The last selection in the sentence: a tap on Make gap may collapse it first (iOS).
+  const lastSelection = useRef<[number, number] | null>(null);
+
   /** The selected words become the gap; an earlier gap is opened up again first. */
   function makeGap() {
     const area = sentenceRef.current;
-    if (!area || area.selectionStart === area.selectionEnd) return;
-    const [start, end] = [area.selectionStart, area.selectionEnd];
-    const text = term.slice(0, start) + "{{" + term.slice(start, end).trim() + "}}" + term.slice(end);
+    if (!area) return;
+    let [start, end] =
+      area.selectionStart !== area.selectionEnd
+        ? [area.selectionStart, area.selectionEnd]
+        : (lastSelection.current ?? [0, 0]);
+    // Spaces at the edges of the selection stay outside the gap.
+    while (start < end && /\s/.test(term[start]!)) start++;
+    while (end > start && /\s/.test(term[end - 1]!)) end--;
+    if (start === end) return;
+    const text = term.slice(0, start) + "{{" + term.slice(start, end) + "}}" + term.slice(end);
     // Only the new marker survives: take any other one off.
-    const others = text.replace(/\{\{([^{}]*)\}\}/g, (marker, inner, at: number) => (at === start ? marker : inner));
+    const others = text.replace(MARKER, (marker, inner: string, at: number) => (at === start ? marker : inner));
+    lastSelection.current = null;
     onChange(others, clozeAnswer(others) ?? "");
   }
 
@@ -156,6 +171,9 @@ export function TermEditorRow({
         <div className="flex flex-col gap-3">
           <Cell
             areaRef={sentenceRef}
+            onSelectText={(start, end) => {
+              if (start !== end) lastSelection.current = [start, end];
+            }}
             label={t("study.clozeSentence")}
             value={term}
             wrap

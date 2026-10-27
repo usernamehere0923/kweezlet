@@ -41,10 +41,11 @@ export function termStatements(
             .bind(userId, setId, t.term, t.definition, position, t.kind ?? "pair")
         : db
             .prepare(
-              `UPDATE terms SET term = ?, definition = ?, position = ?, kind = ?
+              // Left out (an older app), the kind stays: a gap sentence never turns into a pair by accident.
+              `UPDATE terms SET term = ?, definition = ?, position = ?, kind = COALESCE(?, kind)
                 WHERE id = ? AND set_id = ? AND user_id = ?`,
             )
-            .bind(t.term, t.definition, position, t.kind ?? "pair", t.id, setId, userId),
+            .bind(t.term, t.definition, position, t.kind ?? null, t.id, setId, userId),
     );
   });
   return statements;

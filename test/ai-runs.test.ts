@@ -659,6 +659,26 @@ describe("gap sentences (form cloze)", () => {
     expect(await saved.json()).toEqual({ error: "validation", fields: { cards: "invalid_value" } });
   });
 
+  it("More cards keeps a new sentence whose gap words an existing card already has", async () => {
+    const { cookie } = await signedIn("anna");
+    stubZai(answer([{ ...GAP, definition: "federal city" }]));
+    const id = await createDraft(cookie, { sourceName: "Bern.txt", form: "cloze", pages: [{ n: 1, text: PAGE }] });
+    await settled(cookie, id);
+
+    const OTHER = "Zurich was never the federal city.";
+    stubZai(
+      answer([
+        { term: "Zurich was never the {{federal city}}.", definition: "federal city", source: OTHER, page: 2 },
+        { ...GAP, term: "Bern has been the federal city of {{Switzerland}} since 1848.", definition: "Switzerland" },
+      ]),
+    );
+    await post(cookie, `/api/ai/drafts/${id}/more`, { pages: [{ n: 2, text: OTHER }] });
+    const body = await settled(cookie, id);
+    // The same gap words in another sentence stay; the same sentence with another gap is a repeat.
+    expect(body).toMatchObject({ added: 1, skipped: 1 });
+    expect(body.cards.map((card) => card.term)).toEqual([GAP.term, "Zurich was never the {{federal city}}."]);
+  });
+
   it("regenerate can switch a draft between pairs and gap sentences", async () => {
     const { cookie } = await signedIn("anna");
     stubZai(answer([DOG]), answer([{ ...GAP, definition: "federal city" }]));
@@ -709,7 +729,7 @@ describe("the stand-in AI (ZAI_FAKE, local dev only)", () => {
       ),
       env.DB.prepare("INSERT INTO ai_draft_pages (user_id, draft_id, n, text) VALUES (?, 1, 1, ?)").bind(
         userId,
-        "el perro — the dog\nBern ist die Hauptstadt der Schweiz.",
+        "el perro — the dog\nBern ist die Hauptstadt der Schweiz. Die Stadt Zürich liegt am Zürichsee.",
       ),
     ]);
     const job: AiJob = { userId, draftId: 1, action: "create", userLanguage: "en", fake: true, startedAt: Date.now() };
@@ -723,6 +743,8 @@ describe("the stand-in AI (ZAI_FAKE, local dev only)", () => {
         definition: "Hauptstadt",
         verified: true,
       }),
+      // Umlauts are letters; the gap is a whole word, not a piece of "Zürichsee".
+      expect.objectContaining({ term: "Die Stadt Zürich liegt am {{Zürichsee}}.", definition: "Zürichsee" }),
     ]);
   });
 

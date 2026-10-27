@@ -106,6 +106,14 @@ describe("a draft", () => {
     expect(await within(card(1)).findByText(/needs exactly one gap/)).toBeTruthy();
   });
 
+  test("while a run goes, gap sentences show with their gap marked, not their braces", async () => {
+    const GAP = { ...DOG, term: "Bern is the {{federal city}}.", definition: "federal city" };
+    draftApi({ ...READY, status: "running", form: "cloze", cards: [GAP] });
+    renderApp("/create/ai/9");
+    expect(await screen.findByText("federal city")).toBeTruthy();
+    expect(screen.queryByText(/\{\{/)).toBeNull();
+  });
+
   test("edits save as the user goes: typing after a pause, a tap at once", async () => {
     const { calls } = draftApi(READY);
     renderApp("/create/ai/9");
