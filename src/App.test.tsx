@@ -134,6 +134,7 @@ describe("live sync", () => {
       ws.receive("pong");
       ws.receive("not json");
       ws.receive(JSON.stringify({ topic: "settings" }));
+      ws.receive(JSON.stringify({ topic: "settings", data: { from: clientId } }));
       ws.receive(JSON.stringify({ topic: "ping", data: { from: "other-device" } }));
       ws.receive(JSON.stringify({ topic: "ping", data: { from: clientId } }));
     });

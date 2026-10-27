@@ -167,6 +167,15 @@ export const deCH: Record<keyof typeof en, string> = {
   "settings.logout": "Abmelden",
   "settings.language": "Sprache",
   "settings.languageHint": "Ändert die Sprache auf all deinen Geräten.",
+  "settings.theme": "Design",
+  "settings.themeHint": "Ändert das Aussehen auf all deinen Geräten.",
+
+  "theme.cardigan": "Grandma's Cardigan",
+  "theme.midnight-cram": "Midnight Cram",
+  "theme.ballpoint": "Ballpoint Blues",
+  "theme.unicorn-sneeze": "Unicorn Sneeze",
+  "theme.kung-fu": "I Know Kung Fu",
+
   "settings.password": "Passwort",
   "settings.passwordCurrent": "Aktuelles Passwort",
   "settings.passwordNew": "Neues Passwort",

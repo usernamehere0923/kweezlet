@@ -4,7 +4,7 @@ import { IconButton } from "../Button";
 import { cx } from "../cx";
 import { Icon, type IconName } from "../Icon";
 import { SpeakButton, type Speech } from "../speech";
-import { surface } from "../surfaces";
+import { studySurface } from "../surfaces";
 import { useHotkey } from "../useHotkey";
 
 /** One side of the FlipCard: the corner label, then its content. */
@@ -22,7 +22,7 @@ function Face({
   return (
     <div
       className={cx(
-        surface,
+        studySurface,
         "absolute inset-0 flex flex-col items-center justify-center p-8 shadow-raised [backface-visibility:hidden]",
         className,
       )}
@@ -86,7 +86,7 @@ export function FlipCard({
           )}
         >
           <Face label={frontLabel ?? t("study.term")} hidden={flipped}>
-            <span className="text-center font-serif text-3xl text-ink md:text-4xl">{front}</span>
+            <span className="text-center font-display text-3xl text-ink md:text-4xl">{front}</span>
             <span className="absolute bottom-4 text-xs text-faint">{t("study.tapToFlip")}</span>
           </Face>
           <Face label={backLabel ?? t("study.definition")} hidden={!flipped} className="[transform:rotateY(180deg)]">

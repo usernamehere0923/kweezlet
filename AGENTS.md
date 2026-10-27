@@ -20,8 +20,8 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 ### Look
 
 - Build screens ONLY from `src/ui` (`import { Button, Card, FlipCard } from "../ui"`). The `/design` page shows every piece with a snippet.
-- Styling only via the tokens in `src/index.css` `@theme` (`bg-surface`, `text-muted`, `border-line`...). No `#hex`, no new colours, no dark mode.
-- One orange (primary) button per screen. Teal = secondary/links. Green/red only for correct/wrong.
+- Styling only via tokens (`bg-surface`, `font-display`...), valued by the user's theme. `#hex` only in `src/themes/*.css`. No auto dark mode. New theme: recipe in `src/themes/index.css`.
+- One primary (`accent`) button per screen. Teal = secondary/links. Green/red only for correct/wrong.
 - Missing a component? Add it to `src/ui` (or `src/ui/study`), export it from `index.ts`, show it on `/design`.
 - Progress animates ONLY through `ProgressBar` (wipe-in on mount, slide on change; `/design` → "Progress motion"). No other progress animation. Exception: `ResultSummary`'s score ring counts up (`useCountUp`).
 - Other motion only via `@theme` `--animate-*` tokens inside `src/ui` pieces (`/design` → "Motion"), never hand-made on a page. Confetti only for a real win.
@@ -49,7 +49,7 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 - Everything under `/api/*` needs a login automatically (`requireUser`); only paths in `PUBLIC_PATHS` (`worker/auth.ts`) don't.
 - Validate every body/query with `validate("json", zodSchema)` from `worker/validate.ts`. Errors come back as `{ error: "validation", fields: { name: "too_small" } }`; show them with `fieldErrors(res)` + `t()`.
 - The UI calls the API only through `api` from `src/lib/api.ts` (typed). 401 and server errors are handled there.
-- Secrets (`ZAI_API_KEY`) live only in the worker env (`.dev.vars`, `wrangler secret put`): never in code, a response, a log line the UI sees, or a `VITE_` var. `src/` imports only types from `worker/` (exceptions: languages, progress, grading, cloze, ai/prices; eslint enforces it). AI failures reach the UI as `ZaiErrorKind`, never z.ai's message.
+- Secrets (`ZAI_API_KEY`) live only in the worker env (`.dev.vars`, `wrangler secret put`): never in code, a response, a log line the UI sees, or a `VITE_` var. `src/` imports only types from `worker/` (exceptions: languages, progress, grading, cloze, themes, ai/prices; eslint enforces it). AI failures reach the UI as `ZaiErrorKind`, never z.ai's message.
 - After a write the user's other devices should see: `notifyLater(c, "topic")` in the worker (sent after the response), `useLive("topic", reload)` in the page.
 - Example of the full pattern (table, scoped route, export): `test/ownership.test.ts`.
 

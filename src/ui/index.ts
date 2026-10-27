@@ -12,6 +12,7 @@ export { Wordmark } from "./Logo";
 export { Modal } from "./Modal";
 export { Confetti, SlideSwap } from "./motion";
 export { SegmentedControl } from "./SegmentedControl";
+export { ThemePicker } from "./ThemePicker";
 export { SpeakButton, type Speech } from "./speech";
 export { PageLoadFailed } from "./PageLoadFailed";
 export { PageLoading, Spinner } from "./Spinner";

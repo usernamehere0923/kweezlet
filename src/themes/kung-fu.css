@@ -1,0 +1,96 @@
+/* I Know Kung Fu: the green terminal. Black screen, green-tinted phosphor text,
+   white phosphor for highlights and progress (the bright tip of a falling code
+   column). Full code green is kept for one thing only: a right answer. The
+   primary button is a bright block cursor; every fill takes dark text.
+   Secondary is the blue pill, wrong the red pill. CRT scanlines on study cards. */
+
+/* size-adjust levels both fonts with the others, so the fixed px sizes in
+   components still fit: VT323 runs small, JetBrains Mono runs wide. */
+/* VT323, latin-ext */
+@font-face {
+  font-family: "VT323";
+  src: url("../fonts/VT323/VT323-latin-ext.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 125%;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* VT323, latin */
+@font-face {
+  font-family: "VT323";
+  src: url("../fonts/VT323/VT323-latin.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 125%;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* JetBrains Mono, latin-ext */
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../fonts/JetBrainsMono/JetBrainsMono-latin-ext.woff2") format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 88%;
+  unicode-range:
+    U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F,
+    U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* JetBrains Mono, latin */
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../fonts/JetBrainsMono/JetBrainsMono-latin.woff2") format("woff2");
+  font-weight: 100 800;
+  font-style: normal;
+  font-display: swap;
+  size-adjust: 88%;
+  unicode-range:
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC,
+    U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+[data-theme="kung-fu"] {
+  color-scheme: dark;
+
+  --theme-bg: #050a06;
+  --theme-surface: #0b140d;
+  --theme-sunken: #13201a;
+  --theme-line: #1f3a26;
+  --theme-line-soft: #16291b;
+
+  --theme-ink: #c9f7d3; /* green-tinted phosphor */
+  --theme-ink-soft: #a6dcb2;
+  --theme-muted: #7fbf8e;
+  --theme-faint: #4f8a5d;
+
+  --theme-accent: #e6ffe9; /* white phosphor */
+  --theme-accent-strong: #d7ffd9; /* the block cursor */
+  --theme-accent-deep: #a8f0b0;
+  --theme-accent-wash: #18241b;
+  --theme-on-accent: #03140a;
+
+  --theme-teal: #4f8cff; /* the blue pill */
+  --theme-teal-strong: #7aa8ff;
+  --theme-teal-wash: #0e1a33;
+
+  --theme-correct: #00ff41; /* code green: right answers only */
+  --theme-correct-wash: #0c2a17;
+  --theme-wrong: #ff4f5e; /* the red pill */
+  --theme-wrong-strong: #ff7a85;
+  --theme-wrong-wash: #2e0d12;
+
+  --theme-font-body: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --theme-font-display: "VT323", "JetBrains Mono", ui-monospace, monospace;
+
+  --theme-shadow-raised: 0 0 0 1px #1f3a26, 0 0 22px -6px rgb(200 255 210 / 0.22);
+  --theme-shadow-overlay: 0 0 0 1px #1f3a26, 0 0 40px -8px rgb(200 255 210 / 0.28);
+
+  /* CRT scanlines. */
+  --theme-card-texture: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(200 255 210 / 0.045) 2px 3px);
+}

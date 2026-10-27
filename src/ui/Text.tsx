@@ -5,7 +5,7 @@ import { cx } from "./cx";
 export function PageTitle({ children, subtitle }: { children: ReactNode; subtitle?: ReactNode }) {
   return (
     <header className="mb-8">
-      <h1 className="font-serif text-[32px] leading-tight font-normal tracking-tight text-ink md:text-[40px]">
+      <h1 className="font-display text-[32px] leading-tight font-normal tracking-tight text-ink md:text-[40px]">
         {children}
       </h1>
       {subtitle && <p className="mt-2 text-[17px] text-muted">{subtitle}</p>}
@@ -24,7 +24,7 @@ export function Heading({
   className?: string;
 }) {
   return level === 2 ? (
-    <h2 className={cx("font-serif text-2xl leading-snug font-normal text-ink", className)}>{children}</h2>
+    <h2 className={cx("font-display text-2xl leading-snug font-normal text-ink", className)}>{children}</h2>
   ) : (
     <h3 className={cx("text-[15px] font-semibold text-ink", className)}>{children}</h3>
   );

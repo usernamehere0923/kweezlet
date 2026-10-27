@@ -1,0 +1,69 @@
+/* Grandma's Cardigan: the default. Warm beige paper, Claude orange, teal.
+   Also on :root, so a page without data-theme (or with an unknown one) gets it.
+   Every theme sets every --theme-* below; src/themes/themes.test.ts checks. */
+
+/* Anthropic's typefaces: fine for this private app. If kweezlet ever goes
+   public as a product, point --theme-font-* at free look-alikes (Inter,
+   Source Serif) and delete these files. */
+@font-face {
+  font-family: "Anthropic Sans";
+  src: url("../fonts/SansWebVariable-TextRegular.woff2") format("woff2");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Anthropic Serif";
+  src: url("../fonts/SerifWebVariable-TextRegular.woff2") format("woff2");
+  font-weight: 300 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Anthropic Serif";
+  src: url("../fonts/SerifWebVariable-TextRegularItalic.woff2") format("woff2");
+  font-weight: 300 800;
+  font-style: italic;
+  font-display: swap;
+}
+
+:root,
+[data-theme="cardigan"] {
+  color-scheme: light;
+
+  --theme-bg: #f0eee6; /* the warm beige page */
+  --theme-surface: #faf9f5;
+  --theme-sunken: #e8e6dc;
+  --theme-line: #dedcd1;
+  --theme-line-soft: #e8e6dc;
+
+  --theme-ink: #141413; /* never pure black */
+  --theme-ink-soft: #3d3d3a;
+  --theme-muted: #5e5d59;
+  --theme-faint: #8f8d86;
+
+  --theme-accent: #d97757; /* Claude orange */
+  --theme-accent-strong: #c6613f;
+  --theme-accent-deep: #b0532f;
+  --theme-accent-wash: #f6e4da;
+  --theme-on-accent: #faf9f5;
+
+  --theme-teal: #2f7f7a;
+  --theme-teal-strong: #256561;
+  --theme-teal-wash: #ddebe8;
+
+  --theme-correct: #5a8c5a;
+  --theme-correct-wash: #e2ebdc;
+  --theme-wrong: #c14638;
+  --theme-wrong-strong: #a83a2e;
+  --theme-wrong-wash: #f5dfda;
+
+  --theme-font-body: "Anthropic Sans", system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --theme-font-display: "Anthropic Serif", Georgia, "Times New Roman", Times, serif;
+
+  --theme-shadow-raised: 0 1px 2px rgb(20 20 19 / 0.04), 0 8px 24px -10px rgb(20 20 19 / 0.14);
+  --theme-shadow-overlay: 0 24px 48px -12px rgb(20 20 19 / 0.24);
+
+  /* A faint pattern behind study cards (CSS background layers), or none. */
+  --theme-card-texture: none;
+}

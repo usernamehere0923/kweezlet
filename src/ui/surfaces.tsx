@@ -6,21 +6,29 @@ import { Heading } from "./Text";
 /** The look of a Card, for pieces that are a card but render their own element. */
 export const surface = "rounded-ui-xl border border-line-soft bg-surface";
 
-/** The white-ish box everything sits in. With onClick it is a button that lifts on hover. */
+/** A study card's face (flashcard, question): a surface with the theme's card pattern. */
+export const studySurface = "rounded-ui-xl border border-line-soft bg-card";
+
+/**
+ * The white-ish box everything sits in. With onClick it is a button that lifts on hover.
+ * `study`: a study card (question, flashcard), with the theme's card pattern.
+ */
 export function Card({
   children,
   padding = "md",
   onClick,
+  study,
   className,
 }: {
   children: ReactNode;
   padding?: "none" | "sm" | "md" | "lg";
   onClick?: () => void;
+  study?: boolean;
   className?: string;
 }) {
   const pad = { none: "", sm: "p-4", md: "p-5 md:p-6", lg: "p-6 md:p-8" }[padding];
   const cls = cx(
-    surface,
+    study ? studySurface : surface,
     "text-left",
     pad,
     onClick && "transition-shadow hover:shadow-raised hover:border-line",

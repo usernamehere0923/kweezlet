@@ -194,7 +194,7 @@ export function QuestionCard({
     !feedback ? "idle" : option === answer ? "correct" : option === picked ? "wrong" : "idle";
   return (
     <>
-      <Card className="mb-5">
+      <Card study className="mb-5">
         <div className="flex items-start justify-between gap-2">
           <Text variant="small">{label}</Text>
           {speak && <SpeakButton speech={speak} />}

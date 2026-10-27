@@ -7,6 +7,17 @@
     <meta name="description" content="Learn anything, card by card." />
     <meta name="theme-color" content="#f0eee6" />
 
+    <!-- The theme last used on this device, set before the stylesheet paints so
+         nothing flashes in the default first. src/lib/theme.tsx keeps it current. -->
+    <script>
+      try {
+        var theme = localStorage.getItem("kz_theme");
+        var bg = localStorage.getItem("kz_theme_bg");
+        if (theme) document.documentElement.dataset.theme = theme;
+        if (bg) document.querySelector('meta[name="theme-color"]').setAttribute("content", bg);
+      } catch (e) {}
+    </script>
+
     <!-- Icons and home-screen app. Sources in assets/icons, PNGs written by
          `npm run gen:icons` and committed. -->
     <link rel="icon" type="image/svg+xml" href="/icon.svg" />

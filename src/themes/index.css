@@ -1,0 +1,27 @@
+/* Every theme's tokens and fonts. Cardigan first: it also sits on :root, and
+   a later [data-theme] rule of the same specificity wins over it.
+   A browser downloads a theme's fonts only once something uses them.
+
+   A NEW THEME
+   1. Copy cardigan.css to <id>.css, selector [data-theme="<id>"] only (not
+      :root). Set every --theme-* and color-scheme (light or dark). Colours are
+      plain #rrggbb. themes.test.ts fails on a missing token, a missing font
+      file or text too faint to read.
+   2. Fonts: at most two (body + display; one font: display = body). Self-host
+      woff2, latin + latin-ext only, in src/fonts/<Family>/ with Google's
+      unicode-range per file. A font that runs small or wide gets size-adjust:
+      components use fixed px sizes.
+   3. --theme-card-texture: none, or a faint CSS background (gradients, never an
+      image file) behind flashcards and question cards. The text on top has
+      no backing: keep it faint.
+   4. Green and red still mean right and wrong only. on-accent must read on
+      accent-strong, teal, correct and wrong: one colour for all four fills.
+   5. Add <id> to worker/themes.ts, @import it below, and theme.<id> to
+      src/i18n/en.ts and de-CH.ts.
+   6. npm test, then look at /design?theme=<id> and Home, Flashcards, Learn
+      at 390px. */
+@import "./cardigan.css";
+@import "./midnight-cram.css";
+@import "./ballpoint.css";
+@import "./unicorn-sneeze.css";
+@import "./kung-fu.css";

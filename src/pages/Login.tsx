@@ -63,7 +63,7 @@ export function LoginPage() {
               </Button>
             </form>
           </Card>
-          <Text variant="muted" className="mt-6 text-center font-serif italic">
+          <Text variant="muted" className="mt-6 text-center font-display italic">
             {t("app.tagline")}
           </Text>
         </div>
