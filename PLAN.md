@@ -27,6 +27,9 @@ Changed against the plan below while building:
 - Two more error kinds: `ai_quota` (z.ai out of credit or over its plan, codes 1113 and 1308–1321, also HTTP 429) and `ai_cut_off` (the answer hit `max_tokens`; no repair retry, it would be cut off again).
 - The material is stored one row per page (`ai_draft_pages`), not in one `pages_json` column: six photo pages would pass D1's 2 MB row limit.
 - Office files: Workers AI is out; they are read in the browser, see "Office files" below.
+- More cards (`/create/ai/:draftId/more`, the source screen in a "more" mode): the file was never stored, so it is picked again. The same file keeps its page numbers and marks the pages a run had as used; pasted text, photos or another file are numbered after the draft's pages, so they never overwrite the material its cards were checked against. No kind or count there: the draft's kind, as many as the pages hold.
+- Edits on the review screen go out after a 500 ms typing pause (a tap at once), one PATCH at a time; a live reload takes the server's cards only when none of ours wait, so the echo of our own PATCH never resets a card being typed in. Save sends the waiting edits first.
+- A run that makes no cards says so and keeps More cards, Make anew and Discard. Draft card fields grow to show a long answer.
 
 Not done: the UI (step 4), its tests (half of step 5), real runs with the key (step 6), cached-token price and real latency (need real calls).
 
@@ -39,7 +42,7 @@ In this order. Each step on `phase-8-ai`, one commit per working step, `npm run 
 3. **UI** (build step 4), each part checked in Playwright at 390px with `ZAI_FAKE=1`:
    1. ~~Done 2026-10-26.~~ The new `src/ui` pieces (`CostLine`, `PageTile`, `DraftCard`, `src/lib/cost.ts`), shown on `/design`: cost line, page thumbnail tile, draft card (source quote, page badge, "unverified" tag). `formatCost()` in `src/lib`. i18n keys (en and de-CH) for every error the API can answer: `ai_busy`, `ai_quota`, `ai_key`, `ai_input`, `ai_cut_off`, `ai_server`, `ai_cap`, `ai_running`.
    2. ~~Done 2026-10-26.~~ Source screen `/create/ai` (`src/pages/AiSource.tsx`, `src/lib/material.ts`), plus a first draft page `/create/ai/:draftId` that follows the run: file, pasted text or photo; the PDF page picker (`src/lib/pdf.ts`, `pdfjs-dist`, approved); "What to make", "How many", instructions, the cost estimate; "Create cards".
-   3. Review screen `/create/ai/:draftId`: "Making cards…" while running; cards with checkbox, edit, delete, page badge and quote; unverified ones unchecked; header counts; cost line; Regenerate (asks first), More cards, Save (new or existing set), Discard; follows the live topic `ai`.
+   3. ~~Done 2026-10-27.~~ Review screen `/create/ai/:draftId` (`src/pages/AiDraft.tsx`, edits in `src/lib/draft.ts`): "Making cards…" while running; cards with checkbox, edit, delete, page badge and quote; unverified ones unchecked; header counts; cost line; Regenerate (asks first), More cards, Save (new or existing set), Discard; follows the live topic `ai`.
    4. Home: "From material" next to "Create a set", and the "unfinished AI draft" card. Settings → "AI usage" with the cap.
    5. UI tests (mock `src/lib/pdf.ts` and `src/lib/office.ts`): page picker, review flow, unverified cards start unchecked. Coverage floors 95 % / 75 % stay.
 4. **Real runs** (build step 6), needs the z.ai key: put `ZAI_API_KEY=…` in `.dev.vars` and remove `ZAI_FAKE`. Run a text PDF, a scanned PDF, an Office file, a phone photo and pasted text. Compare the cost with the z.ai console, set `MAX_OUTPUT_TOKENS` from the measured runs, write the cached-token price and the latency into this plan.

@@ -232,6 +232,17 @@
       <p>Changed against the plan below while building:</p>
       <ul>
         <li>
+          More cards (<code>/create/ai/:draftId/more</code>, the source screen in a &quot;more&quot; mode): the file was
+          never stored, so it is picked again. The same file keeps its page numbers and marks the used pages; pasted
+          text, photos or another file are numbered after the draft&#39;s pages, so they never overwrite the material
+          its cards were checked against. No kind or count there.
+        </li>
+        <li>
+          Review edits go out after a 500 ms typing pause (a tap at once), one PATCH at a time; a live reload takes the
+          server&#39;s cards only when none of ours wait. Save sends the waiting edits first. A run with no cards says
+          so and keeps More cards, Make anew and Discard.
+        </li>
+        <li>
           A second run while one is going: 409 <code>ai_running</code>, not <code>ai_busy</code> (that one means z.ai
           itself is busy).
         </li>
@@ -275,10 +286,10 @@
               estimate; &quot;Create cards&quot;.
             </li>
             <li>
-              Review screen <code>/create/ai/:draftId</code>: &quot;Making cards…&quot; while running; cards with
-              checkbox, edit, delete, page badge and quote; unverified ones unchecked; header counts; cost line;
-              Regenerate (asks first), More cards, Save (new or existing set), Discard; follows the live topic
-              <code>ai</code>.
+              <s>Done 2026-10-27.</s> Review screen <code>/create/ai/:draftId</code>: &quot;Making cards…&quot; while
+              running; cards with checkbox, edit, delete, page badge and quote; unverified ones unchecked; header
+              counts; cost line; Regenerate (asks first), More cards, Save (new or existing set), Discard; follows the
+              live topic <code>ai</code>.
             </li>
             <li>
               Home: &quot;From material&quot; next to &quot;Create a set&quot;, and the &quot;unfinished AI draft&quot;
