@@ -10,7 +10,7 @@ Goal: upload material (PDF, Word, PowerPoint, text, a photo of a page, or pasted
 Decided: z.ai **GLM-5.3-Flash** (paid), drafts **saved** in D1, no auto-dump into sets, a **page picker** for PDFs, **every source quote checked** against the material, **"More cards"** on the draft.
 The migration is `migrations/0009_ai.sql`. It has not run on the live database yet, so it may still change until PR #24 is merged; a local database that already ran an older version needs `npm run db:reset`.
 
-### Status (2026-10-26: branch `phase-8-ai`, draft PR #24, CI green)
+### Status (2026-10-27: branch `phase-8-ai`, draft PR #24, CI green)
 
 Done, worker side, with tests:
 
@@ -31,7 +31,7 @@ Changed against the plan below while building:
 - Edits on the review screen go out after a 500 ms typing pause (a tap at once), one PATCH at a time; a live reload takes the server's cards only when none of ours wait, so the echo of our own PATCH never resets a card being typed in. Save sends the waiting edits first.
 - A run that makes no cards says so and keeps More cards, Make anew and Discard. Draft card fields grow to show a long answer.
 
-Not done: the UI (step 4), its tests (half of step 5), real runs with the key (step 6), cached-token price and real latency (need real calls).
+The UI is done (2026-10-27, step 3 below), with its tests. Not done: real runs with the key (step 4 below), cached-token price and real latency (need real calls).
 
 ### What's next
 
@@ -43,8 +43,8 @@ In this order. Each step on `phase-8-ai`, one commit per working step, `npm run 
    1. ~~Done 2026-10-26.~~ The new `src/ui` pieces (`CostLine`, `PageTile`, `DraftCard`, `src/lib/cost.ts`), shown on `/design`: cost line, page thumbnail tile, draft card (source quote, page badge, "unverified" tag). `formatCost()` in `src/lib`. i18n keys (en and de-CH) for every error the API can answer: `ai_busy`, `ai_quota`, `ai_key`, `ai_input`, `ai_cut_off`, `ai_server`, `ai_cap`, `ai_running`.
    2. ~~Done 2026-10-26.~~ Source screen `/create/ai` (`src/pages/AiSource.tsx`, `src/lib/material.ts`), plus a first draft page `/create/ai/:draftId` that follows the run: file, pasted text or photo; the PDF page picker (`src/lib/pdf.ts`, `pdfjs-dist`, approved); "What to make", "How many", instructions, the cost estimate; "Create cards".
    3. ~~Done 2026-10-27.~~ Review screen `/create/ai/:draftId` (`src/pages/AiDraft.tsx`, edits in `src/lib/draft.ts`): "Making cards…" while running; cards with checkbox, edit, delete, page badge and quote; unverified ones unchecked; header counts; cost line; Regenerate (asks first), More cards, Save (new or existing set), Discard; follows the live topic `ai`.
-   4. Home: "From material" next to "Create a set", and the "unfinished AI draft" card. Settings → "AI usage" with the cap.
-   5. UI tests (mock `src/lib/pdf.ts` and `src/lib/office.ts`): page picker, review flow, unverified cards start unchecked. Coverage floors 95 % / 75 % stay.
+   4. ~~Done 2026-10-27.~~ Home: "From material" next to "Create a set", and the "unfinished AI draft" card. Settings → "AI usage" with the cap.
+   5. ~~Done 2026-10-27.~~ UI tests (`src/pages/AiSource.test.tsx`, `AiDraft.test.tsx`, Home, Settings; mock `src/lib/pdf.ts` and `src/lib/office.ts`): page picker, review flow, unverified cards start unchecked. Coverage floors 95 % / 75 % stay.
 4. **Real runs** (build step 6), needs the z.ai key: put `ZAI_API_KEY=…` in `.dev.vars` and remove `ZAI_FAKE`. Run a text PDF, a scanned PDF, an Office file, a phone photo and pasted text. Compare the cost with the z.ai console, set `MAX_OUTPUT_TOKENS` from the measured runs, write the cached-token price and the latency into this plan.
 5. **Ship.** Not before steps 3 and 4 are done (decided 2026-10-26): once merged, `0009_ai.sql` is frozen and every schema change the UI or the real runs need would be a new migration. Mark PR #24 ready, merge (merge commit), delete the branch. Then live, in this order: Settings → "Download my data" on the live app; `npm run db:migrate:remote` (0009); `npx wrangler secret put ZAI_API_KEY`; `npm run deploy` (it brings the `AiRunner` Durable Object, wrangler migration `v2`). Never set `ZAI_FAKE` on the live Worker.
 
