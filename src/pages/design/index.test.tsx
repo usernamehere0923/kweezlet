@@ -13,6 +13,19 @@ describe("design page", () => {
     expect(screen.getAllByRole("link", { name: "Settings" }).length).toBeGreaterThan(0);
   });
 
+  test("?theme= previews the page in a theme without changing the account's", async () => {
+    const { calls } = mockApi({ "GET /api/me": () => ({ json: ME }) });
+    const { container } = renderApp("/design?theme=kung-fu");
+    expect((await screen.findByRole("radio", { name: "I Know Kung Fu" })).getAttribute("aria-checked")).toBe("true");
+    expect(container.querySelector('main [data-theme="kung-fu"] h2')).toBeTruthy();
+    expect(document.documentElement.dataset.theme).toBe("cardigan");
+
+    await userEvent.click(screen.getByRole("radio", { name: "Ballpoint Blues" }));
+    expect(container.querySelector('main [data-theme="ballpoint"] h2')).toBeTruthy();
+    expect(document.documentElement.dataset.theme).toBe("cardigan");
+    expect(calls.some((c) => c.method === "PATCH")).toBe(false);
+  });
+
   test("every demo control can be used without crashing", async () => {
     const { calls } = mockApi({ "GET /api/me": () => ({ json: ME }), "POST /api/live/ping": () => ({ json: {} }) });
     renderApp("/design");

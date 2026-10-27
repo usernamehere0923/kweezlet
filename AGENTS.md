@@ -20,8 +20,8 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 ### Look
 
 - Build screens ONLY from `src/ui` (`import { Button, Card, FlipCard } from "../ui"`). The `/design` page shows every piece with a snippet.
-- Styling only via the tokens in `src/index.css` `@theme` (`bg-surface`, `text-muted`, `border-line`...). No `#hex`, no new colours, no dark mode.
-- One orange (primary) button per screen. Teal = secondary/links. Green/red only for correct/wrong.
+- Styling only via tokens (`bg-surface`, `font-display`...), valued by the user's theme. `#hex` only in `src/themes/*.css`. No auto dark mode. New theme: recipe in `src/themes/index.css`.
+- One primary (`accent`) button per screen. Teal = secondary/links. Green/red only for correct/wrong.
 - Missing a component? Add it to `src/ui` (or `src/ui/study`), export it from `index.ts`, show it on `/design`.
 - Progress animates ONLY through `ProgressBar` (wipe-in on mount, slide on change; `/design` → "Progress motion"). No other progress animation. Exception: `ResultSummary`'s score ring counts up (`useCountUp`).
 - Other motion only via `@theme` `--animate-*` tokens inside `src/ui` pieces (`/design` → "Motion"), never hand-made on a page. Confetti only for a real win.

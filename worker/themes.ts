@@ -4,7 +4,7 @@
 /**
  * The themes a user can pick in Settings, saved per account (users.theme).
  * Each one is a file src/themes/<id>.css with every --theme-* token, and a
- * name `theme.<id>` in both i18n files. How to add one: src/themes/index.ts.
+ * name `theme.<id>` in both i18n files. How to add one: src/themes/index.css.
  */
 export const THEMES = ["cardigan", "midnight-cram", "ballpoint", "unicorn-sneeze", "kung-fu"] as const;
 export type Theme = (typeof THEMES)[number];
