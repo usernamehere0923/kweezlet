@@ -31,7 +31,7 @@ Changed against the plan below while building:
 - Edits on the review screen go out after a 500 ms typing pause (a tap at once), one PATCH at a time; a live reload takes the server's cards only when none of ours wait, so the echo of our own PATCH never resets a card being typed in. Save sends the waiting edits first.
 - A run that makes no cards says so and keeps More cards, Make anew and Discard. Draft card fields grow to show a long answer.
 
-The UI is done (2026-10-27, step 3 below), with its tests. Not done: real runs with the key (step 4 below), cached-token price and real latency (need real calls).
+The UI is done (2026-10-27, step 3 below), with its tests. The real runs are done too (2026-10-27, step 4 below): five materials through the app at 390px, $0.0035 together, 9–29 s per run. What is left is step 5: ship.
 
 ### What's next
 
@@ -45,7 +45,7 @@ In this order. Each step on `phase-8-ai`, one commit per working step, `npm run 
    3. ~~Done 2026-10-27.~~ Review screen `/create/ai/:draftId` (`src/pages/AiDraft.tsx`, edits in `src/lib/draft.ts`): "Making cards…" while running; cards with checkbox, edit, delete, page badge and quote; unverified ones unchecked; header counts; cost line; Regenerate (asks first), More cards, Save (new or existing set), Discard; follows the live topic `ai`.
    4. ~~Done 2026-10-27.~~ Home: "From material" next to "Create a set", and the "unfinished AI draft" card. Settings → "AI usage" with the cap.
    5. ~~Done 2026-10-27.~~ UI tests (`src/pages/AiSource.test.tsx`, `AiDraft.test.tsx`, Home, Settings; mock `src/lib/pdf.ts` and `src/lib/office.ts`): page picker, review flow, unverified cards start unchecked. Coverage floors 95 % / 75 % stay.
-4. **Real runs** (build step 6), needs the z.ai key: put `ZAI_API_KEY=…` in `.dev.vars` and remove `ZAI_FAKE`. Run a text PDF, a scanned PDF, an Office file, a phone photo and pasted text. Compare the cost with the z.ai console, set `MAX_OUTPUT_TOKENS` from the measured runs, write the cached-token price and the latency into this plan.
+4. ~~**Real runs** (build step 6)~~. Done 2026-10-27, driven at 390px: a text PDF (7 cards, every quote verified), a scanned PDF (6 cards, all unverified as designed), a `.docx` (6 cards, verified: Office is read in the browser), a phone photo (7 question cards, unverified) and pasted text (6 cards, verified). Counted from z.ai's `usage`: $0.0005 / $0.0009 / $0.0005 / $0.0011 / $0.0006 (together $0.0035), 9–29 s per run, 714–1,657 output tokens per 6–7 cards. Still worth one look: compare these five with the z.ai console.
 5. **Ship.** Not before steps 3 and 4 are done (decided 2026-10-26): once merged, `0009_ai.sql` is frozen and every schema change the UI or the real runs need would be a new migration. Mark PR #24 ready, merge (merge commit), delete the branch. Then live, in this order: Settings → "Download my data" on the live app; `npm run db:migrate:remote` (0009); `npx wrangler secret put ZAI_API_KEY`; `npm run deploy` (it brings the `AiRunner` Durable Object, wrangler migration `v2`). Never set `ZAI_FAKE` on the live Worker.
 
 ### What Quizlet does (reference, not a limit)
@@ -67,7 +67,7 @@ In this order. Each step on `phase-8-ai`, one commit per working step, `npm run 
 ### z.ai facts that shape the build
 
 - **Endpoint**: `POST https://api.z.ai/api/paas/v4/chat/completions`, `Authorization: Bearer $ZAI_API_KEY`.
-- **Price**: $0.15 per 1M tokens in, $0.50 per 1M out. Thinking is always on, so it's slower (expect 20–60 s). Reasoning tokens are probably billed as output (not in the usage fields).
+- **Price**: $0.15 per 1M tokens in, $0.03 per 1M cached input, $0.50 per 1M out. The cached price is real: the fifth real run (2026-10-27) had 704 of its 865 input tokens served from cache. Thinking is always on; a run took 9–29 s in practice (faster than the expected 20–60 s). Reasoning tokens are billed as output: the measured output is 120–240 tokens per card, so `MAX_OUTPUT_TOKENS` 24,000 covers 60 cards plus thinking and caps one call at about $0.012.
 - **Inputs**: text, images (`image_url` with a base64 data URL), or a file (`{type:"file", file:{file_data, filename}}`: pdf, txt, Word, pptx, xlsx, 50 MB). Text + images can go in one call; a file can't be combined with images.
 - **No `response_format` on 5.3-Flash**: the prompt asks for JSON only; the extractor reads `message.content` only (never `reasoning_content`), strips code fences, and zod validates. One repair retry, whose cost goes to the same action.
 - **Usage**: `prompt_tokens`, `completion_tokens`, `prompt_tokens_details.cached_tokens`. Every successful call is costed from these.
@@ -77,7 +77,7 @@ In this order. Each step on `phase-8-ai`, one commit per working step, `npm run 
 - **Data**: the z.ai DPA says inputs are not stored; processing is in Singapore. One line in the UI says so.
 - **Alarm time limit** (verified 2026-10-26, Cloudflare "Durable Objects limits"): an alarm handler runs at most 15 minutes wall time, 30 s CPU by default; a throwing alarm is retried up to 6 times. A run (120 s timeout, one repair retry) fits easily; the runner never throws after the z.ai call, so a retry can't pay twice.
 - **Workers AI `toMarkdown()`** (checked 2026-10-26): AI bindings always run remotely, also under `npm run dev` (Cloudflare: "There is no current local simulation for Workers AI"), so it needs a Cloudflare login and a connection, and the docs do not list which formats it converts. By the rule of this plan: no binding. See "Office files".
-- **Still to verify with real calls**: cached-token price, real latency.
+- **Verified with real calls (2026-10-27)**: cached tokens are billed at the cached price, latency 9–29 s per run, one run costs $0.0005–$0.0011.
 
 ### How material gets to the AI (text first, so quotes can be checked)
 
