@@ -1,6 +1,6 @@
 import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { SPANISH, SWISS } from "../test/fixtures";
 import { ME, renderApp } from "../test/render";
 import { FakeSocket, mockApi } from "../test/server";
@@ -57,6 +57,37 @@ describe("home", () => {
     await userEvent.selectOptions(screen.getByLabelText("Folder"), "none");
     expect(await screen.findByText("Swiss history")).toBeTruthy();
     expect(screen.queryByText("Spanish animals")).toBeNull();
+  });
+
+  test("wide screens pick folders from the list at the side, not a dropdown", async () => {
+    // The phone-first fallback (no matchMedia) keeps the dropdown; here the screen is wide.
+    vi.stubGlobal("matchMedia", (media: string) => ({
+      media,
+      matches: media === "(min-width: 768px)",
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/folders": () => ({ json: [{ id: 3, name: "Languages", setCount: 1 }] }),
+      "GET /api/sets": (_body, query) => ({
+        json: [
+          { ...SPANISH, folderId: 3 },
+          { ...SWISS, folderId: null },
+        ].filter(
+          (s) => !query.folder || (query.folder === "none" ? s.folderId === null : String(s.folderId) === query.folder),
+        ),
+      }),
+    });
+    renderApp("/");
+    expect(await screen.findByText("Spanish animals")).toBeTruthy();
+    expect(screen.queryByRole("combobox")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Languages" }));
+    await waitFor(() => expect(calls.filter((c) => c.path === "/api/sets").at(-1)?.query.folder).toBe("3"));
+    expect(await screen.findByText("Spanish animals")).toBeTruthy();
+    expect(screen.queryByText("Swiss history")).toBeNull();
+    // The picked folder offers its edit pencil.
+    expect(screen.getByRole("button", { name: "Edit folder" })).toBeTruthy();
   });
 
   test("an empty folder says so; its editor renames and deletes it", async () => {

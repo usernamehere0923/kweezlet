@@ -17,6 +17,7 @@ import {
   SearchField,
   SegmentedControl,
   Select,
+  SideList,
   Spinner,
   Tag,
   Text,
@@ -36,6 +37,7 @@ export function Controls() {
   const [shuffle, setShuffle] = useState(true);
   const [locale, setLocale] = useState<Locale>("en");
   const [modal, setModal] = useState(false);
+  const [side, setSide] = useState("all");
 
   return (
     <>
@@ -214,6 +216,27 @@ export function Controls() {
               title="No sets yet"
               text="Create your first set."
               action={<Button icon="plus">Create</Button>}
+            />
+          </div>
+        </Section>
+        <Section
+          title="SideList"
+          code={`<SideList label="Folder" value={folder} onChange={setFolder}
+  items={[{ id: "all", label: "All sets" },
+          { id: "3", label: "Spanish", editLabel: "Edit folder", onEdit: edit },   // pencil on the picked row
+          { id: "none", label: "No folder" }]} />   // wide screens; the phone gets a Select`}
+        >
+          <div className="flex justify-start">
+            <SideList
+              label="Folder"
+              value={side}
+              onChange={setSide}
+              className="w-56"
+              items={[
+                { id: "all", label: "All sets" },
+                { id: "3", label: "Spanish", editLabel: "Edit folder", onEdit: () => toast("edit", "info") },
+                { id: "none", label: "No folder" },
+              ]}
             />
           </div>
         </Section>

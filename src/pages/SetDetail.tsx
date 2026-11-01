@@ -68,7 +68,7 @@ export function SetDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div>
       <ButtonLink to="/" variant="ghost" icon="chevronLeft" className="-ml-3 mb-4">
         {t("sets.back")}
       </ButtonLink>
@@ -91,7 +91,7 @@ export function SetDetailPage() {
 
       <section className="mb-8">
         <Heading className="mb-3">{t("sets.study")}</Heading>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StudyModeTile mode="flashcards" onClick={() => navigate(`/sets/${id}/flashcards`)} />
           <StudyModeTile mode="learn" onClick={() => navigate(`/sets/${id}/learn`)} />
           <StudyModeTile mode="test" onClick={() => navigate(`/sets/${id}/test`)} />
@@ -116,6 +116,7 @@ export function SetDetailPage() {
           {tn("study.terms", set.termCount)}
         </Text>
         <TermList
+          columns
           terms={set.terms.map((term) => ({ ...term, progress: termProgress(term), image: images[term.id] }))}
           speak={{ termLang: set.termLang, defLang: set.defLang }}
         />

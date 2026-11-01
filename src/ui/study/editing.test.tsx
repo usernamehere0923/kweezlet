@@ -58,6 +58,23 @@ describe("TermList", () => {
       ["the cat", "en"],
     ]);
   });
+
+  test("with columns, wide screens get one row-card per term", () => {
+    vi.stubGlobal("matchMedia", (media: string) => ({
+      media,
+      matches: media === "(min-width: 1024px)",
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    const { container } = renderUi(<TermList columns terms={[{ term: "el gato", definition: "the cat" }]} />);
+    expect(container.querySelector("ul")!.className).toContain("grid");
+    expect(container.querySelectorAll("li")[0].className).toContain("rounded-ui-xl");
+  });
+
+  test("with columns, the phone keeps the joined list", () => {
+    const { container } = renderUi(<TermList columns terms={[{ term: "el gato", definition: "the cat" }]} />);
+    expect(container.querySelector("ul")!.className).toContain("divide-y");
+  });
 });
 
 test("ClozeText: a gap for screen readers too, or the answer marked", () => {

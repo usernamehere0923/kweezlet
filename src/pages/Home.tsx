@@ -20,9 +20,11 @@ import {
   SearchField,
   Select,
   PageLoading,
+  SideList,
   StreakBadge,
   StudySetCard,
   UnfinishedDrafts,
+  useMediaQuery,
 } from "../ui";
 import { FolderEditor } from "./home/FolderEditor";
 
@@ -50,6 +52,8 @@ export function HomePage() {
     [setParams],
   );
   const request = useRef(0);
+  // Wide screens get the folder sidebar, the phone the dropdown below.
+  const wide = useMediaQuery("(min-width: 768px)");
 
   useEffect(() => {
     const pause = setTimeout(() => setQuery(q), q ? SEARCH_PAUSE_MS : 0);
@@ -130,21 +134,27 @@ export function HomePage() {
   });
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <PageTitle subtitle={t("app.tagline")}>{t("home.greeting", { name: user.username })}</PageTitle>
+    <div>
+      {/* Wide screens: greeting, streak and due share one band. The phone stays a plain stack. */}
+      <div className="flex flex-col md:mb-6 md:flex-row md:items-center md:justify-between md:gap-6 md:rounded-ui-xl md:bg-sunken/50 md:p-6">
+        <PageTitle subtitle={t("app.tagline")} className="md:mb-0">
+          {t("home.greeting", { name: user.username })}
+        </PageTitle>
+        <div className="md:flex md:items-center md:gap-3">
+          {streak.streak > 0 && (
+            <div className="mb-6 md:mb-0">
+              <StreakBadge days={streak.streak} notYetToday={!streak.studiedToday} />
+            </div>
+          )}
 
-      {streak.streak > 0 && (
-        <div className="mb-6">
-          <StreakBadge days={streak.streak} notYetToday={!streak.studiedToday} />
+          {dueCount > 0 && (
+            <Card className="mb-6 flex items-center justify-between gap-3 md:mb-0">
+              <Heading level={3}>{tn("review.due", dueCount)}</Heading>
+              <ButtonLink to="/review">{t("review.start")}</ButtonLink>
+            </Card>
+          )}
         </div>
-      )}
-
-      {dueCount > 0 && (
-        <Card className="mb-6 flex items-center justify-between gap-3">
-          <Heading level={3}>{tn("review.due", dueCount)}</Heading>
-          <ButtonLink to="/review">{t("review.start")}</ButtonLink>
-        </Card>
-      )}
+      </div>
 
       {drafts.length > 0 && (
         <div className="mb-6">
@@ -179,67 +189,92 @@ export function HomePage() {
           }
         />
       ) : (
-        <>
-          {folders.length > 0 && (
-            <div className="mb-3 flex items-end gap-2">
-              <Select
+        <div className="flex flex-col gap-6 md:flex-row md:items-start">
+          {/* Wide screens: folders in a list at the side. The phone keeps the dropdown. */}
+          {wide && folders.length > 0 && (
+            <aside className="md:w-52 md:shrink-0">
+              <Heading level={3} className="mb-2">
+                {t("folders.label")}
+              </Heading>
+              <SideList
                 label={t("folders.label")}
                 value={folder}
                 onChange={pickFolder}
-                className="flex-1"
-                options={[
-                  { value: "all", label: t("folders.all") },
-                  ...folders.map((item) => ({ value: String(item.id), label: item.name })),
-                  { value: "none", label: t("folders.none") },
+                items={[
+                  { id: "all", label: t("folders.all") },
+                  ...folders.map((item) => ({
+                    id: String(item.id),
+                    label: item.name,
+                    editLabel: t("folders.editTitle"),
+                    onEdit: () => setEditing(item),
+                  })),
+                  { id: "none", label: t("folders.none") },
                 ]}
               />
-              {picked && <IconButton icon="edit" label={t("folders.editTitle")} onClick={() => setEditing(picked)} />}
-            </div>
+            </aside>
           )}
-          {/* The phone: search on its own line, the create-set menu under it. */}
-          <div className="mb-6 flex flex-wrap items-center gap-2">
-            <SearchField
-              value={q}
-              onChange={setQ}
-              label={t("sets.searchLabel")}
-              placeholder={t("search.placeholder")}
-              clearLabel={t("common.clear")}
-              className="basis-full sm:flex-1 sm:basis-auto"
-            />
-            <Menu
-              label={t("sets.new")}
-              icon="plus"
-              variant={dueCount > 0 ? "secondary" : "primary"}
-              items={[
-                { label: t("sets.new"), icon: "plus", to: "/sets/new" },
-                { label: t("home.fromMaterial"), icon: "bulb", to: "/create/ai" },
-              ]}
-            />
-          </div>
-          {/* Same tree position with and without results, so the input keeps focus while typing. */}
-          {sets.length === 0 ? (
-            query || q ? (
-              <EmptyState icon="search" title={t("sets.noResults")} text={t("sets.noResultsText")} />
-            ) : (
-              <EmptyState icon="folder" title={t("folders.emptyTitle")} text={t("folders.emptyText")} />
-            )
-          ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {sets.map((set, i) => (
-                <StudySetCard
-                  key={set.id}
-                  index={i}
-                  title={set.title}
-                  tag={folder === "all" ? folderName(set.folderId) : undefined}
-                  termCount={set.termCount}
-                  known={set.knownCount}
-                  learning={set.learningCount}
-                  onClick={() => navigate(`/sets/${set.id}`)}
+          <div className="min-w-0 flex-1">
+            {!wide && folders.length > 0 && (
+              <div className="mb-3 flex items-end gap-2">
+                <Select
+                  label={t("folders.label")}
+                  value={folder}
+                  onChange={pickFolder}
+                  className="flex-1"
+                  options={[
+                    { value: "all", label: t("folders.all") },
+                    ...folders.map((item) => ({ value: String(item.id), label: item.name })),
+                    { value: "none", label: t("folders.none") },
+                  ]}
                 />
-              ))}
+                {picked && <IconButton icon="edit" label={t("folders.editTitle")} onClick={() => setEditing(picked)} />}
+              </div>
+            )}
+            {/* The phone: search on its own line, the create-set menu under it. */}
+            <div className="mb-6 flex flex-wrap items-center gap-2">
+              <SearchField
+                value={q}
+                onChange={setQ}
+                label={t("sets.searchLabel")}
+                placeholder={t("search.placeholder")}
+                clearLabel={t("common.clear")}
+                className="basis-full sm:flex-1 sm:basis-auto"
+              />
+              <Menu
+                label={t("sets.new")}
+                icon="plus"
+                variant={dueCount > 0 ? "secondary" : "primary"}
+                items={[
+                  { label: t("sets.new"), icon: "plus", to: "/sets/new" },
+                  { label: t("home.fromMaterial"), icon: "bulb", to: "/create/ai" },
+                ]}
+              />
             </div>
-          )}
-        </>
+            {/* Same tree position with and without results, so the input keeps focus while typing. */}
+            {sets.length === 0 ? (
+              query || q ? (
+                <EmptyState icon="search" title={t("sets.noResults")} text={t("sets.noResultsText")} />
+              ) : (
+                <EmptyState icon="folder" title={t("folders.emptyTitle")} text={t("folders.emptyText")} />
+              )
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {sets.map((set, i) => (
+                  <StudySetCard
+                    key={set.id}
+                    index={i}
+                    title={set.title}
+                    tag={folder === "all" ? folderName(set.folderId) : undefined}
+                    termCount={set.termCount}
+                    known={set.knownCount}
+                    learning={set.learningCount}
+                    onClick={() => navigate(`/sets/${set.id}`)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
       <FolderEditor
         folder={editing}

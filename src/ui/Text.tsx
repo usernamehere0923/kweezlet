@@ -2,9 +2,17 @@ import type { ReactNode } from "react";
 import { cx } from "./cx";
 
 /** The big serif title at the top of a page. One per page. */
-export function PageTitle({ children, subtitle }: { children: ReactNode; subtitle?: ReactNode }) {
+export function PageTitle({
+  children,
+  subtitle,
+  className,
+}: {
+  children: ReactNode;
+  subtitle?: ReactNode;
+  className?: string;
+}) {
   return (
-    <header className="mb-8">
+    <header className={cx("mb-8", className)}>
       <h1 className="font-display text-[32px] leading-tight font-normal tracking-tight text-ink md:text-[40px]">
         {children}
       </h1>
