@@ -7,7 +7,10 @@ import { useEffect, useState } from "react";
  *   const wide = useMediaQuery("(min-width: 768px)");
  */
 export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false);
+  // Read once up front: no flash of the phone layout on a wide screen.
+  const [matches, setMatches] = useState(
+    () => typeof window.matchMedia === "function" && window.matchMedia(query).matches,
+  );
   useEffect(() => {
     // Without matchMedia (jsdom) nothing matches: the phone layout is the fallback.
     if (typeof window.matchMedia !== "function") return;

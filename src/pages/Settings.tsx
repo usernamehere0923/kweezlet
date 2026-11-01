@@ -53,9 +53,10 @@ export function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div>
       <PageTitle>{t("settings.title")}</PageTitle>
-      <div className="flex flex-col gap-5">
+      {/* Wide screens: the cards pair up. Each keeps its own height. */}
+      <div className="grid gap-5 md:grid-cols-2 md:items-start">
         <Section title={t("settings.theme")}>
           <ThemePicker label={t("settings.theme")} value={theme} onChange={(next) => void changeTheme(next)} />
           <Text variant="small" className="mt-3">

@@ -8,6 +8,7 @@ import { SegmentedControl } from "../SegmentedControl";
 import { SpeakButton } from "../speech";
 import { surface } from "../surfaces";
 import { useAutoGrow } from "../useAutoGrow";
+import { useMediaQuery } from "../useMediaQuery";
 import { ClozeText } from "./cloze";
 import { TermImage, TermImagePicker } from "./images";
 
@@ -242,16 +243,21 @@ export function TermProgressDot({ progress }: { progress: TermProgress }) {
 export function TermList({
   terms,
   speak,
+  columns,
 }: {
   terms: { kind?: "pair" | "cloze"; term: string; definition: string; progress?: TermProgress; image?: string }[];
   speak?: { termLang: string | null; defLang: string | null };
+  /** Wide screens: one row-card per term, two per column. The phone keeps the joined list. */
+  columns?: boolean;
 }) {
+  const wide = useMediaQuery("(min-width: 1024px)");
+  const grid = Boolean(columns) && wide;
   return (
-    <ul className={cx(surface, "divide-y divide-line-soft overflow-hidden")}>
+    <ul className={grid ? "grid grid-cols-2 gap-3" : cx(surface, "divide-y divide-line-soft overflow-hidden")}>
       {terms.map((item, i) =>
         item.kind === "cloze" ? (
           // A gap sentence holds its answer: one line, the hidden part marked.
-          <li key={i} className="flex items-center gap-2.5 px-5 py-4 text-ink">
+          <li key={i} className={cx("flex items-center gap-2.5 px-5 py-4 text-ink", grid && surface)}>
             {item.image && <TermImage src={item.image} alt="" variant="thumb" />}
             {item.progress && <TermProgressDot progress={item.progress} />}
             <span className="flex-1">
@@ -260,7 +266,8 @@ export function TermList({
             {speak && <SpeakButton speech={{ text: filled(item.term), lang: speak.termLang }} />}
           </li>
         ) : (
-          <li key={i} className="grid gap-1 px-5 py-4 md:grid-cols-[1fr_2fr] md:gap-8">
+          // A row-card stacks the pair; the joined list splits it term | definition.
+          <li key={i} className={cx("grid gap-1 px-5 py-4", grid ? surface : "md:grid-cols-[1fr_2fr] md:gap-8")}>
             <span className="flex items-center gap-2.5 font-medium text-ink">
               {item.image && <TermImage src={item.image} alt="" variant="thumb" />}
               {item.progress && <TermProgressDot progress={item.progress} />}
