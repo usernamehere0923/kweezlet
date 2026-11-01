@@ -8,6 +8,7 @@ export { ErrorBoundary } from "./ErrorBoundary";
 export { Checkbox, FormError, SearchField, Select, TextField, type Option } from "./fields";
 export { Icon, ICON_NAMES } from "./Icon";
 export { LocalePicker } from "./LocalePicker";
+export { Menu, type MenuItem } from "./Menu";
 export { Wordmark } from "./Logo";
 export { Modal } from "./Modal";
 export { Confetti, SlideSwap } from "./motion";

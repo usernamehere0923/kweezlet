@@ -138,7 +138,8 @@ describe("home", () => {
     mockApi({ "GET /api/me": () => ({ json: ME }), "GET /api/sets": () => ({ json: [] }) });
     renderApp("/");
     expect(await screen.findByText("No sets yet")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Create your first set" })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Create your first set" }));
+    expect(screen.getByRole("menuitem", { name: "Create a set" })).toBeTruthy();
   });
 
   test("a search without hits can be cleared", async () => {
@@ -194,7 +195,10 @@ describe("home", () => {
     expect(within(card).getByText("kurs.pdf")).toBeTruthy();
     expect(within(card).getByText("Making cards…")).toBeTruthy();
     expect(within(card).getByRole("link", { name: "Open" }).getAttribute("href")).toBe("/create/ai/9");
-    expect(screen.getByRole("link", { name: "From material" }).getAttribute("href")).toBe("/create/ai");
+    // "From material" lives in the "Create a set" menu.
+    await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
+    expect(screen.getByRole("menuitem", { name: "From material" }).getAttribute("href")).toBe("/create/ai");
+    await userEvent.keyboard("{Escape}");
 
     drafts = [
       { ...draft, status: "ready", title: "Kantone", cardCount: 12 },
@@ -220,6 +224,8 @@ describe("home", () => {
   test("with no sets yet, a set can also come from material", async () => {
     mockApi({ "GET /api/me": () => ({ json: ME }), "GET /api/sets": () => ({ json: [] }) });
     renderApp("/");
-    expect((await screen.findByRole("link", { name: "From material" })).getAttribute("href")).toBe("/create/ai");
+    await userEvent.click(await screen.findByRole("button", { name: "Create your first set" }));
+    expect(screen.getByRole("menuitem", { name: "Create a set" }).getAttribute("href")).toBe("/sets/new");
+    expect(screen.getByRole("menuitem", { name: "From material" }).getAttribute("href")).toBe("/create/ai");
   });
 });
