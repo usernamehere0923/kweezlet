@@ -10,6 +10,7 @@ import {
   Heading,
   IconButton,
   LocalePicker,
+  Menu,
   Modal,
   PageLoadFailed,
   PageLoading,
@@ -66,6 +67,34 @@ export function Controls() {
             <Button size="lg">Large</Button>
             <IconButton icon="edit" label="Edit" />
             <IconButton icon="star" label="Favourite" variant="secondary" />
+          </div>
+        </Section>
+        <Section
+          title="Menu"
+          code={`<Menu label="Create a set" icon="plus" items={[
+  { label: "Create a set", icon: "plus", to: "/sets/new" },     // a page, or…
+  { label: "From material", icon: "bulb", onClick: start },     // …an action
+]} />   // one button, more ways to do the thing; Esc / outside click / pick closes`}
+        >
+          <div className="flex flex-wrap items-center gap-3">
+            <Menu
+              label="Create a set"
+              icon="plus"
+              items={[
+                { label: "Create a set", icon: "plus", onClick: () => toast("→ /sets/new", "info") },
+                { label: "From material", icon: "bulb", onClick: () => toast("→ /create/ai", "info") },
+              ]}
+            />
+            <Menu
+              label="Align end"
+              icon="moreHorizontal"
+              variant="secondary"
+              align="end"
+              items={[
+                { label: "Edit", icon: "edit", onClick: () => toast("edit", "info") },
+                { label: "Delete", icon: "trash", onClick: () => toast("delete", "info") },
+              ]}
+            />
           </div>
         </Section>
       </Chapter>

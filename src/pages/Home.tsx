@@ -15,6 +15,7 @@ import {
   EmptyState,
   Heading,
   IconButton,
+  Menu,
   PageTitle,
   SearchField,
   Select,
@@ -166,14 +167,15 @@ export function HomePage() {
           title={t("sets.emptyTitle")}
           text={t("sets.emptyText")}
           action={
-            <div className="flex flex-wrap justify-center gap-2">
-              <ButtonLink to="/sets/new" icon="plus">
-                {t("sets.emptyAction")}
-              </ButtonLink>
-              <ButtonLink to="/create/ai" icon="bulb" variant="secondary">
-                {t("home.fromMaterial")}
-              </ButtonLink>
-            </div>
+            <Menu
+              label={t("sets.emptyAction")}
+              icon="plus"
+              variant="primary"
+              items={[
+                { label: t("sets.new"), icon: "plus", to: "/sets/new" },
+                { label: t("home.fromMaterial"), icon: "bulb", to: "/create/ai" },
+              ]}
+            />
           }
         />
       ) : (
@@ -194,7 +196,7 @@ export function HomePage() {
               {picked && <IconButton icon="edit" label={t("folders.editTitle")} onClick={() => setEditing(picked)} />}
             </div>
           )}
-          {/* The phone: search on its own line, the two ways to a new set under it. */}
+          {/* The phone: search on its own line, the create-set menu under it. */}
           <div className="mb-6 flex flex-wrap items-center gap-2">
             <SearchField
               value={q}
@@ -204,12 +206,15 @@ export function HomePage() {
               clearLabel={t("common.clear")}
               className="basis-full sm:flex-1 sm:basis-auto"
             />
-            <ButtonLink to="/sets/new" icon="plus" variant={dueCount > 0 ? "secondary" : "primary"}>
-              {t("sets.new")}
-            </ButtonLink>
-            <ButtonLink to="/create/ai" icon="bulb" variant="secondary">
-              {t("home.fromMaterial")}
-            </ButtonLink>
+            <Menu
+              label={t("sets.new")}
+              icon="plus"
+              variant={dueCount > 0 ? "secondary" : "primary"}
+              items={[
+                { label: t("sets.new"), icon: "plus", to: "/sets/new" },
+                { label: t("home.fromMaterial"), icon: "bulb", to: "/create/ai" },
+              ]}
+            />
           </div>
           {/* Same tree position with and without results, so the input keeps focus while typing. */}
           {sets.length === 0 ? (
