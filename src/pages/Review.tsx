@@ -6,7 +6,8 @@ import { api, offline } from "../lib/api";
 import { useLive } from "../lib/live";
 import { useQuestionRound, type Answered } from "../lib/questionRound";
 import { buildQuestion, shuffle } from "../lib/quiz";
-import { useStudyDay } from "../lib/studyDay";
+import { localDay, useStudyDay } from "../lib/studyDay";
+import { useStudyActivity } from "../lib/studyTime";
 import { ButtonLink, EmptyState, Heading, PageLoading, ResultSummary, StudyHeader, Tag } from "../ui";
 import { RoundQuestion } from "./RoundQuestion";
 
@@ -26,6 +27,8 @@ export function ReviewPage() {
   const { start } = round;
   // The day only counts once something was answered, not for "all caught up".
   const streak = useStudyDay(round.score.total > 0);
+  // Study time for the statistics; the answers themselves count in the worker.
+  useStudyActivity({ active: round.score.total > 0, mode: "review" });
   const [cards, setCards] = useState<ReviewCard[] | null>(null);
   // Answered on this device in this round, and answered on another one.
   const answeredHere = useRef(new Set<number>());
@@ -73,7 +76,10 @@ export function ReviewPage() {
   });
 
   async function save(termId: number, correct: boolean) {
-    const res = await api.terms[":id"].answer.$post({ param: { id: String(termId) }, json: { correct } });
+    const res = await api.terms[":id"].answer.$post({
+      param: { id: String(termId) },
+      json: { correct, day: localDay() },
+    });
     // Not saved (offline, server error; api.ts shows the toast): ask it again
     // so the answer gets another try. A 404 means the term is gone.
     if (offline(res) || res.status >= 500) round.askAgain(termId);

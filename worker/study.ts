@@ -4,7 +4,7 @@ import { notifyLater } from "./live";
 import { MASTERY } from "./progress";
 import { INTERVAL_DAYS, intervalSql } from "./schedule";
 import type { AppEnv } from "./types";
-import { idParam, validate } from "./validate";
+import { idParam, localDayString, validate } from "./validate";
 
 /** How a term can be marked. */
 const STATUSES = ["still_learning", "know_it"] as const;
@@ -16,7 +16,9 @@ const stateBody = z.object({
   status: z.enum(STATUSES).nullish(),
   starred: z.boolean().nullish(),
 });
-const answerBody = z.object({ correct: z.boolean() });
+// The day is the client's own today (see localDayString): the answer counts
+// toward that day's statistics, whatever time the server thinks it is.
+const answerBody = z.object({ correct: z.boolean(), day: localDayString });
 export const studyRoutes = new Hono<AppEnv>()
   // Mark a term "still learning" / "know it" and/or star it. Both are kept
   // when only one is sent, so starring never undoes a mark.
@@ -63,7 +65,7 @@ export const studyRoutes = new Hono<AppEnv>()
   .post("/terms/:id/answer", validate("param", idParam), validate("json", answerBody), async (c) => {
     const user = c.get("user");
     const { id } = c.req.valid("param");
-    const { correct } = c.req.valid("json");
+    const { correct, day } = c.req.valid("json");
     const db = c.env.DB;
     // Counted in SQL, not read-then-written: two answers in flight at once
     // (fast tapping, two devices) must both count. The insert reads the term
@@ -73,7 +75,7 @@ export const studyRoutes = new Hono<AppEnv>()
     // over. A first answer, right or wrong, brings the term back tomorrow.
     // SQLite evaluates every SET expression on the old row.
     const firstWait = INTERVAL_DAYS[0] * 86_400;
-    const [counted, , marked] = await db.batch([
+    const [counted, , , marked] = await db.batch([
       db
         .prepare(
           `INSERT INTO term_stats (user_id, term_id, set_id, correct, wrong, streak, last_seen_at, review_step, due_at)
@@ -101,6 +103,22 @@ export const studyRoutes = new Hono<AppEnv>()
              WHERE term_state.status IS NOT excluded.status`,
         )
         .bind(user.id, id, MASTERY),
+      // The answer counts toward the client's day in the statistics: one card
+      // studied, right or wrong. "Learned" fires when this answer's streak is
+      // exactly mastery — the streak the first statement just wrote. A term
+      // that isn't the user's writes nothing here either (same gate as above).
+      db
+        .prepare(
+          `INSERT INTO day_stats (user_id, day, cards, correct, wrong, learned, seconds)
+             SELECT ?1, ?2, 1, ?3, ?4,
+                    COALESCE((SELECT CASE WHEN streak = ?5 THEN 1 ELSE 0 END FROM term_stats WHERE user_id = ?1 AND term_id = ?6), 0),
+                    0
+               FROM terms WHERE id = ?6 AND user_id = ?1
+             ON CONFLICT (user_id, day) DO UPDATE SET
+               cards = cards + 1, correct = correct + excluded.correct,
+               wrong = wrong + excluded.wrong, learned = learned + excluded.learned`,
+        )
+        .bind(user.id, day, correct ? 1 : 0, correct ? 0 : 1, MASTERY, id),
       db.prepare("SELECT status FROM term_state WHERE user_id = ? AND term_id = ?").bind(user.id, id),
     ]);
     const next = counted!.results[0] as { correct: number; wrong: number; streak: number } | undefined;

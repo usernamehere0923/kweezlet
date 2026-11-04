@@ -17,7 +17,7 @@ async function schedule(termId: number) {
 }
 
 function answer(termId: number, cookie: string, correct: boolean) {
-  return api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct } });
+  return api(`/api/terms/${termId}/answer`, { method: "POST", cookie, json: { correct, day: "2026-10-11" } });
 }
 
 describe("the schedule", () => {

@@ -6,6 +6,7 @@ import { api } from "../lib/api";
 import { useStudySet } from "../lib/studySet";
 import { inDeck, useDeck, type DeckFilter } from "../lib/deck";
 import { useStudyDay } from "../lib/studyDay";
+import { useStudyActivity } from "../lib/studyTime";
 import {
   CardNav,
   ClozeText,
@@ -33,6 +34,9 @@ export function FlashcardsPage() {
   const [flipped, setFlipped] = useState(false);
   const [started, setStarted] = useState(false);
   const streak = useStudyDay(started);
+  // Study time and what went by for the statistics: a card studied per flip
+  // that shows the answer, a card learned on a mark that really changes it.
+  const { record } = useStudyActivity({ active: started, setId: Number(id), mode: "flashcards" });
 
   // Another device marked or renamed something: catch up, keep the position.
   const { set, images, updateTerm, failed, retry } = useStudySet(id, ["sets", "study"]);
@@ -57,6 +61,7 @@ export function FlashcardsPage() {
   async function mark(status: "still_learning" | "know_it") {
     if (!current) return;
     setStarted(true);
+    if (status === "know_it" && current.status !== "know_it") record({ learned: 1 });
     // A card that no longer matches the filter leaves the deck and the next
     // one slides into its place: stay put instead of jumping over it.
     const keeps = inDeck(filter, { ...current, status });
@@ -174,6 +179,7 @@ export function FlashcardsPage() {
               onFlip={(next) => {
                 setFlipped(next);
                 setStarted(true);
+                if (next) record({ cards: 1 });
               }}
             />
           </SlideSwap>

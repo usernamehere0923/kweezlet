@@ -7,7 +7,8 @@ import { api } from "../lib/api";
 import { useStudySet } from "../lib/studySet";
 import { useQuestionRound, type Answered } from "../lib/questionRound";
 import { buildQuestion, shuffle } from "../lib/quiz";
-import { useStudyDay } from "../lib/studyDay";
+import { localDay, useStudyDay } from "../lib/studyDay";
+import { useStudyActivity } from "../lib/studyTime";
 import { Button, EmptyState, Heading, PageLoadFailed, PageLoading, ResultSummary, StudyHeader, Tag } from "../ui";
 import { RoundQuestion } from "./RoundQuestion";
 
@@ -17,6 +18,8 @@ export function LearnPage() {
   const navigate = useNavigate();
   const round = useQuestionRound();
   const streak = useStudyDay(round.score.total > 0);
+  // Study time for the statistics; the answers themselves count in the worker.
+  useStudyActivity({ active: round.score.total > 0, setId: Number(id), mode: "learn" });
   const [allLearned, setAllLearned] = useState(false);
   // How many of this round's two correct answers each term has.
   const inRound = useRef(new Map<number, number>());
@@ -48,7 +51,10 @@ export function LearnPage() {
   });
 
   async function postAnswer(termId: number, correct: boolean) {
-    const res = await api.terms[":id"].answer.$post({ param: { id: String(termId) }, json: { correct } });
+    const res = await api.terms[":id"].answer.$post({
+      param: { id: String(termId) },
+      json: { correct, day: localDay() },
+    });
     if (res.ok) {
       const saved = await res.json();
       updateTerm(termId, { streak: saved.streak, status: saved.status });

@@ -21,6 +21,17 @@ const day = (offset: number) => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
+// Older study days for the statistics: going back about two months with a rest
+// day every sixth day. study_days and day_stats use the same days, so streak,
+// heatmap and graphs all agree. Every day keeps its counts (nothing random):
+// days with more cards take longer and learn a little more.
+const historyDays = Array.from({ length: 60 }, (_, i) => i + 3).filter((offset) => offset % 6 !== 5);
+const historyStats = historyDays.map((offset) => {
+  const cards = 5 + ((offset * 13) % 18);
+  const wrong = (offset * 7) % 3;
+  return `(${demo}, '${day(offset)}', ${cards}, ${cards - wrong}, ${wrong}, ${(offset * 5) % 3}, ${cards * 35 + (offset % 5) * 60})`;
+});
+
 const statements: string[] = [
   `INSERT INTO sets (user_id, title, description, term_lang, def_lang) VALUES
      (${demo}, 'Spanish animals', 'Vocabulary from chapter 1', 'es', 'en'),
@@ -59,6 +70,18 @@ const statements: string[] = [
      (${demo}, ${set("Swiss history")}, 27, unixepoch() - 3 * 86400)`,
   // Studied today and on the two days before: a three day streak.
   `INSERT INTO study_days (user_id, day) VALUES (${demo}, '${day(0)}'), (${demo}, '${day(1)}'), (${demo}, '${day(2)}')`,
+  // And an older history behind it, for the statistics pages.
+  `INSERT INTO study_days (user_id, day) VALUES ${historyDays.map((offset) => `(${demo}, '${day(offset)}')`).join(", ")}`,
+  // Today and the two days before in numbers, then the older days.
+  `INSERT INTO day_stats (user_id, day, cards, correct, wrong, learned, seconds) VALUES
+     (${demo}, '${day(0)}', 8, 7, 1, 2, 450),
+     (${demo}, '${day(1)}', 12, 10, 2, 1, 600),
+     (${demo}, '${day(2)}', 6, 5, 1, 0, 300),
+     ${historyStats.join(",\n     ")}`,
+  // Last studied sets: the animals in flashcards an hour ago, history in Learn.
+  `INSERT INTO set_activity (user_id, set_id, last_studied_at, last_mode) VALUES
+     (${demo}, ${set("Spanish animals")}, unixepoch() - 3600, 'flashcards'),
+     (${demo}, ${set("Swiss history")}, unixepoch() - 3 * 86400, 'learn')`,
   // Two cards carry an image ("media on cards").
   `INSERT INTO term_images (user_id, term_id, image) VALUES
      (${demo}, ${term("Spanish animals", "el gato")}, '${photo("icon-192.png")}'),
