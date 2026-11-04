@@ -58,6 +58,13 @@
   --theme-wrong-strong: #a83a2e;
   --theme-wrong-wash: #f5dfda;
 
+  /* Learning-activity heatmap (src/ui/Heatmap.tsx): quiet to busy days. */
+  --theme-heat-0: #e8e6dc;
+  --theme-heat-1: #f2ddd0;
+  --theme-heat-2: #e6b199;
+  --theme-heat-3: #d9855f;
+  --theme-heat-4: #b0532f;
+
   --theme-font-body: "Anthropic Sans", system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --theme-font-display: "Anthropic Serif", Georgia, "Times New Roman", Times, serif;
 

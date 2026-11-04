@@ -4,6 +4,7 @@ import { useT } from "../../i18n";
 import { useTheme } from "../../lib/theme";
 import { PageTitle, ThemePicker } from "../../ui";
 import { AiKit } from "./aiKit";
+import { Charts } from "./charts";
 import { Controls } from "./controls";
 import { Foundations } from "./foundations";
 import { Section } from "./layout";
@@ -45,6 +46,7 @@ export function DesignSystemPage() {
         <Controls />
         <StudyKit />
         <AiKit />
+        <Charts />
         <LiveDemo />
       </div>
     </div>

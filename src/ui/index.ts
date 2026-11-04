@@ -3,6 +3,7 @@
 // Every piece is shown, with a code snippet, on the /design page.
 export { AppShell, type NavItem } from "./AppShell";
 export { Button, ButtonLink, IconButton } from "./Button";
+export { AreaChart, BarChart, Heatmap, StackedBarChart, StatTile, type ChartPoint, type HeatDay } from "./charts";
 export { DevRibbon } from "./DevRibbon";
 export { ErrorBoundary } from "./ErrorBoundary";
 export { Checkbox, FormError, SearchField, Select, TextField, type Option } from "./fields";

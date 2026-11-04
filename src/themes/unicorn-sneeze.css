@@ -77,6 +77,13 @@
   --theme-wrong-strong: #ad3520;
   --theme-wrong-wash: #fde3dc;
 
+  /* Learning-activity heatmap (src/ui/Heatmap.tsx): quiet to busy days. */
+  --theme-heat-0: #f3e6ef;
+  --theme-heat-1: #f8d9ea;
+  --theme-heat-2: #f0a7cd;
+  --theme-heat-3: #e56cb0;
+  --theme-heat-4: #b8287c;
+
   --theme-font-body: "Nunito", system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --theme-font-display: "Fredoka", "Nunito", system-ui, sans-serif;
 
