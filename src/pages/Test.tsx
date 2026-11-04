@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useT } from "../i18n";
 import { useMatchBoard } from "../lib/matchBoard";
 import { buildMatchRound, buildTest, scoreTest, type TestPaper } from "../lib/quiz";
 import { useStudyDay } from "../lib/studyDay";
+import { useStudyActivity } from "../lib/studyTime";
 import { useStudySet } from "../lib/studySet";
 import { EmptyState, Heading, PageLoadFailed, PageLoading, ResultSummary, StudyHeader } from "../ui";
 import { TestPaperView } from "./test/TestPaperView";
@@ -24,6 +25,13 @@ export function TestPage() {
   // The timer running out on an empty paper does not.
   const [handedIn, setHandedIn] = useState(false);
   const streak = useStudyDay(handedIn || answers.some((answer) => answer !== null));
+  // Study time and, once a paper is done, its score for the statistics.
+  const { record } = useStudyActivity({
+    active: handedIn || answers.some((answer) => answer !== null),
+    setId: Number(id),
+    mode: "test",
+  });
+  const recorded = useRef(false);
   const [deadline, setDeadline] = useState<number | null>(null);
 
   const { set, images, failed, retry } = useStudySet(id, ["sets"]);
@@ -33,6 +41,16 @@ export function TestPage() {
   const tiles = useMemo(() => (paper ? buildMatchRound(paper.matching, paper.matching.length) : []), [paper]);
   const board = useMatchBoard(tiles);
 
+  // The paper is done: its score goes to the statistics, once per paper (a
+  // timed-out paper counts only when something was answered on it).
+  useEffect(() => {
+    if (view !== "result" || !paper || recorded.current) return;
+    if (!handedIn && !answers.some((answer) => answer !== null)) return;
+    recorded.current = true;
+    const score = scoreTest(paper, answers, board.matched.size);
+    record({ cards: score.total, correct: score.correct, wrong: score.total - score.correct });
+  }, [view, paper, handedIn, answers, board, record]);
+
   function start(next: TestChoices) {
     if (!set) return;
     const built = buildTest(set.terms, {
@@ -41,6 +59,7 @@ export function TestPage() {
       matching: next.matching,
       answerWith: next.answerWith,
     });
+    recorded.current = false;
     setChoices(next);
     setPaper(built);
     setAnswers(Array<string | null>(built.questions.length).fill(null));

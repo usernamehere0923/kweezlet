@@ -61,7 +61,10 @@ describe("review", () => {
     expect(await screen.findByText("Nice work!")).toBeTruthy();
     expect(screen.getByText("2 of 2 correct")).toBeTruthy();
     const answered = calls.filter((c) => c.path.endsWith("/answer"));
-    expect(answered.map((c) => c.body)).toEqual([{ correct: true }, { correct: true }]);
+    expect(answered.map((c) => c.body)).toEqual([
+      { correct: true, day: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) },
+      { correct: true, day: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) },
+    ]);
 
     await userEvent.click(screen.getByRole("button", { name: "Done" }));
     expect(await screen.findByRole("searchbox", { name: "Search your sets" })).toBeTruthy();

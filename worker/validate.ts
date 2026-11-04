@@ -27,3 +27,15 @@ export function validationError<Fields extends Record<string, string>>(c: Contex
 
 /** The `:id` in a route path: a positive whole number. */
 export const idParam = z.object({ id: z.coerce.number().int().positive() });
+
+/**
+ * A local day, YYYY-MM-DD. The client computes it in the user's timezone.
+ * Not just the shape: 2026-02-31 would poison the streak (see streakOf).
+ */
+export const localDayString = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/)
+  .refine((day) => {
+    const time = new Date(`${day}T00:00:00Z`).getTime();
+    return !Number.isNaN(time) && new Date(time).toISOString().slice(0, 10) === day;
+  });

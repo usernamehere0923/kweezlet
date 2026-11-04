@@ -1,21 +1,10 @@
 import { Hono } from "hono";
 import { z } from "zod";
 import type { AppEnv } from "./types";
-import { validate } from "./validate";
+import { localDayString, validate } from "./validate";
 
-/**
- * A local day, YYYY-MM-DD. The client computes it in the user's timezone.
- * Not just the shape: 2026-02-31 would poison the streak (see streakOf).
- */
-const dayBody = z.object({
-  day: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .refine((day) => {
-      const time = new Date(`${day}T00:00:00Z`).getTime();
-      return !Number.isNaN(time) && new Date(time).toISOString().slice(0, 10) === day;
-    }),
-});
+/** The user's own today, YYYY-MM-DD (see localDayString in worker/validate.ts). */
+const dayBody = z.object({ day: localDayString });
 
 function previousDay(day: string): string {
   return new Date(new Date(`${day}T00:00:00Z`).getTime() - 86_400_000).toISOString().slice(0, 10);

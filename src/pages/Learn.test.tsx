@@ -103,7 +103,10 @@ describe("learn", () => {
     await userEvent.click(screen.getByText("el perro"));
     expect(await screen.findByText("Not quite")).toBeTruthy();
     expect(screen.getByText("Correct answer: el gato")).toBeTruthy();
-    expect(calls.find((c) => c.path.endsWith("/answer"))?.body).toEqual({ correct: false });
+    expect(calls.find((c) => c.path.endsWith("/answer"))?.body).toEqual({
+      correct: false,
+      day: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
+    });
 
     // The other term is asked first, then the missed one returns.
     await userEvent.click(screen.getByRole("button", { name: "Continue" }));

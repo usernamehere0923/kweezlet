@@ -7,6 +7,7 @@ import { useMatchBoard } from "../lib/matchBoard";
 import { buildMatchRound, MATCH_PAIRS, MIN_MATCH_TERMS, type MatchTileData } from "../lib/quiz";
 import { formatTime } from "../lib/formatTime";
 import { useStudyDay } from "../lib/studyDay";
+import { useStudyActivity } from "../lib/studyTime";
 import {
   ButtonLink,
   EmptyState,
@@ -35,6 +36,8 @@ export function MatchPage() {
   const board = useMatchBoard(tiles);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const streak = useStudyDay(startedAt !== null);
+  // Study time and the pairs finished, for the statistics.
+  const { record } = useStudyActivity({ active: startedAt !== null, setId: Number(id), mode: "match" });
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const [result, setResult] = useState<RoundResult | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -72,6 +75,7 @@ export function MatchPage() {
   function finish(started: number, end: number) {
     setFinishedAt(end);
     setNow(end);
+    record({ cards: tiles.length / 2 });
     // Floored like the clock, so the result shows the time the clock stopped at.
     const seconds = Math.max(1, Math.floor((end - started) / 1000));
     void api.sets[":id"].match.$post({ param: { id }, json: { seconds } }).then(async (res) => {

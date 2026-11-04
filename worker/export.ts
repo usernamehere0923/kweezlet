@@ -12,6 +12,8 @@ export const exportTables: string[] = [
   "study_days",
   "term_stats",
   "match_best",
+  "day_stats",
+  "set_activity",
   "ai_drafts",
   "ai_draft_pages",
   "ai_usage",
