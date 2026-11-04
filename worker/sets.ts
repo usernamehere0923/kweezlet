@@ -45,7 +45,7 @@ const setBody = z.object({
   terms: z.array(termShape).min(1).max(500),
 });
 
-type SetRow = {
+export type SetRow = {
   id: number;
   title: string;
   description: string;
@@ -68,7 +68,7 @@ type TermRow = {
 };
 
 /** The columns of SetRow, from the set row `s`. */
-const SET_COLUMNS =
+export const SET_COLUMNS =
   "s.id, s.title, s.description, s.term_lang, s.def_lang, s.answer_with, s.folder_id, s.created_at, s.updated_at";
 
 /** Joins a term `t` to the user's mark (ts) and answer stats (st) for it. */
@@ -87,12 +87,12 @@ const KNOWN_COUNT = progressCount("ts.status = 'know_it'");
 const LEARNING_COUNT = progressCount("ts.status = 'still_learning' OR (ts.status IS NULL AND st.streak > 0)");
 
 /** The columns of CountRow, for the set row `s`. */
-const COUNT_COLUMNS = `(SELECT COUNT(*) FROM terms t WHERE t.set_id = s.id AND t.user_id = s.user_id) AS term_count,
+export const COUNT_COLUMNS = `(SELECT COUNT(*) FROM terms t WHERE t.set_id = s.id AND t.user_id = s.user_id) AS term_count,
        ${KNOWN_COUNT} AS known_count, ${LEARNING_COUNT} AS learning_count`;
 
-type CountRow = { term_count: number; known_count: number; learning_count: number };
+export type CountRow = { term_count: number; known_count: number; learning_count: number };
 
-function toSetJson(row: SetRow & CountRow) {
+export function toSetJson(row: SetRow & CountRow) {
   return {
     id: row.id,
     title: row.title,

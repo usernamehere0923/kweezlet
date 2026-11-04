@@ -6,7 +6,8 @@ import { localDayString, validate } from "./validate";
 /** The user's own today, YYYY-MM-DD (see localDayString in worker/validate.ts). */
 const dayBody = z.object({ day: localDayString });
 
-function previousDay(day: string): string {
+/** The day before, YYYY-MM-DD. */
+export function previousDay(day: string): string {
   return new Date(new Date(`${day}T00:00:00Z`).getTime() - 86_400_000).toISOString().slice(0, 10);
 }
 
@@ -31,14 +32,26 @@ async function studyDaysUpTo(db: D1Database, userId: number, day: string): Promi
   return results.map((row) => row.day);
 }
 
+/**
+ * The streak as the UI shows it: before studying today the run up to yesterday
+ * still counts — it only breaks when a day ends without study.
+ */
+export async function streakThrough(
+  db: D1Database,
+  userId: number,
+  day: string,
+): Promise<{ streak: number; studiedToday: boolean }> {
+  const days = await studyDaysUpTo(db, userId, day);
+  const studiedToday = days[0] === day;
+  return { streak: streakOf(days, studiedToday ? day : previousDay(day)), studiedToday };
+}
+
 export const streakRoutes = new Hono<AppEnv>()
   // The streak for Home, before studying. Today not studied yet still shows
   // the run up to yesterday: it only breaks when today ends without study.
   .get("/study/streak", validate("query", dayBody), async (c) => {
     const { day } = c.req.valid("query");
-    const days = await studyDaysUpTo(c.env.DB, c.get("user").id, day);
-    const studiedToday = days[0] === day;
-    return c.json({ streak: streakOf(days, studiedToday ? day : previousDay(day)), studiedToday }, 200);
+    return c.json(await streakThrough(c.env.DB, c.get("user").id, day), 200);
   })
 
   // "I studied today": remember the day and answer the new streak length.

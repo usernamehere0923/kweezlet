@@ -9,6 +9,7 @@ import { liveRoutes } from "./live";
 import { matchRoutes } from "./match";
 import { reviewRoutes } from "./review";
 import { setRoutes } from "./sets";
+import { statsRoutes } from "./stats";
 import { streakRoutes } from "./streak";
 import { studyRoutes } from "./study";
 import type { AppEnv } from "./types";
@@ -28,6 +29,7 @@ const app = new Hono<AppEnv>()
   .route("/api", studyRoutes)
   .route("/api", streakRoutes)
   .route("/api", activityRoutes)
+  .route("/api", statsRoutes)
   .route("/api", aiRoutes)
   .all("/api/*", (c) => c.json({ error: "not_found" as const }, 404));
 
