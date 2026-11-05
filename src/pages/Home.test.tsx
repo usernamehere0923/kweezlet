@@ -259,4 +259,72 @@ describe("home", () => {
     expect(screen.getByRole("menuitem", { name: "Create a set" }).getAttribute("href")).toBe("/sets/new");
     expect(screen.getByRole("menuitem", { name: "From material" }).getAttribute("href")).toBe("/create/ai");
   });
+
+  test.each([
+    ["learn", "/sets/7/learn"],
+    ["flashcards", "/sets/7/flashcards"],
+    ["test", "/sets/7/test"],
+    ["match", "/sets/7/match"],
+    ["review", "/review"],
+  ] as const)("quick resume continues in the %s mode", async (mode, href) => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [SPANISH] }),
+      "GET /api/stats/recent": () => ({ json: { studied: [{ ...SPANISH, lastStudiedAt: 1, mode }], created: [] } }),
+    });
+    renderApp("/");
+    expect(await screen.findByText("Quick resume")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Continue" }).getAttribute("href")).toBe(href);
+  });
+
+  test("the dashboard strip: today's numbers, quick resume and the recently used", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [SPANISH, SWISS] }),
+      "GET /api/stats": () => ({
+        json: {
+          sets: 2,
+          cards: 3,
+          learningRate: 0.25,
+          streak: 3,
+          learnedToday: 4,
+          totalSeconds: 600,
+          learnedBefore: 0,
+          days: [{ day: "2026-10-11", cards: 2, correct: 2, wrong: 0, learned: 1, seconds: 600 }],
+        },
+      }),
+      "GET /api/stats/recent": () => ({
+        json: {
+          studied: [{ ...SPANISH, lastStudiedAt: 1_729_000_000, mode: "learn" }],
+          created: [SWISS],
+        },
+      }),
+    });
+    renderApp("/");
+
+    // Quick resume continues the last studied set in its own mode.
+    expect(await screen.findByText("Quick resume")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Continue" }).getAttribute("href")).toBe("/sets/7/learn");
+
+    // The compact numbers sit above the sets.
+    expect(screen.getByText("Cards learned today")).toBeTruthy();
+    expect(screen.getByText("25%")).toBeTruthy();
+
+    // And the two rows of the recently used.
+    expect(screen.getByText("Recently studied")).toBeTruthy();
+    expect(screen.getByText("Recently created")).toBeTruthy();
+  });
+
+  test("the strip stays out of a search or folder filter", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [SPANISH] }),
+      "GET /api/stats/recent": () => ({
+        json: { studied: [{ ...SPANISH, lastStudiedAt: 1, mode: "flashcards" }], created: [] },
+      }),
+    });
+    renderApp("/?folder=3");
+    expect(await screen.findByText("Spanish animals")).toBeTruthy();
+    expect(screen.queryByText("Quick resume")).toBeNull();
+  });
 });

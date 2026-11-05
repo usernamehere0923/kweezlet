@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { useT } from "../i18n";
 import { cx } from "./cx";
 import { Icon, type IconName } from "./Icon";
@@ -56,8 +56,11 @@ function AxisLabels({ points }: { points: { label: string }[] }) {
   return (
     <div className="mt-1.5 flex">
       {points.map((point, i) => (
-        <span key={i} className="min-w-0 flex-1 truncate text-center text-[11px] text-faint">
-          {i % step === 0 || i === points.length - 1 ? point.label : ""}
+        // Labels sit under their bar but may spill over the narrow columns;
+        // with every fifth or sixth shown they never collide. The last one
+        // appears only when it is far enough from the label before it.
+        <span key={i} className="flex-1 whitespace-nowrap text-center text-[11px] text-faint">
+          {i % step === 0 || (i === points.length - 1 && (points.length - 1) % step > step / 2) ? point.label : ""}
         </span>
       ))}
     </div>
@@ -223,6 +226,11 @@ function levelOf(count: number, max: number): number {
  */
 export function Heatmap({ label, days }: { label: string; days: HeatDay[] }) {
   const { t, tn, locale } = useT();
+  // The weeks scroll sideways on a phone: start at the newest end.
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (box.current) box.current.scrollLeft = box.current.scrollWidth;
+  }, []);
   const max = Math.max(1, ...days.map((day) => day.count));
   // Blank cells before the first day, so every column is one full week.
   const pad = days[0] ? new Date(`${days[0].day}T00:00:00Z`).getUTCDay() : 0;
@@ -239,52 +247,55 @@ export function Heatmap({ label, days }: { label: string; days: HeatDay[] }) {
 
   let lastMonth = "";
   return (
-    <div role="img" aria-label={label} className="w-full overflow-x-auto">
-      <div className="flex w-max flex-col gap-1">
-        {/* The month a week starts in, where it changes. */}
-        <div className="flex gap-[3px] pl-[22px]">
-          {weeks.map((week, i) => {
-            const first = week.find((cell): cell is HeatDay => cell !== null);
-            const month = first ? monthFmt.format(at(first)) : "";
-            const shown = month === lastMonth ? "" : month;
-            lastMonth = month;
-            return (
-              <span key={i} className="w-[13px] whitespace-nowrap text-[10px] text-faint">
-                {shown}
-              </span>
-            );
-          })}
-        </div>
-        <div className="flex gap-[3px]">
-          {/* Monday, Wednesday, Friday are label enough. */}
-          <div className="flex w-[19px] flex-col gap-[3px]">
-            {[0, 1, 2, 3, 4, 5, 6].map((row) => (
-              <span key={row} className="flex h-[13px] items-center text-[10px] text-faint">
-                {row % 2 === 1 ? weekday(row) : ""}
-              </span>
-            ))}
+    <div role="img" aria-label={label} className="w-full">
+      <div ref={box} className="w-full overflow-x-auto">
+        <div className="flex w-max flex-col gap-1">
+          {/* The month a week starts in, where it changes. */}
+          <div className="flex gap-[3px] pl-[22px]">
+            {weeks.map((week, i) => {
+              const first = week.find((cell): cell is HeatDay => cell !== null);
+              const month = first ? monthFmt.format(at(first)) : "";
+              const shown = month === lastMonth ? "" : month;
+              lastMonth = month;
+              return (
+                <span key={i} className="w-[13px] whitespace-nowrap text-[10px] text-faint">
+                  {shown}
+                </span>
+              );
+            })}
           </div>
-          <div className="grid grid-flow-col grid-rows-7 gap-[3px]">
-            {cells.map((cell, i) =>
-              cell ? (
-                <span
-                  key={i}
-                  className={cx("size-[13px] rounded-[3px]", HEAT[levelOf(cell.count, max)])}
-                  title={`${dateFmt.format(at(cell))} · ${tn("chart.cards", cell.count)}`}
-                />
-              ) : (
-                <span key={i} className="size-[13px]" />
-              ),
-            )}
+          <div className="flex gap-[3px]">
+            {/* Monday, Wednesday, Friday are label enough. */}
+            <div className="flex w-[19px] flex-col gap-[3px]">
+              {[0, 1, 2, 3, 4, 5, 6].map((row) => (
+                <span key={row} className="flex h-[13px] items-center text-[10px] text-faint">
+                  {row % 2 === 1 ? weekday(row) : ""}
+                </span>
+              ))}
+            </div>
+            <div className="grid grid-flow-col grid-rows-7 gap-[3px]">
+              {cells.map((cell, i) =>
+                cell ? (
+                  <span
+                    key={i}
+                    className={cx("size-[13px] rounded-[3px]", HEAT[levelOf(cell.count, max)])}
+                    title={`${dateFmt.format(at(cell))} · ${tn("chart.cards", cell.count)}`}
+                  />
+                ) : (
+                  <span key={i} className="size-[13px]" />
+                ),
+              )}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-1 pl-[22px] text-[10px] text-faint">
-          <span>{t("chart.less")}</span>
-          {HEAT.map((heat) => (
-            <span key={heat} className={cx("size-[11px] rounded-[3px]", heat)} />
-          ))}
-          <span>{t("chart.more")}</span>
-        </div>
+      </div>
+      {/* The legend stands outside the scrolling weeks. */}
+      <div className="mt-1 flex items-center gap-1 text-[10px] text-faint">
+        <span>{t("chart.less")}</span>
+        {HEAT.map((heat) => (
+          <span key={heat} className={cx("size-[11px] rounded-[3px]", heat)} />
+        ))}
+        <span>{t("chart.more")}</span>
       </div>
     </div>
   );
