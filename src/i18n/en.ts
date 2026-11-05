@@ -207,6 +207,7 @@ export const en = {
   "design.study": "Study kit",
   "design.studyIntro": "The pieces of a Quizlet-style app. They only look and react; the logic is yours.",
   "design.live": "Live sync",
+  "design.charts": "Charts",
   "design.liveText": "Open kweezlet on a second device, then press the button. The other device shows a message.",
   "design.ping": "Ping my other devices",
   "design.pingSent": "Ping sent",
@@ -416,4 +417,11 @@ export const en = {
   "ai.save.error.title": "Give the new set a title.",
   "ai.save.error.tooMany": "A set holds at most 500 cards.",
   "ai.save.error.pickSet": "Choose a set.",
+  // Charts (src/ui/charts.tsx, src/ui/Heatmap.tsx).
+  "chart.correct": "Correct",
+  "chart.wrong": "Incorrect",
+  "chart.less": "Less",
+  "chart.more": "More",
+  "chart.cards_one": "{count} card",
+  "chart.cards_other": "{count} cards",
 };

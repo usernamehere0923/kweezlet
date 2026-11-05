@@ -209,6 +209,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "design.study": "Lern-Baukasten",
   "design.studyIntro": "Die Teile einer Quizlet-artigen App. Sie sehen nur gut aus und reagieren; die Logik baust du.",
   "design.live": "Live-Sync",
+  "design.charts": "Diagramme",
   "design.liveText":
     "Öffne kweezlet auf einem zweiten Gerät und drück den Button. Das andere Gerät zeigt eine Meldung.",
   "design.ping": "Meine anderen Geräte anpingen",
@@ -425,4 +426,11 @@ export const deCH: Record<keyof typeof en, string> = {
   "ai.save.error.title": "Gib dem neuen Set einen Titel.",
   "ai.save.error.tooMany": "Ein Set hat höchstens 500 Karten.",
   "ai.save.error.pickSet": "Wähle ein Set.",
+  // Charts (src/ui/charts.tsx, src/ui/Heatmap.tsx).
+  "chart.correct": "Richtig",
+  "chart.wrong": "Falsch",
+  "chart.less": "Weniger",
+  "chart.more": "Mehr",
+  "chart.cards_one": "{count} Karte",
+  "chart.cards_other": "{count} Karten",
 };

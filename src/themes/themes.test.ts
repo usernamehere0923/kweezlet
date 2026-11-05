@@ -48,6 +48,11 @@ const COLORS = [
   "wrong",
   "wrong-strong",
   "wrong-wash",
+  "heat-0",
+  "heat-1",
+  "heat-2",
+  "heat-3",
+  "heat-4",
 ];
 
 // [text, background, minimum]. 4.5 for reading text (WCAG AA), 3 for button

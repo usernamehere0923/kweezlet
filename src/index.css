@@ -59,6 +59,13 @@
   --color-wrong-strong: var(--theme-wrong-strong);
   --color-wrong-wash: var(--theme-wrong-wash);
 
+  /* Heatmap cells (src/ui/Heatmap.tsx): quiet to busy learning days. */
+  --color-heat-0: var(--theme-heat-0);
+  --color-heat-1: var(--theme-heat-1);
+  --color-heat-2: var(--theme-heat-2);
+  --color-heat-3: var(--theme-heat-3);
+  --color-heat-4: var(--theme-heat-4);
+
   --font-body: var(--theme-font-body); /* everything */
   --font-display: var(--theme-font-display); /* headings, card fronts, scores, logo */
 
