@@ -13,6 +13,7 @@ import { LoginPage } from "./pages/Login";
 import { NotFoundPage } from "./pages/NotFound";
 import { ReviewPage } from "./pages/Review";
 import { SettingsPage } from "./pages/Settings";
+import { StatsPage } from "./pages/stats/StatsPage";
 import { SetDetailPage } from "./pages/SetDetail";
 import { SetFormPage } from "./pages/SetForm";
 import { FlashcardsPage } from "./pages/Flashcards";
@@ -94,6 +95,7 @@ function LoggedInApp() {
   // Add your pages here, and to `nav` if they belong in the menu (max 4-5 for the phone tab bar).
   const nav: NavItem[] = [
     { to: "/", label: t("nav.home"), icon: "learn" },
+    { to: "/stats", label: t("nav.statistics"), icon: "project" },
     { to: "/settings", label: t("nav.settings"), icon: "settings" },
   ];
   return (
@@ -113,6 +115,7 @@ function LoggedInApp() {
           <Route path="/sets/:id/match" element={<MatchPage />} />
           <Route path="/sets/:id/test" element={<TestPage />} />
           <Route path="/design" element={<DesignSystemPage />} />
+          <Route path="/stats" element={<StatsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

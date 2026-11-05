@@ -49,6 +49,18 @@ describe("BarChart", () => {
     expect(screen.getByText("Sun")).toBeTruthy();
     expect(screen.queryByText("Tue")).toBeNull();
   });
+
+  test("the last label shows only when it stays clear of the one before it", () => {
+    const days = (n: number) => Array.from({ length: n }, (_, i) => ({ label: `Day ${i + 1}`, value: i }));
+    renderUi(<BarChart label="Cards per day" points={days(30)} />);
+    expect(screen.getByText("Day 26")).toBeTruthy();
+    expect(screen.getByText("Day 30")).toBeTruthy(); // four columns behind Day 26
+
+    const tight = renderUi(<BarChart label="Cards per day" points={days(27)} />);
+    // Right behind Day 26, so it steps aside (its hover tooltip still has it).
+    expect(screen.queryByText("Day 27")).toBeNull();
+    expect(tight.container.textContent).toContain("Day 27 · 26");
+  });
 });
 
 describe("StackedBarChart", () => {
