@@ -86,8 +86,9 @@ describe("home", () => {
     await waitFor(() => expect(calls.filter((c) => c.path === "/api/sets").at(-1)?.query.folder).toBe("3"));
     expect(await screen.findByText("Spanish animals")).toBeTruthy();
     expect(screen.queryByText("Swiss history")).toBeNull();
-    // The picked folder offers its edit pencil.
-    expect(screen.getByRole("button", { name: "Edit folder" })).toBeTruthy();
+    // The picked folder offers its edit pencil, and it opens the editor.
+    await userEvent.click(screen.getByRole("button", { name: "Edit folder" }));
+    expect(await screen.findByRole("heading", { name: "Edit folder" })).toBeTruthy();
   });
 
   test("an empty folder says so; its editor renames and deletes it", async () => {
@@ -326,5 +327,40 @@ describe("home", () => {
     renderApp("/?folder=3");
     expect(await screen.findByText("Spanish animals")).toBeTruthy();
     expect(screen.queryByText("Quick resume")).toBeNull();
+  });
+
+  test("folder suggestions create their folder with one tap", async () => {
+    let folders: { id: number; name: string; setCount: number }[] = [];
+    const { calls } = mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [SPANISH] }),
+      "GET /api/folders": () => ({ json: folders }),
+      "POST /api/folders": (body) => {
+        const name = (body as { name: string }).name;
+        folders = [...folders, { id: 9, name, setCount: 0 }];
+        return { status: 201, json: { id: 9, name, setCount: 0 } };
+      },
+    });
+    renderApp("/");
+
+    expect(await screen.findByRole("button", { name: "Create folder Languages" })).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Create folder School" }));
+    // The new folder takes its suggestion away, and the list knows it.
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Create folder School" })).toBeNull());
+    expect(calls.find((c) => c.method === "POST" && c.path === "/api/folders")?.body).toEqual({ name: "School" });
+    expect(screen.getByRole("button", { name: "Create folder Languages" })).toBeTruthy();
+  });
+
+  test("a folder named like a suggestion leaves no chip for it", async () => {
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [SPANISH] }),
+      // The API matches names without case; the suggestions must too.
+      "GET /api/folders": () => ({ json: [{ id: 3, name: "languages", setCount: 1 }] }),
+    });
+    renderApp("/");
+    await screen.findByText("Spanish animals");
+    expect(screen.queryByRole("button", { name: "Create folder Languages" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Create folder School" })).toBeTruthy();
   });
 });
