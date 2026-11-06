@@ -80,6 +80,15 @@
   background: var(--theme-card-texture), var(--theme-surface);
 }
 
+/* The page's ambience (AppShell, behind the content): the theme's glow and
+   its fine grain, one layer each (--theme-glow, --theme-noise). */
+@utility bg-glow {
+  background-image: var(--theme-glow);
+}
+@utility bg-noise {
+  background-image: var(--theme-noise);
+}
+
 /* The same in every theme. */
 @theme {
   --font-mono: "Anthropic Mono", ui-monospace, "SF Mono", Menlo, monospace;

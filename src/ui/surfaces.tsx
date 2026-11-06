@@ -29,9 +29,9 @@ export function Card({
   const pad = { none: "", sm: "p-4", md: "p-5 md:p-6", lg: "p-6 md:p-8" }[padding];
   const cls = cx(
     study ? studySurface : surface,
-    "text-left",
+    "text-left shadow-raised",
     pad,
-    onClick && "transition-shadow hover:shadow-raised hover:border-line",
+    onClick && "transition-all hover:-translate-y-0.5 hover:border-line",
     className,
   );
   return onClick ? (

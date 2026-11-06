@@ -37,7 +37,7 @@ export function StudySetCard({
       onClick={onClick}
       className={cx(
         surface,
-        "group flex w-full flex-col gap-3 p-5 text-left transition-all hover:-translate-y-0.5 hover:border-line hover:shadow-raised",
+        "group flex w-full flex-col gap-3 p-5 text-left shadow-raised transition-all hover:-translate-y-0.5 hover:border-line",
         index !== undefined && "animate-rise",
       )}
       style={index !== undefined ? { animationDelay: `${Math.min(index, STAGGER_MAX) * 70}ms` } : undefined}
@@ -95,8 +95,8 @@ export function StudyModeTile({
       disabled={disabled}
       aria-pressed={active}
       className={cx(
-        "flex min-h-24 flex-col items-start justify-between gap-3 rounded-ui-xl border p-4 text-left transition-all",
-        disabled ? "cursor-default opacity-60" : "hover:-translate-y-0.5 hover:shadow-raised",
+        "flex min-h-24 flex-col items-start justify-between gap-3 rounded-ui-xl border p-4 text-left shadow-raised transition-all",
+        disabled ? "cursor-default opacity-60" : "hover:-translate-y-0.5",
         active ? "border-accent bg-accent-wash" : "border-line-soft bg-surface hover:border-line",
       )}
     >

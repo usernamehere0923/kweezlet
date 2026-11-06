@@ -43,7 +43,12 @@ export function NavLink({ to, label, icon, variant = "top" }: NavItem & { varian
  */
 export function AppShell({ nav, navLabel, children }: { nav: NavItem[]; navLabel: string; children: ReactNode }) {
   return (
-    <div className="min-h-dvh">
+    <div className="relative min-h-dvh">
+      {/* The theme's ambience behind everything: a soft glow and a fine grain. */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute inset-0 bg-glow" />
+        <div className="absolute inset-0 bg-noise" />
+      </div>
       <header className="sticky top-0 z-30 border-b border-line-soft bg-bg/85 pt-[env(safe-area-inset-top)] backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 md:px-8">
           <RouterNavLink to="/" className="rounded-ui">

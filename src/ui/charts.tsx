@@ -27,9 +27,14 @@ export function StatTile({
   icon?: IconName;
 }) {
   return (
-    <div className="flex flex-col gap-1 rounded-ui-xl border border-line-soft bg-surface p-4">
-      <span className="flex items-center gap-1.5 text-[13px] font-medium text-muted">
-        {icon && <Icon name={icon} size="0.9rem" />}
+    <div className="flex flex-col gap-1 rounded-ui-xl border border-line-soft bg-surface p-4 shadow-raised">
+      <span className="flex items-center gap-2 text-[13px] font-medium text-muted">
+        {/* The theme's accent, as on EmptyState: a small wash behind the icon. */}
+        {icon && (
+          <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-accent-wash text-accent-strong">
+            <Icon name={icon} size="0.85rem" />
+          </span>
+        )}
         {label}
       </span>
       <span className="font-display text-2xl leading-tight">{value}</span>
