@@ -89,7 +89,9 @@ describe("themes", () => {
   test("the default also sits on :root, and has every token", () => {
     expect(css["./cardigan.css"]).toMatch(/:root,\s*\[data-theme="cardigan"\]/);
     // Guards the parsing: an empty map would let every comparison below pass.
-    expect(reference.size).toBe(COLORS.length + 5);
+    // The seven beyond the colours: two fonts, two shadows, the card texture,
+    // the glow and the noise.
+    expect(reference.size).toBe(COLORS.length + 7);
   });
 
   test.each(THEMES)("%s sets every token, and only those", (id) => {
@@ -113,7 +115,10 @@ describe("themes", () => {
   });
 
   test.each(THEMES)("%s fonts are all there", (id) => {
-    for (const [, path] of css[`./${id}.css`].matchAll(/url\("([^"]+)"\)/g)) expect(fontFiles, path).toContain(path);
+    for (const [, path] of css[`./${id}.css`].matchAll(/url\("([^"]+)"\)/g)) {
+      // data: URLs (the noise texture) carry their file along.
+      if (!path.startsWith("data:")) expect(fontFiles, path).toContain(path);
+    }
   });
 
   test("no Tailwind font-serif or font-sans left: they no longer exist and would silently do nothing", () => {

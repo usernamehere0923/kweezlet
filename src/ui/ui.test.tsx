@@ -3,7 +3,18 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { renderUi } from "../test/render";
-import { Button, Checkbox, ErrorBoundary, Modal, SearchField, Select, useToast } from ".";
+import { Button, Card, Checkbox, ErrorBoundary, Modal, SearchField, Select, useToast } from ".";
+
+describe("Card", () => {
+  test("with onClick it is one big button that lifts on hover", async () => {
+    const clicks = vi.fn();
+    renderUi(<Card onClick={clicks}>Inside</Card>);
+    const card = screen.getByRole("button", { name: "Inside" });
+    expect(card.className).toContain("hover:-translate-y-0.5");
+    await userEvent.click(card);
+    expect(clicks).toHaveBeenCalled();
+  });
+});
 
 describe("fields", () => {
   test("SearchField clears and refocuses", async () => {
