@@ -62,12 +62,31 @@ export function useStudyActivity({
       ...(setId !== undefined && Number.isInteger(setId) ? { setId, mode } : {}),
     };
     // keepalive lets the last flush outlive the page it came from.
-    void api.study.activity.$post({ json }, keepalive ? { init: { keepalive: true } } : undefined);
+    void api.study.activity.$post({ json }, keepalive ? { init: { keepalive: true } } : undefined).then((res) => {
+      // A flush that failed counted nothing: put it back for the next one.
+      // A keepalive flush has no next one (the page is already gone).
+      if (!res.ok && !keepalive) {
+        for (const key of ["seconds", "cards", "correct", "wrong", "learned"] as const) {
+          pending.current[key] += counts[key];
+        }
+      }
+    });
   }, []);
 
   useEffect(() => {
     context.current = { setId, mode };
   });
+
+  useEffect(() => {
+    // Whatever was counted leaves with the page, even before the session
+    // becomes active: record() can run a moment before that happens.
+    const leaving = () => flush(true);
+    window.addEventListener("pagehide", leaving);
+    return () => {
+      window.removeEventListener("pagehide", leaving);
+      flush(true);
+    };
+  }, [flush]);
 
   useEffect(() => {
     if (!active) return;
@@ -81,12 +100,10 @@ export function useStudyActivity({
     const hidden = () => {
       if (document.visibilityState === "hidden") flush(true);
     };
-    const leaving = () => flush(true);
     for (const type of ["pointerdown", "keydown", "touchstart", "scroll"]) {
       window.addEventListener(type, input, { passive: true });
     }
     document.addEventListener("visibilitychange", hidden);
-    window.addEventListener("pagehide", leaving);
     const timer = setInterval(() => {
       const tick = Date.now();
       if (document.visibilityState === "visible" && tick - lastInputAt.current <= IDLE_MS) {
@@ -102,10 +119,7 @@ export function useStudyActivity({
         window.removeEventListener(type, input);
       }
       document.removeEventListener("visibilitychange", hidden);
-      window.removeEventListener("pagehide", leaving);
       clearInterval(timer);
-      // The last seconds and counters go out with the page.
-      flush(true);
     };
   }, [active, flush]);
 

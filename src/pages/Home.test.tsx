@@ -363,4 +363,23 @@ describe("home", () => {
     expect(screen.queryByRole("button", { name: "Create folder Languages" })).toBeNull();
     expect(screen.getByRole("button", { name: "Create folder School" })).toBeTruthy();
   });
+
+  test("the suggestions wait for the folders instead of flashing up", async () => {
+    let release: (answer: { json: unknown }) => void = () => {};
+    mockApi({
+      "GET /api/me": () => ({ json: ME }),
+      "GET /api/sets": () => ({ json: [SPANISH] }),
+      "GET /api/folders": () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    });
+    renderApp("/");
+    await screen.findByText("Spanish animals");
+    // While the folders are still on their way, no suggestion shows.
+    expect(screen.queryByRole("button", { name: "Create folder Languages" })).toBeNull();
+
+    release({ json: [] });
+    expect(await screen.findByRole("button", { name: "Create folder Languages" })).toBeTruthy();
+  });
 });

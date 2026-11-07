@@ -429,7 +429,7 @@ export const en = {
   "ai.save.error.title": "Give the new set a title.",
   "ai.save.error.tooMany": "A set holds at most 500 cards.",
   "ai.save.error.pickSet": "Choose a set.",
-  // Charts (src/ui/charts.tsx, src/ui/Heatmap.tsx).
+  // Charts (src/ui/charts.tsx).
   "chart.correct": "Correct",
   "chart.wrong": "Incorrect",
   "chart.less": "Less",

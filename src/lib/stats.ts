@@ -9,7 +9,10 @@ import type { DayStats } from "../../worker/stats";
 
 /** The day as the charts label it: "Oct 5" in en, "5. Okt." in de-CH. */
 export function dayLabel(day: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }).format(new Date(`${day}T00:00:00Z`));
+  // UTC, like the parse: a local timezone west of UTC would see the day before.
+  return new Intl.DateTimeFormat(locale, { day: "numeric", month: "short", timeZone: "UTC" }).format(
+    new Date(`${day}T00:00:00Z`),
+  );
 }
 
 /** The Monday of the day's calendar week, YYYY-MM-DD (Swiss weeks start Monday). */

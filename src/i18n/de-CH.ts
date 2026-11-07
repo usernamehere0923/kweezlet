@@ -438,7 +438,7 @@ export const deCH: Record<keyof typeof en, string> = {
   "ai.save.error.title": "Gib dem neuen Set einen Titel.",
   "ai.save.error.tooMany": "Ein Set hat höchstens 500 Karten.",
   "ai.save.error.pickSet": "Wähle ein Set.",
-  // Charts (src/ui/charts.tsx, src/ui/Heatmap.tsx).
+  // Charts (src/ui/charts.tsx).
   "chart.correct": "Richtig",
   "chart.wrong": "Falsch",
   "chart.less": "Weniger",

@@ -243,9 +243,11 @@ export function Heatmap({ label, days }: { label: string; days: HeatDay[] }) {
   const weeks: (HeatDay | null)[][] = [];
   for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
 
-  const monthFmt = new Intl.DateTimeFormat(locale, { month: "short" });
-  const dateFmt = new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", year: "numeric" });
-  const weekdayFmt = new Intl.DateTimeFormat(locale, { weekday: "narrow" });
+  // Every formatter says UTC, like the parsing: a machine west of UTC would
+  // otherwise name each day (and weekday) one early.
+  const monthFmt = new Intl.DateTimeFormat(locale, { month: "short", timeZone: "UTC" });
+  const dateFmt = new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const weekdayFmt = new Intl.DateTimeFormat(locale, { weekday: "narrow", timeZone: "UTC" });
   // Row n of the grid is the nth weekday of a week starting on a known Sunday.
   const weekday = (row: number) => weekdayFmt.format(new Date(Date.UTC(2024, 0, 7 + row)));
   const at = (day: HeatDay) => new Date(`${day.day}T00:00:00Z`);

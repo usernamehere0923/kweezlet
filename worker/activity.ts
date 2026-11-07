@@ -31,6 +31,10 @@ export const activityRoutes = new Hono<AppEnv>().post("/study/activity", validat
   const user = c.get("user");
   const { day, seconds = 0, cards = 0, correct = 0, wrong = 0, learned = 0, setId, mode } = c.req.valid("json");
   const db = c.env.DB;
+  // No notifyLater here, deliberately: flushes come every 30 seconds while
+  // someone is studying and would reload the study page that sent them
+  // mid-round (the same reason POST /api/study/day stays quiet). The
+  // dashboard catches up with the next answer, or on its next load.
   const statements = [
     // Only provided counters move: one flush adds what happened since the last.
     db
