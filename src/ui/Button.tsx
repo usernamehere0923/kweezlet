@@ -1,4 +1,4 @@
-import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode, Ref } from "react";
 import { Link } from "react-router";
 import { cx } from "./cx";
 import { Icon, type IconName } from "./Icon";
@@ -69,7 +69,7 @@ export function Button({
   type = "button",
   className,
   ...rest
-}: Common & ButtonHTMLAttributes<HTMLButtonElement>) {
+}: Common & ButtonHTMLAttributes<HTMLButtonElement> & { ref?: Ref<HTMLButtonElement> }) {
   const props = { variant, size, icon, loading, fullWidth };
   return (
     <button

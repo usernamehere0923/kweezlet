@@ -56,11 +56,12 @@ export function Menu({
   const [side, setSide] = useState<"start" | "end">("start");
   const box = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
   // A pick (or Esc, or the button again) unmounts the focused list: hand the
   // focus to the button first, or it falls to body and the next Tab starts
   // over at the top of the page.
   const close = () => {
-    box.current?.querySelector<HTMLButtonElement>("[data-menu-trigger]")?.focus();
+    trigger.current?.focus();
     setOpen(false);
   };
   // align="auto": the side with room, from where the button sits right now.
@@ -130,7 +131,7 @@ export function Menu({
       onMouseDown={(event) => open && event.preventDefault()}
     >
       <Button
-        data-menu-trigger
+        ref={trigger}
         aria-haspopup="menu"
         aria-expanded={open}
         variant={variant}
