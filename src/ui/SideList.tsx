@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { cx } from "./cx";
 import { IconButton } from "./Button";
 import { surface } from "./surfaces";
@@ -22,6 +22,9 @@ export type SideItem = {
  *   <SideList label="Folder" value={folder} onChange={setFolder}
  *     items={[{ id: "all", label: "All sets" }, { id: "3", label: "Spanish", editLabel: "Edit folder", onEdit: edit }]} />
  */
+/** A keyboard pick waits this long for the next arrow before it counts. */
+const SETTLE_MS = 300;
+
 export function SideList({
   label,
   items,
@@ -36,14 +39,40 @@ export function SideList({
   className?: string;
 }) {
   const heading = useId();
+  // Arrows move a radio pick on every press. Walking past five folders must
+  // not switch (and load) five times: keyboard picks settle first, clicks don't wait.
+  const [walking, setWalking] = useState<string | null>(null);
+  const keyed = useRef(false);
+  const settle = useRef<ReturnType<typeof setTimeout>>(undefined);
+  useEffect(() => () => clearTimeout(settle.current), []);
+  const shown = walking ?? value;
+  const pick = (id: string) => {
+    clearTimeout(settle.current);
+    if (!keyed.current) {
+      setWalking(null);
+      onChange(id);
+      return;
+    }
+    setWalking(id);
+    settle.current = setTimeout(() => {
+      setWalking(null);
+      onChange(id);
+    }, SETTLE_MS);
+  };
   return (
-    <div role="radiogroup" aria-labelledby={heading} className={className}>
+    <div
+      role="radiogroup"
+      aria-labelledby={heading}
+      className={className}
+      onKeyDown={() => (keyed.current = true)}
+      onPointerDown={() => (keyed.current = false)}
+    >
       <Heading level={3} id={heading} className="mb-2">
         {label}
       </Heading>
       <ul className={cx(surface, "flex flex-col gap-1 overflow-hidden p-2")}>
         {items.map((item) => {
-          const active = item.id === value;
+          const active = item.id === shown;
           return (
             <li key={item.id} className="flex items-center gap-1">
               <label
@@ -59,12 +88,12 @@ export function SideList({
                   name={heading}
                   value={item.id}
                   checked={active}
-                  onChange={() => onChange(item.id)}
+                  onChange={() => pick(item.id)}
                   className="sr-only"
                 />
                 {item.label}
               </label>
-              {active && item.onEdit && item.editLabel && (
+              {active && !walking && item.onEdit && item.editLabel && (
                 <IconButton icon="edit" size="sm" label={item.editLabel} onClick={item.onEdit} />
               )}
             </li>

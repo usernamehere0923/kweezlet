@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 import { renderUi } from "../test/render";
@@ -25,6 +25,18 @@ describe("SideList", () => {
     const group = screen.getByRole("radiogroup", { name: "Folder" });
     expect(screen.getByRole("heading", { name: "Folder" }).id).toBe(group.getAttribute("aria-labelledby"));
     expect(screen.queryByRole("navigation")).toBeNull();
+  });
+
+  test("walking with the arrows switches once, where the walk stops", async () => {
+    const onChange = vi.fn();
+    renderUi(<SideList label="Folder" value="all" onChange={onChange} items={items(vi.fn())} />);
+    act(() => screen.getByRole("radio", { name: "All sets" }).focus());
+    await userEvent.keyboard("{ArrowDown}{ArrowDown}");
+    // The pick moves at once, the switch waits.
+    expect((screen.getByRole("radio", { name: "No folder" }) as HTMLInputElement).checked).toBe(true);
+    expect(onChange).not.toHaveBeenCalled();
+    await waitFor(() => expect(onChange).toHaveBeenCalledWith("none"));
+    expect(onChange).toHaveBeenCalledTimes(1);
   });
 
   test("only the picked row shows its edit pencil", async () => {
