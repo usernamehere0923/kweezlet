@@ -33,8 +33,9 @@ export const activityRoutes = new Hono<AppEnv>().post("/study/activity", validat
   const db = c.env.DB;
   // No notifyLater here, deliberately: flushes come every 30 seconds while
   // someone is studying and would reload the study page that sent them
-  // mid-round (the same reason POST /api/study/day stays quiet). The
-  // dashboard catches up with the next answer, or on its next load.
+  // mid-round (the same reason POST /api/study/day stays quiet). Another
+  // device's dashboard catches up on its next load; only Learn and Review
+  // answers (worker/study.ts) move it live. Flashcards, Test and Match don't.
   const statements = [
     // Only provided counters move: one flush adds what happened since the last.
     db
