@@ -155,13 +155,16 @@ function send(flush: Flush, keepalive: boolean) {
       // To the back: one that keeps failing must not hold up the newer ones.
       const at = queue.indexOf(flush);
       if (at >= 0) queue.push(...queue.splice(at, 1));
+      // Still give the ones never tried their go now: the session may end
+      // before the next tick. Each is tried once, so offline this stops.
+      if (!keepalive) drain(false, true);
       return;
     }
     // Counted, or refused for good (other 4xx): resending can't change a refusal.
     const at = queue.indexOf(flush);
     // Gone already (forgotten): splice(-1) would take an unrelated last flush.
     if (at >= 0) queue.splice(at, 1);
-    if (res.ok && !keepalive) drain(false);
+    if (!keepalive) drain(false);
   });
 }
 
@@ -170,7 +173,7 @@ function send(flush: Flush, keepalive: boolean) {
  * after an answer. Leaving the page (keepalive): everything at once, it is the
  * last chance.
  */
-function drain(keepalive: boolean) {
+function drain(keepalive: boolean, untriedOnly = false) {
   // Someone else's flushes wait for their owner to log in again.
   const mine = queue.filter((flush) => flush.owner === currentOwner && currentOwner !== null);
   if (keepalive) {
@@ -178,7 +181,8 @@ function drain(keepalive: boolean) {
     return;
   }
   if (mine.some((flush) => flush.sending)) return;
-  if (mine[0]) send(mine[0], false);
+  const next = untriedOnly ? mine.find((flush) => !flush.tried) : mine[0];
+  if (next) send(next, false);
 }
 
 export function useStudyActivity({

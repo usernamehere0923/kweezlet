@@ -236,6 +236,32 @@ describe("useStudyActivity", () => {
     unmount();
   });
 
+  it("a refused or failed flush doesn't make the rest wait for the next tick", async () => {
+    vi.useFakeTimers();
+    const { calls } = mockApi({
+      "POST /api/study/activity": (body) => {
+        const cards = (body as { cards: number }).cards;
+        return cards === 1 ? { status: 400 } : cards === 2 ? { status: 500 } : { json: {} };
+      },
+    });
+    const { result, rerender, unmount } = renderHook(
+      (props: { setId: number }) => useStudyActivity({ active: true, setId: props.setId, mode: "flashcards" }),
+      { initialProps: { setId: 1 } },
+    );
+    // Three flushes waiting at once (each set switch seals one): refused, failing, fine.
+    act(() => result.current.record({ cards: 1 }));
+    rerender({ setId: 2 });
+    act(() => result.current.record({ cards: 2 }));
+    rerender({ setId: 3 });
+    act(() => result.current.record({ cards: 3 }));
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+
+    // All three went out in the same tick; once one got through, the failed
+    // one got another go right away.
+    expect(beacons(calls).map((body) => body.cards)).toEqual([1, 2, 3, 2]);
+    unmount();
+  });
+
   it("a refused flush (4xx) is dropped, not resent forever", async () => {
     vi.useFakeTimers();
     const { calls } = mockApi({ "POST /api/study/activity": () => ({ status: 400, json: {} }) });
