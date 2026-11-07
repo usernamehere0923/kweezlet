@@ -53,8 +53,8 @@ type Flush = {
   sending: boolean;
 };
 
-/** A username (the UI never sees ids); null = logged out; undefined = no session known (tests without one). */
-type Owner = string | null | undefined;
+/** A username (the UI never sees ids); null = nobody logged in. */
+type Owner = string | null;
 
 /**
  * Flushes not yet confirmed. Module-wide, not per hook: a flush that fails
@@ -70,15 +70,15 @@ const SEND_TIMEOUT_MS = 15_000; // a flush answer slower than this counts as fai
  * not reload the page, so the queue outlives the user: without this, Anna's
  * waiting flushes would go out with Ben's cookie after he logs in on her iPad.
  */
-let currentOwner: Owner;
-export function setFlushOwner(owner: string | null) {
+let currentOwner: Owner = null;
+export function setFlushOwner(owner: Owner) {
   currentOwner = owner;
 }
 
-/** Tests only: start every test without leftovers of the last one. */
+/** Tests only: the queue is module state, so each test starts without the last one's. */
 export function forgetQueuedFlushes() {
   queue.length = 0;
-  currentOwner = undefined;
+  currentOwner = null;
 }
 
 /** Random id; getRandomValues also works on http://<mac-ip> (randomUUID needs https). */
@@ -175,7 +175,7 @@ function send(flush: Flush, keepalive: boolean) {
  */
 function drain(keepalive: boolean, untriedOnly = false) {
   // Someone else's flushes wait for their owner to log in again.
-  const mine = queue.filter((flush) => flush.owner === currentOwner && currentOwner !== null);
+  const mine = queue.filter((flush) => currentOwner !== null && flush.owner === currentOwner);
   if (keepalive) {
     for (const flush of mine) if (!flush.sending) send(flush, true);
     return;
@@ -201,8 +201,9 @@ export function useStudyActivity({
   const lastFlushAt = useRef(0);
   // The session context, kept current: a page can switch to another set.
   const context = useRef({ setId, mode });
-  // The user this page was opened as. On a 401 the session drops to logged
-  // out before the page unmounts; its last flush still belongs to this user.
+  // The user this page studies as. On a 401 the session drops to logged out
+  // before the page unmounts; its last flush still belongs to this user.
+  // Mounted before the login landed (null): taken at the first flush instead.
   const owner = useRef(currentOwner);
 
   const record = useCallback((delta: StudyDelta) => {
@@ -215,7 +216,7 @@ export function useStudyActivity({
   // What was counted becomes a flush; then whatever waits goes out, earlier
   // failures included (even when nothing new was counted).
   const flush = useCallback((keepalive = false) => {
-    seal(pending.current, context.current, owner.current);
+    seal(pending.current, context.current, (owner.current ??= currentOwner));
     pending.current = emptyCounts();
     drain(keepalive);
   }, []);
@@ -224,7 +225,7 @@ export function useStudyActivity({
     // Switching sets: what was counted so far belongs to the old one.
     const was = context.current;
     if (was.setId === setId && was.mode === mode) return;
-    seal(pending.current, was, owner.current);
+    seal(pending.current, was, (owner.current ??= currentOwner));
     pending.current = emptyCounts();
     context.current = { setId, mode };
   }, [setId, mode]);

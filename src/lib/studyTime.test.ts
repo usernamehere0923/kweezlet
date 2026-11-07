@@ -1,7 +1,7 @@
 // The study session's report to the statistics (src/lib/studyTime.ts):
 // active time and the counters of the modes without per-answer requests.
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockApi } from "../test/server";
 import { setFlushOwner, useStudyActivity } from "./studyTime";
 
@@ -15,7 +15,24 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+// Someone is logged in, as on every study page (the session sets it).
+beforeEach(() => {
+  setFlushOwner("anna");
+});
+
 describe("useStudyActivity", () => {
+  it("a page that mounts before the login lands studies as whoever logs in", async () => {
+    vi.useFakeTimers();
+    const { calls } = mockApi({ "POST /api/study/activity": () => ({ json: { ok: true } }) });
+    setFlushOwner(null);
+    const { result, unmount } = renderHook(() => useStudyActivity({ active: true, mode: "flashcards" }));
+    setFlushOwner("anna");
+    act(() => result.current.record({ cards: 2 }));
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    expect(beacons(calls)).toEqual([expect.objectContaining({ cards: 2 })]);
+    unmount();
+  });
+
   it("a flush sends the time and the counters with the set and mode", async () => {
     vi.useFakeTimers();
     const { calls } = mockApi({ "POST /api/study/activity": () => ({ json: { ok: true } }) });
