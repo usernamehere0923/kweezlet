@@ -30,6 +30,15 @@ describe("Menu", () => {
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   });
 
+  test("a keyboard pick hands the focus back to the button", async () => {
+    renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
+    const trigger = screen.getByRole("button", { name: "Create a set" });
+    await userEvent.click(trigger);
+    await userEvent.keyboard("{ArrowUp}{Enter}");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
   test("Escape closes it and gives the button its focus back", async () => {
     renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
     const trigger = screen.getByRole("button", { name: "Create a set" });

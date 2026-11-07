@@ -42,7 +42,7 @@ export function Menu({
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
-  const trigger = () => box.current?.querySelector<HTMLButtonElement>("[data-menu-trigger]");
+  const close = () => backToButton(box.current, setOpen);
 
   // The list lives only while open: a click outside or the focus leaving closes it.
   useEffect(() => {
@@ -64,10 +64,8 @@ export function Menu({
       if (here && here !== document.body && !box.current?.contains(here)) return;
       const picks = [...(box.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
       const at = picks.indexOf(here as HTMLElement);
-      if (event.key === "Escape") {
-        setOpen(false);
-        trigger()?.focus();
-      } else if (event.key === "ArrowDown") {
+      if (event.key === "Escape") backToButton(box.current, setOpen);
+      else if (event.key === "ArrowDown") {
         event.preventDefault();
         (picks[at + 1] ?? picks[0])?.focus();
       } else if (event.key === "ArrowUp") {
@@ -112,7 +110,7 @@ export function Menu({
         >
           {items.map(({ label: text, icon: glyph, to, onClick }) =>
             to ? (
-              <Link key={text} to={to} role="menuitem" onClick={() => setOpen(false)} className={itemClass}>
+              <Link key={text} to={to} role="menuitem" onClick={close} className={itemClass}>
                 {glyph && <Icon name={glyph} size="1.125rem" className="text-ink-soft" />}
                 {text}
               </Link>
@@ -122,7 +120,7 @@ export function Menu({
                 type="button"
                 role="menuitem"
                 onClick={() => {
-                  setOpen(false);
+                  close();
                   onClick?.();
                 }}
                 className={itemClass}
@@ -136,6 +134,16 @@ export function Menu({
       )}
     </div>
   );
+}
+
+/**
+ * Closes the list with the focus on the button. A pick unmounts the focused
+ * item; without this the focus falls to body and the next Tab starts over at
+ * the top of the page.
+ */
+function backToButton(box: HTMLElement | null, setOpen: (open: boolean) => void) {
+  box?.querySelector<HTMLButtonElement>("[data-menu-trigger]")?.focus();
+  setOpen(false);
 }
 
 const itemClass =
