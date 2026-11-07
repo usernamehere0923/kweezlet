@@ -83,7 +83,7 @@ describe("home", () => {
     renderApp("/");
     expect(await screen.findByText("Spanish animals")).toBeTruthy();
     expect(screen.queryByRole("combobox")).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Languages" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Languages" }));
     await waitFor(() => expect(calls.filter((c) => c.path === "/api/sets").at(-1)?.query.folder).toBe("3"));
     expect(await screen.findByText("Spanish animals")).toBeTruthy();
     expect(screen.queryByText("Swiss history")).toBeNull();

@@ -14,15 +14,15 @@ describe("SideList", () => {
   test("marks the picked row and picks another one", async () => {
     const onChange = vi.fn();
     renderUi(<SideList label="Folder" value="3" onChange={onChange} items={items(vi.fn())} />);
-    expect(screen.getByRole("button", { name: "Spanish" }).getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByRole("button", { name: "All sets" }).getAttribute("aria-pressed")).toBe("false");
-    await userEvent.click(screen.getByRole("button", { name: "No folder" }));
+    expect((screen.getByRole("radio", { name: "Spanish" }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole("radio", { name: "All sets" }) as HTMLInputElement).checked).toBe(false);
+    await userEvent.click(screen.getByRole("radio", { name: "No folder" }));
     expect(onChange).toHaveBeenCalledWith("none");
   });
 
-  test("a filter group named by its visible heading, not a nav landmark", () => {
+  test("a pick-one radio group named by its visible heading, not a nav landmark", () => {
     renderUi(<SideList label="Folder" value="3" onChange={vi.fn()} items={items(vi.fn())} />);
-    const group = screen.getByRole("group", { name: "Folder" });
+    const group = screen.getByRole("radiogroup", { name: "Folder" });
     expect(screen.getByRole("heading", { name: "Folder" }).id).toBe(group.getAttribute("aria-labelledby"));
     expect(screen.queryByRole("navigation")).toBeNull();
   });

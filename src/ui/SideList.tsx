@@ -16,7 +16,8 @@ export type SideItem = {
  * A short list to pick one thing from, for the side of a wide screen
  * (the phone gets a Select instead). The picked row is marked, and only it
  * shows the edit pencil. `label` is the visible heading above it and names the
- * group: a filter, so a group of pressed buttons, not a nav landmark.
+ * group. Pick-one filter, so native radios (arrows move the pick), not a nav
+ * landmark and not toggle buttons.
  *
  *   <SideList label="Folder" value={folder} onChange={setFolder}
  *     items={[{ id: "all", label: "All sets" }, { id: "3", label: "Spanish", editLabel: "Edit folder", onEdit: edit }]} />
@@ -36,7 +37,7 @@ export function SideList({
 }) {
   const heading = useId();
   return (
-    <div role="group" aria-labelledby={heading} className={className}>
+    <div role="radiogroup" aria-labelledby={heading} className={className}>
       <Heading level={3} id={heading} className="mb-2">
         {label}
       </Heading>
@@ -45,17 +46,24 @@ export function SideList({
           const active = item.id === value;
           return (
             <li key={item.id} className="flex items-center gap-1">
-              <button
-                type="button"
-                aria-pressed={active}
-                onClick={() => onChange(item.id)}
+              <label
                 className={cx(
-                  "flex-1 truncate rounded-ui px-3 py-2 text-left text-[15px] transition-colors",
+                  "flex-1 cursor-pointer truncate rounded-ui px-3 py-2 text-left text-[15px] transition-colors",
+                  // The input is hidden: the row wears the app's focus ring for it.
+                  "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent",
                   active ? "bg-sunken font-medium text-ink" : "text-ink-soft hover:bg-sunken/70 hover:text-ink",
                 )}
               >
+                <input
+                  type="radio"
+                  name={heading}
+                  value={item.id}
+                  checked={active}
+                  onChange={() => onChange(item.id)}
+                  className="sr-only"
+                />
                 {item.label}
-              </button>
+              </label>
               {active && item.onEdit && item.editLabel && (
                 <IconButton icon="edit" size="sm" label={item.editLabel} onClick={item.onEdit} />
               )}
