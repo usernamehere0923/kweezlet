@@ -99,7 +99,9 @@ function send(flush: Flush, keepalive: boolean) {
     const status: number = res.status;
     if (status === 0 || status >= 500) return;
     // Counted, or refused for good (4xx): resending can't change a refusal.
-    queue.splice(queue.indexOf(flush), 1);
+    const at = queue.indexOf(flush);
+    // Gone already (forgotten): splice(-1) would take an unrelated last flush.
+    if (at >= 0) queue.splice(at, 1);
     if (res.ok && !keepalive) drain(false);
   });
 }
