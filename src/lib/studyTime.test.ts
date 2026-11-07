@@ -158,6 +158,30 @@ describe("useStudyActivity", () => {
     again.unmount();
   });
 
+  it("a flush hit by an expired session (401) waits for the next login", async () => {
+    vi.useFakeTimers();
+    let loggedIn = false;
+    const { calls } = mockApi({
+      "POST /api/study/activity": () => (loggedIn ? { json: { ok: true } } : { status: 401, json: {} }),
+    });
+    setFlushOwner("anna");
+    const page = renderHook(() => useStudyActivity({ active: true, mode: "flashcards" }));
+    act(() => page.result.current.record({ cards: 5 }));
+    await act(async () => {
+      page.unmount();
+    });
+    setFlushOwner(null);
+
+    loggedIn = true;
+    setFlushOwner("anna");
+    const next = renderHook(() => useStudyActivity({ active: false, mode: "learn" }));
+    await act(async () => {});
+    const sent = beacons(calls);
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toEqual(sent[0]);
+    next.unmount();
+  });
+
   it("a refused flush (4xx) is dropped, not resent forever", async () => {
     vi.useFakeTimers();
     const { calls } = mockApi({ "POST /api/study/activity": () => ({ status: 400, json: {} }) });

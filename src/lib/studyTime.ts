@@ -125,8 +125,9 @@ function send(flush: Flush, keepalive: boolean) {
     // also when it went out as the page was hiding (the page often comes back).
     // number, not the route's typed 200 | 400: apiFetch answers 0 offline.
     const status: number = res.status;
-    if (status === 0 || status >= 500) return;
-    // Counted, or refused for good (4xx): resending can't change a refusal.
+    // 401: the session ran out, not the flush: it waits for the owner's next login.
+    if (status === 0 || status === 401 || status >= 500) return;
+    // Counted, or refused for good (other 4xx): resending can't change a refusal.
     const at = queue.indexOf(flush);
     // Gone already (forgotten): splice(-1) would take an unrelated last flush.
     if (at >= 0) queue.splice(at, 1);
