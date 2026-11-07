@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { Button, type ButtonVariant } from "./Button";
 import { cx } from "./cx";
@@ -42,6 +42,7 @@ export function Menu({
 }) {
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const trigger = () => box.current?.querySelector<HTMLButtonElement>("[data-menu-trigger]");
 
   // The list lives only while open: a click outside or the focus leaving closes it.
   useEffect(() => {
@@ -56,33 +57,36 @@ export function Menu({
       const to = event.relatedTarget as Node | null;
       if (to && !box.current?.contains(to)) setOpen(false);
     };
+    // Keys on the document, not the box: a mouse open on Safari/Firefox (macOS)
+    // leaves focus on body, where a box-level onKeyDown never hears Esc/arrows.
+    const keys = (event: KeyboardEvent) => {
+      const here = document.activeElement;
+      if (here && here !== document.body && !box.current?.contains(here)) return;
+      const picks = [...(box.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
+      const at = picks.indexOf(here as HTMLElement);
+      if (event.key === "Escape") {
+        setOpen(false);
+        trigger()?.focus();
+      } else if (event.key === "ArrowDown") {
+        event.preventDefault();
+        (picks[at + 1] ?? picks[0])?.focus();
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        (picks[at - 1] ?? picks.at(-1))?.focus();
+      }
+    };
     document.addEventListener("pointerdown", down);
     document.addEventListener("focusout", out);
+    document.addEventListener("keydown", keys);
     return () => {
       document.removeEventListener("pointerdown", down);
       document.removeEventListener("focusout", out);
+      document.removeEventListener("keydown", keys);
     };
   }, [open]);
 
-  const trigger = () => box.current?.querySelector<HTMLButtonElement>("[data-menu-trigger]");
-
-  const keys = (event: ReactKeyboardEvent<HTMLDivElement>) => {
-    const picks = [...(box.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
-    const at = picks.indexOf(document.activeElement as HTMLElement);
-    if (event.key === "Escape") {
-      setOpen(false);
-      trigger()?.focus();
-    } else if (event.key === "ArrowDown") {
-      event.preventDefault();
-      (picks[at + 1] ?? picks[0])?.focus();
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      (picks[at - 1] ?? picks.at(-1))?.focus();
-    }
-  };
-
   return (
-    <div ref={box} className={cx("relative inline-block", className)} onKeyDown={keys}>
+    <div ref={box} className={cx("relative inline-block", className)}>
       <Button
         data-menu-trigger
         aria-haspopup="menu"

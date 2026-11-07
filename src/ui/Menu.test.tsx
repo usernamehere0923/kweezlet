@@ -68,6 +68,21 @@ describe("Menu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
+  test("Esc and the arrows work while the focus sits on the page", async () => {
+    renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
+    const trigger = screen.getByRole("button", { name: "Create a set" });
+    await userEvent.click(trigger);
+    // A mouse open on Safari/Firefox (macOS): the button never takes focus.
+    trigger.blur();
+    await userEvent.keyboard("{ArrowDown}");
+    expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "Create a set" }));
+    act(() => (document.activeElement as HTMLElement).blur());
+    expect(document.activeElement).toBe(document.body);
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
   test("the arrows walk the picks", async () => {
     renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
     await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
