@@ -1,5 +1,6 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
+import { allowMotion } from "../test/motion";
 import { useMediaQuery } from "./useMediaQuery";
 
 /** A matchMedia whose answers the test flips by hand. */
@@ -35,6 +36,13 @@ describe("useMediaQuery", () => {
     expect(media.listeners).toBe(1);
     unmount();
     expect(media.listeners).toBe(0);
+  });
+
+  test("works under the allowMotion() stub other UI tests use", () => {
+    allowMotion();
+    const { result, unmount } = renderHook(() => useMediaQuery("(min-width: 768px)"));
+    expect(result.current).toBe(false);
+    unmount();
   });
 
   test("without matchMedia (jsdom) nothing matches", () => {
