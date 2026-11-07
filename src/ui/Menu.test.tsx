@@ -109,6 +109,18 @@ describe("Menu", () => {
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   });
 
+  test("leaves shortcuts and keys someone else handled alone", async () => {
+    renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
+    const trigger = screen.getByRole("button", { name: "Create a set" });
+    await userEvent.click(trigger);
+    await userEvent.keyboard("{Alt>}{ArrowDown}{/Alt}");
+    expect(document.activeElement).toBe(trigger);
+    const handled = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
+    handled.preventDefault();
+    act(() => void trigger.dispatchEvent(handled));
+    expect(screen.getByRole("menu")).toBeTruthy();
+  });
+
   test("the arrows walk the picks", async () => {
     renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
     await userEvent.click(screen.getByRole("button", { name: "Create a set" }));

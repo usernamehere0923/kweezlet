@@ -72,6 +72,9 @@ export function Menu({
     // Keys on the document, not the box: a mouse open on Safari/Firefox (macOS)
     // leaves focus on body, where a box-level onKeyDown never hears Esc/arrows.
     const keys = (event: KeyboardEvent) => {
+      // Someone else's key: handled already, an IME composing, or a shortcut.
+      if (event.defaultPrevented || event.isComposing) return;
+      if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       const here = document.activeElement;
       if (here && here !== document.body && !box.current?.contains(here)) return;
       const picks = [...(box.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
