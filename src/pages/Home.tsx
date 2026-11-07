@@ -18,6 +18,7 @@ import {
   Heading,
   IconButton,
   Menu,
+  type MenuItem,
   PageTitle,
   SearchField,
   Select,
@@ -207,6 +208,17 @@ export function HomePage() {
   const resume = recent?.studied[0] ?? null;
   // Category folders with one tap still to make (hidden once the name is taken).
   const ideas = foldersReady ? folderIdeas(t, folders) : [];
+  // One list for the phone's dropdown and the wide screen's side list.
+  const folderChoices: { id: string; label: string; folder?: Folder }[] = [
+    { id: "all", label: t("folders.all") },
+    ...folders.map((item) => ({ id: String(item.id), label: item.name, folder: item })),
+    { id: "none", label: t("folders.none") },
+  ];
+  // The empty state and the toolbar offer the same ways to make a set.
+  const createItems: MenuItem[] = [
+    { label: t("sets.new"), icon: "plus", to: "/sets/new" },
+    { label: t("home.fromMaterial"), icon: "bulb", to: "/create/ai" },
+  ];
   const afterFolder = () => {
     void loadFolders();
     void reload();
@@ -314,17 +326,7 @@ export function HomePage() {
           icon="folderPlus"
           title={t("sets.emptyTitle")}
           text={t("sets.emptyText")}
-          action={
-            <Menu
-              label={t("sets.emptyAction")}
-              icon="plus"
-              variant="primary"
-              items={[
-                { label: t("sets.new"), icon: "plus", to: "/sets/new" },
-                { label: t("home.fromMaterial"), icon: "bulb", to: "/create/ai" },
-              ]}
-            />
-          }
+          action={<Menu label={t("sets.emptyAction")} icon="plus" variant="primary" items={createItems} />}
         />
       ) : (
         <div className="flex flex-col gap-6 md:flex-row md:items-start">
@@ -340,16 +342,11 @@ export function HomePage() {
                     label={t("folders.label")}
                     value={folder}
                     onChange={pickFolder}
-                    items={[
-                      { id: "all", label: t("folders.all") },
-                      ...folders.map((item) => ({
-                        id: String(item.id),
-                        label: item.name,
-                        editLabel: t("folders.editTitle"),
-                        onEdit: () => setEditing(item),
-                      })),
-                      { id: "none", label: t("folders.none") },
-                    ]}
+                    items={folderChoices.map(({ id, label, folder: item }) =>
+                      item
+                        ? { id, label, editLabel: t("folders.editTitle"), onEdit: () => setEditing(item) }
+                        : { id, label },
+                    )}
                   />
                 </>
               )}
@@ -368,11 +365,7 @@ export function HomePage() {
                   value={folder}
                   onChange={pickFolder}
                   className="flex-1"
-                  options={[
-                    { value: "all", label: t("folders.all") },
-                    ...folders.map((item) => ({ value: String(item.id), label: item.name })),
-                    { value: "none", label: t("folders.none") },
-                  ]}
+                  options={folderChoices.map(({ id, label }) => ({ value: id, label }))}
                 />
                 {picked && <IconButton icon="edit" label={t("folders.editTitle")} onClick={() => setEditing(picked)} />}
               </div>
@@ -397,10 +390,7 @@ export function HomePage() {
                 icon="plus"
                 variant={dueCount > 0 ? "secondary" : "primary"}
                 align="start sm:end"
-                items={[
-                  { label: t("sets.new"), icon: "plus", to: "/sets/new" },
-                  { label: t("home.fromMaterial"), icon: "bulb", to: "/create/ai" },
-                ]}
+                items={createItems}
               />
             </div>
             {/* Same tree position with and without results, so the input keeps focus while typing. */}
