@@ -81,7 +81,9 @@ export function Menu({
     // The focus goes into the list on open, so the keys always arrive here.
     // Safari and Firefox on macOS give a clicked button no focus: without
     // this, Esc and the arrows went to body after a mouse open.
-    list.current?.focus();
+    // preventScroll: a list reaching past the screen's bottom (the phone's
+    // empty state) would otherwise jerk the page under the finger.
+    list.current?.focus({ preventScroll: true });
     // A tap outside. Focus leaving would catch most of it, but iOS Safari
     // keeps the focus when the tap lands on something that can't take it.
     const down = (event: PointerEvent) => {

@@ -23,8 +23,11 @@ describe("Menu", () => {
 
   test("opening puts the focus in the list, so the keys arrive even where buttons take none", async () => {
     renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
+    const focus = vi.spyOn(HTMLElement.prototype, "focus");
     await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
     expect(document.activeElement).toBe(screen.getByRole("menu"));
+    // Without scrolling the page to it.
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
   });
 
   test("a mousedown in the box keeps the focus where it is (Safari/Firefox mouse pick)", async () => {
