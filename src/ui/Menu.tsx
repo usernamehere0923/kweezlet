@@ -79,7 +79,7 @@ export function Menu({
       if (here && here !== document.body && !box.current?.contains(here)) return;
       const picks = [...(box.current?.querySelectorAll<HTMLElement>("[role=menuitem]") ?? [])];
       const at = picks.indexOf(here as HTMLElement);
-      if (event.key === "Escape") backToButton(box.current, setOpen);
+      if (event.key === "Escape") backToButton(box.current, setOpen, true);
       else if (event.key === "ArrowDown") {
         event.preventDefault();
         (picks[at + 1] ?? picks[0])?.focus();
@@ -155,10 +155,14 @@ export function Menu({
 /**
  * Closes the list with the focus on the button. A pick unmounts the focused
  * item; without this the focus falls to body and the next Tab starts over at
- * the top of the page.
+ * the top of the page. `always` (Esc) moves it even from body; a pick only
+ * when the focus was in the list, so a Safari mouse pick (focus on body) draws
+ * no ring on a button nobody tabbed to.
  */
-function backToButton(box: HTMLElement | null, setOpen: (open: boolean) => void) {
-  box?.querySelector<HTMLButtonElement>("[data-menu-trigger]")?.focus();
+function backToButton(box: HTMLElement | null, setOpen: (open: boolean) => void, always = false) {
+  if (always || box?.contains(document.activeElement)) {
+    box?.querySelector<HTMLButtonElement>("[data-menu-trigger]")?.focus();
+  }
   setOpen(false);
 }
 

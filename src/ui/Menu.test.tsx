@@ -21,6 +21,19 @@ describe("Menu", () => {
     expect(screen.getByRole("menuitem", { name: "Create a set" }).getAttribute("href")).toBe("/sets/new");
   });
 
+  test("a pick with the focus on the page leaves it there (no ring on the button)", async () => {
+    const onClick = vi.fn();
+    renderUi(<Menu label="Create a set" items={picks(onClick)} />);
+    const trigger = screen.getByRole("button", { name: "Create a set" });
+    await userEvent.click(trigger);
+    // Safari mouse pick: the focus is on body when the click lands.
+    act(() => trigger.blur());
+    act(() => screen.getByRole("menuitem", { name: "From material" }).click());
+    expect(onClick).toHaveBeenCalled();
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).toBe(document.body);
+  });
+
   test("align lines the list up with the matching edge", async () => {
     renderUi(<Menu label="Create a set" align="start sm:end" items={picks(vi.fn())} />);
     await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
