@@ -1,4 +1,4 @@
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 import { renderUi } from "../test/render";
@@ -21,17 +21,18 @@ describe("Menu", () => {
     expect(screen.getByRole("menuitem", { name: "Create a set" }).getAttribute("href")).toBe("/sets/new");
   });
 
-  test("a pick with the focus on the page leaves it there (no ring on the button)", async () => {
-    const onClick = vi.fn();
-    renderUi(<Menu label="Create a set" items={picks(onClick)} />);
-    const trigger = screen.getByRole("button", { name: "Create a set" });
-    await userEvent.click(trigger);
-    // Safari mouse pick: the focus is on body when the click lands.
-    act(() => trigger.blur());
-    act(() => screen.getByRole("menuitem", { name: "From material" }).click());
-    expect(onClick).toHaveBeenCalled();
-    expect(screen.queryByRole("menu")).toBeNull();
-    expect(document.activeElement).toBe(document.body);
+  test("opening puts the focus in the list, so the keys arrive even where buttons take none", async () => {
+    renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
+    await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
+    expect(document.activeElement).toBe(screen.getByRole("menu"));
+  });
+
+  test("a mousedown in the box keeps the focus where it is (Safari/Firefox mouse pick)", async () => {
+    renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
+    await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
+    // false: default prevented, so the browser moves no focus and the list stays.
+    expect(fireEvent.mouseDown(screen.getByRole("menuitem", { name: "From material" }))).toBe(false);
+    expect(screen.getByRole("menu")).toBeTruthy();
   });
 
   test.each([
@@ -46,13 +47,15 @@ describe("Menu", () => {
     expect(screen.getByRole("menu").className.split(" ")).toContain(edge);
   });
 
-  test("picking one runs it and closes the list", async () => {
+  test("picking one runs it, closes the list and gives the button the focus", async () => {
     const onClick = vi.fn();
     renderUi(<Menu label="Create a set" items={picks(onClick)} />);
-    await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
+    const trigger = screen.getByRole("button", { name: "Create a set" });
+    await userEvent.click(trigger);
     await userEvent.click(screen.getByRole("menuitem", { name: "From material" }));
     expect(onClick).toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    expect(document.activeElement).toBe(trigger);
   });
 
   test("a keyboard pick hands the focus back to the button", async () => {
@@ -73,6 +76,15 @@ describe("Menu", () => {
     expect(document.activeElement).toBe(trigger);
   });
 
+  test("the button again closes it, the focus on the button", async () => {
+    renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
+    const trigger = screen.getByRole("button", { name: "Create a set" });
+    await userEvent.click(trigger);
+    await userEvent.click(trigger);
+    expect(screen.queryByRole("menu")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+  });
+
   test("a click outside closes it", async () => {
     renderUi(
       <div>
@@ -83,17 +95,6 @@ describe("Menu", () => {
     await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
     await userEvent.click(screen.getByRole("button", { name: "Elsewhere" }));
     expect(screen.queryByRole("menu")).toBeNull();
-  });
-
-  test("focus dropping to the page keeps it open", async () => {
-    renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
-    const trigger = screen.getByRole("button", { name: "Create a set" });
-    await userEvent.click(trigger);
-    // Safari/Firefox on a mousedown inside the list: focus goes to body, the window keeps it.
-    vi.spyOn(document, "hasFocus").mockReturnValue(true);
-    act(() => trigger.blur());
-    await act(() => new Promise((done) => setTimeout(done, 10)));
-    expect(screen.getByRole("menu")).toBeTruthy();
   });
 
   test("Tab walks through the picks and closes it on the way out", async () => {
@@ -113,39 +114,22 @@ describe("Menu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
-  test("Esc and the arrows work while the focus sits on the page", async () => {
+  test("focus leaving to nowhere (another window, the browser's own bar) closes it", async () => {
     renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
-    const trigger = screen.getByRole("button", { name: "Create a set" });
-    await userEvent.click(trigger);
-    // A mouse open on Safari/Firefox (macOS): the button never takes focus.
-    trigger.blur();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "Create a set" }));
-    act(() => (document.activeElement as HTMLElement).blur());
-    expect(document.activeElement).toBe(document.body);
-    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
+    act(() => screen.getByRole("menu").blur());
     expect(screen.queryByRole("menu")).toBeNull();
-    expect(document.activeElement).toBe(trigger);
-  });
-
-  test("focus leaving the window (Tab into the browser, app switch) closes it", async () => {
-    renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
-    const trigger = screen.getByRole("button", { name: "Create a set" });
-    await userEvent.click(trigger);
-    vi.spyOn(document, "hasFocus").mockReturnValue(false);
-    act(() => trigger.blur());
-    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   });
 
   test("leaves shortcuts and keys someone else handled alone", async () => {
     renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
-    const trigger = screen.getByRole("button", { name: "Create a set" });
-    await userEvent.click(trigger);
+    await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
+    const menu = screen.getByRole("menu");
     await userEvent.keyboard("{Alt>}{ArrowDown}{/Alt}");
-    expect(document.activeElement).toBe(trigger);
+    expect(document.activeElement).toBe(menu);
     const handled = new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true });
     handled.preventDefault();
-    act(() => void trigger.dispatchEvent(handled));
+    act(() => void menu.dispatchEvent(handled));
     expect(screen.getByRole("menu")).toBeTruthy();
   });
 
