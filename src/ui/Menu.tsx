@@ -49,8 +49,12 @@ export function Menu({
     const down = (event: PointerEvent) => {
       if (!box.current?.contains(event.target as Node)) setOpen(false);
     };
+    // Focus going nowhere (relatedTarget null) is not "leaving": Safari and Firefox
+    // on macOS drop focus to body on mousedown, which would close the list before
+    // the click on an item lands. Clicks outside are the pointerdown's job.
     const out = (event: FocusEvent) => {
-      if (!box.current?.contains(event.relatedTarget as Node)) setOpen(false);
+      const to = event.relatedTarget as Node | null;
+      if (to && !box.current?.contains(to)) setOpen(false);
     };
     document.addEventListener("pointerdown", down);
     document.addEventListener("focusout", out);

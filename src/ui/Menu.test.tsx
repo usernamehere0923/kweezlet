@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { act, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 import { renderUi } from "../test/render";
@@ -48,6 +48,23 @@ describe("Menu", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
     await userEvent.click(screen.getByRole("button", { name: "Elsewhere" }));
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  test("focus dropping to the page keeps it open; Tab to something else closes it", async () => {
+    renderUi(
+      <div>
+        <Menu label="Create a set" items={picks(vi.fn())} />
+        <button type="button">Elsewhere</button>
+      </div>,
+    );
+    const trigger = screen.getByRole("button", { name: "Create a set" });
+    await userEvent.click(trigger);
+    // Safari/Firefox on a mousedown inside the list: focus goes to body.
+    trigger.blur();
+    expect(screen.getByRole("menu")).toBeTruthy();
+    act(() => trigger.focus());
+    act(() => screen.getByRole("button", { name: "Elsewhere" }).focus());
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
