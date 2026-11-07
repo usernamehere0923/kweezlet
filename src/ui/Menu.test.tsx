@@ -85,13 +85,8 @@ describe("Menu", () => {
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
-  test("focus dropping to the page keeps it open; Tab to something else closes it", async () => {
-    renderUi(
-      <div>
-        <Menu label="Create a set" items={picks(vi.fn())} />
-        <button type="button">Elsewhere</button>
-      </div>,
-    );
+  test("focus dropping to the page keeps it open", async () => {
+    renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
     const trigger = screen.getByRole("button", { name: "Create a set" });
     await userEvent.click(trigger);
     // Safari/Firefox on a mousedown inside the list: focus goes to body, the window keeps it.
@@ -99,8 +94,22 @@ describe("Menu", () => {
     act(() => trigger.blur());
     await act(() => new Promise((done) => setTimeout(done, 10)));
     expect(screen.getByRole("menu")).toBeTruthy();
-    act(() => trigger.focus());
-    act(() => screen.getByRole("button", { name: "Elsewhere" }).focus());
+  });
+
+  test("Tab walks through the picks and closes it on the way out", async () => {
+    renderUi(
+      <div>
+        <Menu label="Create a set" items={picks(vi.fn())} />
+        <button type="button">Elsewhere</button>
+      </div>,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
+    await userEvent.tab();
+    await userEvent.tab();
+    expect(document.activeElement).toBe(screen.getByRole("menuitem", { name: "From material" }));
+    expect(screen.getByRole("menu")).toBeTruthy();
+    await userEvent.tab();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Elsewhere" }));
     expect(screen.queryByRole("menu")).toBeNull();
   });
 
