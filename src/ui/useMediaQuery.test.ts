@@ -1,13 +1,16 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
-import defaultTheme from "tailwindcss/defaultTheme";
+import tailwindTheme from "tailwindcss/theme.css?raw";
 import { allowMotion } from "../test/motion";
 import { MEDIA, useMediaQuery } from "./useMediaQuery";
 
 // Only CSS listed in vitest's `css.include` comes through; the rest is blank.
+// Every CSS file in src: a breakpoint override anywhere would move md:/lg:.
 const appCss = Object.values(
-  import.meta.glob<string>(["../index.css", "../themes/*.css"], { query: "?raw", import: "default", eager: true }),
+  import.meta.glob<string>("../**/*.css", { query: "?raw", import: "default", eager: true }),
 ).join("\n");
+// The v4 CSS theme the md:/lg: classes are built from (not the v3-compat JS export).
+const breakpoint = (name: string) => tailwindTheme.match(new RegExp(`--breakpoint-${name}:\\s*([^;]+);`))?.[1];
 
 /** A matchMedia whose answers the test flips by hand. */
 function fakeMatchMedia() {
@@ -45,8 +48,9 @@ describe("useMediaQuery", () => {
   });
 
   test("MEDIA flips where Tailwind's md:/lg: classes do", () => {
-    expect(MEDIA.md).toBe(`(min-width: ${defaultTheme.screens.md})`);
-    expect(MEDIA.lg).toBe(`(min-width: ${defaultTheme.screens.lg})`);
+    expect(breakpoint("md")).toBeTruthy();
+    expect(MEDIA.md).toBe(`(min-width: ${breakpoint("md")})`);
+    expect(MEDIA.lg).toBe(`(min-width: ${breakpoint("lg")})`);
     // The app may not move them: the JS switches would no longer follow.
     expect(appCss).toContain("@theme");
     expect(appCss).not.toMatch(/--breakpoint-/);

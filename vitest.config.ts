@@ -41,9 +41,9 @@ export default defineConfig(async () => {
             environment: "jsdom",
             include: ["src/**/*.test.{ts,tsx}"],
             setupFiles: ["./src/test/setup.ts"],
-            // CSS is empty in tests, except the files tests read as text:
-            // themes (themes.test.ts), index.css (useMediaQuery.test.ts).
-            css: { include: [/src\/themes\/.+\.css/, /src\/index\.css/] },
+            // CSS is empty in tests, except the files tests read as text: the app's
+            // own (themes.test.ts, useMediaQuery.test.ts) and Tailwind's theme.
+            css: { include: [/src\/.+\.css/, /tailwindcss\/theme\.css/] },
           },
         }),
       ],
