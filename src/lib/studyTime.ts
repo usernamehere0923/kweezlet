@@ -27,6 +27,12 @@ const IDLE_MS = 60_000; // no input for this long: on a break, clock stopped
 /** Cards and answers since the last flush (time is measured by the hook). */
 export type StudyDelta = { cards?: number; correct?: number; wrong?: number; learned?: number };
 
+/** Everything a flush carries; one list, so a new counter can't be missed anywhere. */
+const COUNTERS = ["seconds", "cards", "correct", "wrong", "learned"] as const;
+type Counts = Record<(typeof COUNTERS)[number], number>;
+const emptyCounts = (): Counts => ({ seconds: 0, cards: 0, correct: 0, wrong: 0, learned: 0 });
+const isEmpty = (counts: Counts) => COUNTERS.every((key) => counts[key] === 0);
+
 export function useStudyActivity({
   active,
   setId,
@@ -37,7 +43,7 @@ export function useStudyActivity({
   setId?: number;
   mode: StudyMode;
 }): { record: (delta: StudyDelta) => void } {
-  const pending = useRef({ seconds: 0, cards: 0, correct: 0, wrong: 0, learned: 0 });
+  const pending = useRef(emptyCounts());
   // Both clocks start when the session does (see the effect below).
   const lastInputAt = useRef(0);
   const lastFlushAt = useRef(0);
@@ -46,15 +52,15 @@ export function useStudyActivity({
 
   const record = useCallback((delta: StudyDelta) => {
     lastInputAt.current = Date.now();
-    for (const key of ["cards", "correct", "wrong", "learned"] as const) {
-      pending.current[key] += delta[key] ?? 0;
+    for (const key of COUNTERS) {
+      if (key !== "seconds") pending.current[key] += delta[key] ?? 0;
     }
   }, []);
 
   const flush = useCallback((keepalive = false) => {
     const counts = { ...pending.current };
-    if (counts.seconds + counts.cards + counts.correct + counts.wrong + counts.learned === 0) return;
-    pending.current = { seconds: 0, cards: 0, correct: 0, wrong: 0, learned: 0 };
+    if (isEmpty(counts)) return;
+    pending.current = emptyCounts();
     const { setId, mode } = context.current;
     const json = {
       day: localDay(),
@@ -66,9 +72,7 @@ export function useStudyActivity({
       // A flush that failed counted nothing: put it back for the next one.
       // A keepalive flush has no next one (the page is already gone).
       if (!res.ok && !keepalive) {
-        for (const key of ["seconds", "cards", "correct", "wrong", "learned"] as const) {
-          pending.current[key] += counts[key];
-        }
+        for (const key of COUNTERS) pending.current[key] += counts[key];
       }
     });
   }, []);
