@@ -63,6 +63,7 @@ type Owner = string | null | undefined;
  */
 const queue: Flush[] = [];
 const MAX_QUEUE = 240; // two hours of 30-second flushes
+const SEND_TIMEOUT_MS = 15_000; // a flush answer slower than this counts as failed (sent again, same id)
 
 /**
  * Who is logged in, set by the session (src/lib/session.tsx). Logging out does
@@ -118,15 +119,26 @@ function send(flush: Flush, keepalive: boolean) {
     ...(setId !== undefined && Number.isInteger(setId) ? { setId, mode } : {}),
     id: flush.id,
   };
-  // keepalive lets a flush outlive the page it came from.
-  void api.study.activity.$post({ json }, keepalive ? { init: { keepalive: true } } : undefined).then((res) => {
+  // keepalive lets a flush outlive the page it came from. The timeout ends a
+  // request that hangs (an iPhone resuming mid-request): until it ends, no
+  // other flush goes out.
+  const abort = new AbortController();
+  const timeout = setTimeout(() => abort.abort(), SEND_TIMEOUT_MS);
+  const init: RequestInit = { signal: abort.signal, ...(keepalive ? { keepalive } : {}) };
+  void api.study.activity.$post({ json }, { init }).then((res) => {
+    clearTimeout(timeout);
     flush.sending = false;
     // No connection (0) or a server error: the flush stays for the next try,
     // also when it went out as the page was hiding (the page often comes back).
     // number, not the route's typed 200 | 400: apiFetch answers 0 offline.
     const status: number = res.status;
     // 401: the session ran out, not the flush: it waits for the owner's next login.
-    if (status === 0 || status === 401 || status >= 500) return;
+    if (status === 0 || status === 401 || status >= 500) {
+      // To the back: one that keeps failing must not hold up the newer ones.
+      const at = queue.indexOf(flush);
+      if (at >= 0) queue.push(...queue.splice(at, 1));
+      return;
+    }
     // Counted, or refused for good (other 4xx): resending can't change a refusal.
     const at = queue.indexOf(flush);
     // Gone already (forgotten): splice(-1) would take an unrelated last flush.

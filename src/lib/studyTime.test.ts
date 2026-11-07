@@ -182,6 +182,47 @@ describe("useStudyActivity", () => {
     next.unmount();
   });
 
+  it("a request that hangs times out instead of holding up every later flush", async () => {
+    vi.useFakeTimers();
+    let first = true;
+    const { calls } = mockApi({
+      "POST /api/study/activity": () => {
+        if (first) {
+          first = false;
+          return new Promise(() => {}); // never answers
+        }
+        return { json: { ok: true } };
+      },
+    });
+    const { result, unmount } = renderHook(() => useStudyActivity({ active: true, mode: "flashcards" }));
+    act(() => result.current.record({ cards: 2 }));
+    // Async: answers (and the timeout's abort) land between the ticks, as in a browser.
+    await act(() => vi.advanceTimersByTimeAsync(31_000));
+    act(() => result.current.record({ cards: 3 }));
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+
+    // The hung one went again (same id) and the newer one followed.
+    const sent = beacons(calls);
+    expect(sent[1]).toEqual(sent[0]);
+    expect(sent.slice(2)).toEqual([expect.objectContaining({ cards: 3 })]);
+    unmount();
+  });
+
+  it("one flush that keeps failing doesn't hold up the newer ones", async () => {
+    vi.useFakeTimers();
+    const { calls } = mockApi({
+      "POST /api/study/activity": (body) => ((body as { cards: number }).cards === 1 ? { status: 500 } : { json: {} }),
+    });
+    const { result, unmount } = renderHook(() => useStudyActivity({ active: true, mode: "flashcards" }));
+    act(() => result.current.record({ cards: 1 }));
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    act(() => result.current.record({ cards: 2 }));
+    // The failing one moved behind the new one: the next turn is the new one's.
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+    expect(beacons(calls).map((body) => body.cards)).toContain(2);
+    unmount();
+  });
+
   it("a refused flush (4xx) is dropped, not resent forever", async () => {
     vi.useFakeTimers();
     const { calls } = mockApi({ "POST /api/study/activity": () => ({ status: 400, json: {} }) });
