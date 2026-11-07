@@ -47,6 +47,19 @@ describe("Menu", () => {
     expect(screen.getByRole("menu").className.split(" ")).toContain(edge);
   });
 
+  test('align="auto" picks the side again when the window turns or resizes', async () => {
+    renderUi(<Menu label="Create a set" align="auto" items={picks(vi.fn())} />);
+    const trigger = screen.getByRole("button", { name: "Create a set" });
+    const width = vi.spyOn(document.documentElement, "clientWidth", "get").mockReturnValue(1100);
+    vi.spyOn(trigger.parentElement!, "getBoundingClientRect").mockReturnValue({ left: 400, width: 170 } as DOMRect);
+    await userEvent.click(trigger);
+    expect(screen.getByRole("menu").className.split(" ")).toContain("left-0");
+    // Portrait → landscape the other way round: now the button is in the right half.
+    width.mockReturnValue(700);
+    act(() => void window.dispatchEvent(new Event("resize")));
+    expect(screen.getByRole("menu").className.split(" ")).toContain("right-0");
+  });
+
   test("picking one runs it, closes the list and gives the button the focus", async () => {
     const onClick = vi.fn();
     renderUi(<Menu label="Create a set" items={picks(onClick)} />);

@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -62,12 +63,15 @@ export function Menu({
     box.current?.querySelector<HTMLButtonElement>("[data-menu-trigger]")?.focus();
     setOpen(false);
   };
+  // align="auto": the side with room, from where the button sits right now.
+  const place = useCallback(() => {
+    if (align !== "auto" || !box.current) return;
+    const { left, width } = box.current.getBoundingClientRect();
+    setSide(left + width / 2 > document.documentElement.clientWidth / 2 ? "end" : "start");
+  }, [align]);
   const toggle = () => {
     if (open) return close();
-    if (align === "auto" && box.current) {
-      const { left, width } = box.current.getBoundingClientRect();
-      setSide(left + width / 2 > document.documentElement.clientWidth / 2 ? "end" : "start");
-    }
+    place();
     setOpen(true);
   };
 
@@ -83,8 +87,13 @@ export function Menu({
       if (!box.current?.contains(event.target as Node)) setOpen(false);
     };
     document.addEventListener("pointerdown", down);
-    return () => document.removeEventListener("pointerdown", down);
-  }, [open]);
+    // A rotation or resize while open can move the button to the other half.
+    window.addEventListener("resize", place);
+    return () => {
+      document.removeEventListener("pointerdown", down);
+      window.removeEventListener("resize", place);
+    };
+  }, [open, place]);
 
   // Focus leaving the box closes it: Tab past the last item, a click on
   // something else, another window (relatedTarget null). A mousedown inside
