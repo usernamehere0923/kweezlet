@@ -384,7 +384,7 @@ export function HomePage() {
                 label={t("sets.new")}
                 icon="plus"
                 variant={dueCount > 0 ? "secondary" : "primary"}
-                align="start sm:end"
+                align="auto"
                 items={createItems}
               />
             </div>

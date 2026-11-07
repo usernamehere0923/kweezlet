@@ -34,10 +34,16 @@ describe("Menu", () => {
     expect(document.activeElement).toBe(document.body);
   });
 
-  test("align lines the list up with the matching edge", async () => {
-    renderUi(<Menu label="Create a set" align="start sm:end" items={picks(vi.fn())} />);
-    await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
-    expect(screen.getByRole("menu").className).toContain("left-0 sm:left-auto sm:right-0");
+  test.each([
+    { left: 600, edge: "right-0" },
+    { left: 16, edge: "left-0" },
+  ])('align="auto": a button at x=$left opens the list with $edge', async ({ left, edge }) => {
+    renderUi(<Menu label="Create a set" align="auto" items={picks(vi.fn())} />);
+    const trigger = screen.getByRole("button", { name: "Create a set" });
+    vi.spyOn(document.documentElement, "clientWidth", "get").mockReturnValue(700);
+    vi.spyOn(trigger.parentElement!, "getBoundingClientRect").mockReturnValue({ left, width: 170 } as DOMRect);
+    await userEvent.click(trigger);
+    expect(screen.getByRole("menu").className.split(" ")).toContain(edge);
   });
 
   test("picking one runs it and closes the list", async () => {

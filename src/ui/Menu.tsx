@@ -37,14 +37,23 @@ export function Menu({
   variant?: ButtonVariant;
   size?: "sm" | "md" | "lg";
   /**
-   * Which edge of the button the list lines up with. "start sm:end": the button
-   * sits at the left on the phone and at the right end of a row from sm up.
+   * Which edge of the button the list lines up with. "auto" decides on open:
+   * a button in the right half of the screen gets "end", so the list grows
+   * toward the room, whatever the layout puts it at that width.
    */
-  align?: "start" | "end" | "start sm:end";
+  align?: "start" | "end" | "auto";
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [side, setSide] = useState<"start" | "end">("start");
   const box = useRef<HTMLDivElement>(null);
+  const toggle = () => {
+    if (!open && align === "auto" && box.current) {
+      const { left, width } = box.current.getBoundingClientRect();
+      setSide(left + width / 2 > document.documentElement.clientWidth / 2 ? "end" : "start");
+    }
+    setOpen((was) => !was);
+  };
   const close = () => backToButton(box.current, setOpen);
 
   // The list lives only while open: a click outside or the focus leaving closes it.
@@ -108,7 +117,7 @@ export function Menu({
         variant={variant}
         size={size}
         icon={icon}
-        onClick={() => setOpen((was) => !was)}
+        onClick={toggle}
       >
         <span className="flex items-center gap-1.5">
           {label}
@@ -121,7 +130,7 @@ export function Menu({
           aria-label={label}
           className={cx(
             "absolute top-full z-40 mt-1.5 min-w-44 animate-fade-in rounded-ui-lg border border-line-soft bg-surface py-1.5 shadow-overlay",
-            ALIGN[align],
+            (align === "auto" ? side : align) === "end" ? "right-0" : "left-0",
           )}
         >
           {items.map(({ label: text, icon: glyph, to, onClick }) =>
@@ -165,12 +174,6 @@ function backToButton(box: HTMLElement | null, setOpen: (open: boolean) => void,
   }
   setOpen(false);
 }
-
-const ALIGN = {
-  start: "left-0",
-  end: "right-0",
-  "start sm:end": "left-0 sm:left-auto sm:right-0",
-} as const;
 
 const itemClass =
   "flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-[15px] text-ink transition-colors hover:bg-sunken active:bg-sunken";
