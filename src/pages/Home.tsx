@@ -395,6 +395,7 @@ export function HomePage() {
                 label={t("sets.new")}
                 icon="plus"
                 variant={dueCount > 0 ? "secondary" : "primary"}
+                align="start sm:end"
                 items={[
                   { label: t("sets.new"), icon: "plus", to: "/sets/new" },
                   { label: t("home.fromMaterial"), icon: "bulb", to: "/create/ai" },

@@ -76,7 +76,8 @@ export function Controls() {
           code={`<Menu label="Create a set" icon="plus" items={[
   { label: "Create a set", icon: "plus", to: "/sets/new" },     // a page, or…
   { label: "From material", icon: "bulb", onClick: start },     // …an action
-]} />   // one button, more ways to do the thing; Esc / outside click / pick closes`}
+]} />   // one button, more ways to do the thing; Esc / outside click / pick closes
+// align="end": list under the button's right edge; "start sm:end": left on the phone, right from sm up`}
         >
           <div className="flex flex-wrap items-center gap-3">
             <Menu
@@ -92,6 +93,16 @@ export function Controls() {
               icon="moreHorizontal"
               variant="secondary"
               align="end"
+              items={[
+                { label: "Edit", icon: "edit", onClick: () => toast("edit", "info") },
+                { label: "Delete", icon: "trash", onClick: () => toast("delete", "info") },
+              ]}
+            />
+            <Menu
+              label="Start, sm: end"
+              icon="moreHorizontal"
+              variant="secondary"
+              align="start sm:end"
               items={[
                 { label: "Edit", icon: "edit", onClick: () => toast("edit", "info") },
                 { label: "Delete", icon: "trash", onClick: () => toast("delete", "info") },

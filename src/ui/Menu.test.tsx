@@ -21,6 +21,12 @@ describe("Menu", () => {
     expect(screen.getByRole("menuitem", { name: "Create a set" }).getAttribute("href")).toBe("/sets/new");
   });
 
+  test("align lines the list up with the matching edge", async () => {
+    renderUi(<Menu label="Create a set" align="start sm:end" items={picks(vi.fn())} />);
+    await userEvent.click(screen.getByRole("button", { name: "Create a set" }));
+    expect(screen.getByRole("menu").className).toContain("left-0 sm:left-auto sm:right-0");
+  });
+
   test("picking one runs it and closes the list", async () => {
     const onClick = vi.fn();
     renderUi(<Menu label="Create a set" items={picks(onClick)} />);
