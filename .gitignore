@@ -7,3 +7,5 @@ dist
 test-results
 .playwright-mcp
 coverage
+# Live database dumps from npm run deploy (all cards): never committed.
+backups

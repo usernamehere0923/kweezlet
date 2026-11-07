@@ -9,7 +9,7 @@ Quizlet-style flashcard app. React + Tailwind UI, Cloudflare Worker (Hono) API, 
 - `npm test`: worker (Workers runtime) + UI (jsdom) tests. `npm run check`: types + lint + format; `npm run format` fixes formatting.
 - `npm run db:migrate`: apply new migrations locally, keeps data. `npm run db:reset` wipes all his local data: only when he asks to start over. Wrong demo password → `user:add -- demo demo`.
 - `npm run user:add -- <name> <password> [--remote]`: create user / reset password. No registration in the app.
-- `npm run deploy`: build, apply pending remote migrations, upload (setup: `README.md`). `db:migrate:remote` = migrations only. Both ship GitHub's `master` only (`scripts/release.sh`), never the current branch. Migrations must stay additive: old code runs against the new schema until the upload lands.
+- `npm run deploy`: build, dump the live database to `backups/` (only when migrations are pending; gitignored), apply them, upload (setup: `README.md`). The user wants no manual backup step: never ask him to back up first. `db:migrate:remote` = migrations only. Both ship GitHub's `master` only (`scripts/release.sh`), never the current branch. Migrations must stay additive: old code runs against the new schema until the upload lands.
 - `npm run types`: after changing `wrangler.jsonc`.
 - `npm run gen:icons` / `npm run gen:og`: after changing `assets/icons/*` or `assets/og/card.html`.
 
