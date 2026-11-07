@@ -1,7 +1,13 @@
 import { renderHook, act } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
+import defaultTheme from "tailwindcss/defaultTheme";
 import { allowMotion } from "../test/motion";
-import { useMediaQuery } from "./useMediaQuery";
+import { MEDIA, useMediaQuery } from "./useMediaQuery";
+
+// Only CSS listed in vitest's `css.include` comes through; the rest is blank.
+const appCss = Object.values(
+  import.meta.glob<string>(["../index.css", "../themes/*.css"], { query: "?raw", import: "default", eager: true }),
+).join("\n");
 
 /** A matchMedia whose answers the test flips by hand. */
 function fakeMatchMedia() {
@@ -36,6 +42,14 @@ describe("useMediaQuery", () => {
     expect(media.listeners).toBe(1);
     unmount();
     expect(media.listeners).toBe(0);
+  });
+
+  test("MEDIA flips where Tailwind's md:/lg: classes do", () => {
+    expect(MEDIA.md).toBe(`(min-width: ${defaultTheme.screens.md})`);
+    expect(MEDIA.lg).toBe(`(min-width: ${defaultTheme.screens.lg})`);
+    // The app may not move them: the JS switches would no longer follow.
+    expect(appCss).toContain("@theme");
+    expect(appCss).not.toMatch(/--breakpoint-/);
   });
 
   test("works under the allowMotion() stub other UI tests use", () => {

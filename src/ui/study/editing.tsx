@@ -8,7 +8,7 @@ import { SegmentedControl } from "../SegmentedControl";
 import { SpeakButton } from "../speech";
 import { surface } from "../surfaces";
 import { useAutoGrow } from "../useAutoGrow";
-import { useMediaQuery } from "../useMediaQuery";
+import { MEDIA, useMediaQuery } from "../useMediaQuery";
 import { ClozeText } from "./cloze";
 import { TermImage, TermImagePicker } from "./images";
 
@@ -250,7 +250,7 @@ export function TermList({
   /** Wide screens: one row-card per term, two per column. The phone keeps the joined list. */
   columns?: boolean;
 }) {
-  const wide = useMediaQuery("(min-width: 1024px)");
+  const wide = useMediaQuery(MEDIA.lg);
   const grid = Boolean(columns) && wide;
   return (
     <ul className={grid ? "grid grid-cols-2 gap-3" : cx(surface, "divide-y divide-line-soft overflow-hidden")}>

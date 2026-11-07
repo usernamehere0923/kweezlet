@@ -4,7 +4,7 @@ import { createRef, useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { renderUi } from "../../test/render";
 import { mockSpeech } from "../../test/speech";
-import { ClozeText, TermEditorRow, TermList, type TermEditorHandle } from "..";
+import { ClozeText, MEDIA, TermEditorRow, TermList, type TermEditorHandle } from "..";
 
 test("TermEditorRow: typing, Enter moves on, delete, focus handle", async () => {
   const onNext = vi.fn();
@@ -62,7 +62,7 @@ describe("TermList", () => {
   test("with columns, wide screens get one row-card per term", () => {
     vi.stubGlobal("matchMedia", (media: string) => ({
       media,
-      matches: media === "(min-width: 1024px)",
+      matches: media === MEDIA.lg,
       addEventListener: () => {},
       removeEventListener: () => {},
     }));

@@ -28,6 +28,7 @@ import {
   StudySetCard,
   Text,
   UnfinishedDrafts,
+  MEDIA,
   useMediaQuery,
 } from "../ui";
 import { FolderEditor } from "./home/FolderEditor";
@@ -79,7 +80,7 @@ export function HomePage() {
   );
   const request = useRef(0);
   // Wide screens get the folder sidebar, the phone the dropdown below.
-  const wide = useMediaQuery("(min-width: 768px)");
+  const wide = useMediaQuery(MEDIA.md);
 
   useEffect(() => {
     const pause = setTimeout(() => setQuery(q), q ? SEARCH_PAUSE_MS : 0);
