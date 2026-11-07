@@ -89,6 +89,19 @@ function flushId(): string {
 /** Turns counts into a flush in the queue: into the last one if it was never tried and has room. */
 function seal(counts: Counts, context: Context, owner: Owner) {
   if (isEmpty(counts)) return;
+  // Over a limit on its own (a long-throttled timer, a huge record()): split
+  // evenly into parts that each fit, rather than one the worker refuses.
+  const parts = Math.max(...COUNTERS.map((key) => Math.ceil(counts[key] / CAPS[key])));
+  if (parts > 1) {
+    for (let i = 0; i < parts; i++) {
+      const part = emptyCounts();
+      for (const key of COUNTERS) {
+        part[key] = Math.floor(counts[key] / parts) + (i < counts[key] % parts ? 1 : 0);
+      }
+      seal(part, context, owner);
+    }
+    return;
+  }
   const day = localDay();
   const last = queue.at(-1);
   if (

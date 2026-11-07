@@ -223,6 +223,19 @@ describe("useStudyActivity", () => {
     unmount();
   });
 
+  it("counts over a limit on their own are split, not refused", async () => {
+    vi.useFakeTimers();
+    const { calls } = mockApi({ "POST /api/study/activity": () => ({ json: { ok: true } }) });
+    const { result, unmount } = renderHook(() => useStudyActivity({ active: true, mode: "flashcards" }));
+    act(() => result.current.record({ cards: 25_001 }));
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+
+    const cards = beacons(calls).map((body) => body.cards as number);
+    expect(cards.every((n) => n <= 10_000)).toBe(true);
+    expect(cards.reduce((sum, n) => sum + n, 0)).toBe(25_001);
+    unmount();
+  });
+
   it("a refused flush (4xx) is dropped, not resent forever", async () => {
     vi.useFakeTimers();
     const { calls } = mockApi({ "POST /api/study/activity": () => ({ status: 400, json: {} }) });
