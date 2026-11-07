@@ -25,12 +25,32 @@ const activityBody = z.object({
   /** The set that was studied, with its mode: "recently used" / "quick resume". */
   setId: z.number().int().positive().optional(),
   mode: z.enum(STUDY_MODES).optional(),
+  /**
+   * The flush's own id: a retry of a flush that was counted but whose answer
+   * got lost is recognised and counted once. Optional: a page loaded before
+   * ids existed still gets its flushes in.
+   */
+  id: z
+    .string()
+    .regex(/^[\w-]{8,64}$/)
+    .optional(),
 });
+
+/** How long a flush id is remembered: retries come within minutes, at most days. */
+const FLUSH_ID_DAYS = 7;
 
 export const activityRoutes = new Hono<AppEnv>().post("/study/activity", validate("json", activityBody), async (c) => {
   const user = c.get("user");
-  const { day, seconds = 0, cards = 0, correct = 0, wrong = 0, learned = 0, setId, mode } = c.req.valid("json");
+  const { day, seconds = 0, cards = 0, correct = 0, wrong = 0, learned = 0, setId, mode, id } = c.req.valid("json");
   const db = c.env.DB;
+  if (id !== undefined) {
+    // Counted already: the answer was lost on the way, not the flush.
+    const seen = await db
+      .prepare("SELECT 1 FROM activity_flushes WHERE user_id = ? AND id = ?")
+      .bind(user.id, id)
+      .first();
+    if (seen) return c.json({ ok: true }, 200);
+  }
   // No notifyLater here, deliberately: flushes come every 30 seconds while
   // someone is studying and would reload the study page that sent them
   // mid-round (the same reason POST /api/study/day stays quiet). Another
@@ -65,6 +85,17 @@ export const activityRoutes = new Hono<AppEnv>().post("/study/activity", validat
                ON CONFLICT (user_id, set_id) DO UPDATE SET last_studied_at = unixepoch(), last_mode = excluded.last_mode`,
         )
         .bind(setId, user.id, mode),
+    );
+  }
+  if (id !== undefined) {
+    // In the same batch as the counters: both land, or neither. Two copies
+    // racing each other: the second hits the primary key, fails whole and
+    // is retried, and then finds the id.
+    statements.push(
+      db.prepare("INSERT INTO activity_flushes (user_id, id) VALUES (?, ?)").bind(user.id, id),
+      db
+        .prepare("DELETE FROM activity_flushes WHERE user_id = ? AND created_at < unixepoch() - ?")
+        .bind(user.id, FLUSH_ID_DAYS * 86_400),
     );
   }
   await db.batch(statements);
