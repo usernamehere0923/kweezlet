@@ -59,7 +59,7 @@
   --color-wrong-strong: var(--theme-wrong-strong);
   --color-wrong-wash: var(--theme-wrong-wash);
 
-  /* Heatmap cells (src/ui/Heatmap.tsx): quiet to busy learning days. */
+  /* Heatmap cells (src/ui/charts.tsx): quiet to busy learning days. */
   --color-heat-0: var(--theme-heat-0);
   --color-heat-1: var(--theme-heat-1);
   --color-heat-2: var(--theme-heat-2);

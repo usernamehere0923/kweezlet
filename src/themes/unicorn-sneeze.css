@@ -77,7 +77,7 @@
   --theme-wrong-strong: #ad3520;
   --theme-wrong-wash: #fde3dc;
 
-  /* Learning-activity heatmap (src/ui/Heatmap.tsx): quiet to busy days. */
+  /* Learning-activity heatmap (src/ui/charts.tsx): quiet to busy days. */
   --theme-heat-0: #f3e6ef;
   --theme-heat-1: #f8d9ea;
   --theme-heat-2: #f0a7cd;

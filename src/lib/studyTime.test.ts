@@ -88,6 +88,44 @@ describe("useStudyActivity", () => {
     expect(calls).toHaveLength(0);
   });
 
+  it("a failed flush keeps the counts for the next one", async () => {
+    vi.useFakeTimers();
+    let up = false;
+    const { calls } = mockApi({
+      "POST /api/study/activity": () => {
+        if (!up) {
+          up = true;
+          return { status: 500, json: {} };
+        }
+        return { json: { ok: true } };
+      },
+    });
+    const { unmount } = renderHook(() => useStudyActivity({ active: true, mode: "learn" }));
+
+    await act(async () => {
+      vi.advanceTimersByTime(31_000);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(31_000);
+    });
+
+    // The second flush carries the lost half along with its own.
+    expect(beacons(calls).map((body) => body.seconds)).toEqual([30, 60]);
+    unmount();
+  });
+
+  it("counters recorded before the session starts leave with the page", async () => {
+    vi.useFakeTimers();
+    const { calls } = mockApi({ "POST /api/study/activity": () => ({ json: { ok: true } }) });
+    const { result, unmount } = renderHook(() => useStudyActivity({ active: false, setId: 2, mode: "flashcards" }));
+
+    act(() => result.current.record({ cards: 2 }));
+    await act(async () => {
+      unmount();
+    });
+    expect(beacons(calls)[0]).toMatchObject({ cards: 2, setId: 2, mode: "flashcards" });
+  });
+
   it("a set id that isn't one sends no set context", async () => {
     vi.useFakeTimers();
     const { calls } = mockApi({ "POST /api/study/activity": () => ({ json: { ok: true } }) });
