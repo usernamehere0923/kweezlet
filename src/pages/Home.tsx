@@ -65,10 +65,10 @@ export function HomePage() {
   const [dueCount, setDueCount] = useState(0);
   const [streak, setStreak] = useState({ streak: 0, studiedToday: false });
   const [drafts, setDrafts] = useState<DraftSummary[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
-  // Distinguished from "no folders": the suggestions wait for the answer so
-  // they do not flash up for folders the user already has.
-  const [foldersReady, setFoldersReady] = useState(false);
+  // null until the first answer, like stats and recent: the suggestions wait
+  // for it so they do not flash up for folders the user already has.
+  const [loadedFolders, setFolders] = useState<Folder[] | null>(null);
+  const folders = loadedFolders ?? [];
   const [stats, setStats] = useState<Stats | null>(null);
   const [recent, setRecent] = useState<RecentStats | null>(null);
   const [editing, setEditing] = useState<Folder | null>(null);
@@ -105,10 +105,7 @@ export function HomePage() {
   const loadFolders = useCallback(
     () =>
       api.folders.$get().then(async (res) => {
-        if (res.ok) {
-          setFolders(await res.json());
-          setFoldersReady(true);
-        }
+        if (res.ok) setFolders(await res.json());
       }),
     [],
   );
@@ -207,7 +204,7 @@ export function HomePage() {
   const unfiltered = !query && !q && folder === "all";
   const resume = recent?.studied[0] ?? null;
   // Category folders with one tap still to make (hidden once the name is taken).
-  const ideas = foldersReady ? folderIdeas(t, folders) : [];
+  const ideas = loadedFolders ? folderIdeas(t, loadedFolders) : [];
   // One list for the phone's dropdown and the wide screen's side list.
   const folderChoices: { id: string; label: string; folder?: Folder }[] = [
     { id: "all", label: t("folders.all") },
