@@ -53,12 +53,21 @@ export function Menu({
     const down = (event: PointerEvent) => {
       if (!box.current?.contains(event.target as Node)) setOpen(false);
     };
-    // Focus going nowhere (relatedTarget null) is not "leaving": Safari and Firefox
-    // on macOS drop focus to body on mousedown, which would close the list before
-    // the click on an item lands. Clicks outside are the pointerdown's job.
+    // Focus going nowhere (relatedTarget null) is ambiguous. Safari and Firefox on
+    // macOS drop it to body on a mousedown inside the list: closing then would
+    // swallow the click on the item. Tab into the browser chrome or switching
+    // apps also sends null, but the window loses focus: that one closes.
+    let check: ReturnType<typeof setTimeout> | undefined;
     const out = (event: FocusEvent) => {
       const to = event.relatedTarget as Node | null;
-      if (to && !box.current?.contains(to)) setOpen(false);
+      if (to) {
+        if (!box.current?.contains(to)) setOpen(false);
+        return;
+      }
+      clearTimeout(check);
+      check = setTimeout(() => {
+        if (!document.hasFocus()) setOpen(false);
+      });
     };
     // Keys on the document, not the box: a mouse open on Safari/Firefox (macOS)
     // leaves focus on body, where a box-level onKeyDown never hears Esc/arrows.
@@ -80,6 +89,7 @@ export function Menu({
     document.addEventListener("focusout", out);
     document.addEventListener("keydown", keys);
     return () => {
+      clearTimeout(check);
       document.removeEventListener("pointerdown", down);
       document.removeEventListener("focusout", out);
       document.removeEventListener("keydown", keys);

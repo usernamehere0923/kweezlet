@@ -75,8 +75,10 @@ describe("Menu", () => {
     );
     const trigger = screen.getByRole("button", { name: "Create a set" });
     await userEvent.click(trigger);
-    // Safari/Firefox on a mousedown inside the list: focus goes to body.
-    trigger.blur();
+    // Safari/Firefox on a mousedown inside the list: focus goes to body, the window keeps it.
+    vi.spyOn(document, "hasFocus").mockReturnValue(true);
+    act(() => trigger.blur());
+    await act(() => new Promise((done) => setTimeout(done, 10)));
     expect(screen.getByRole("menu")).toBeTruthy();
     act(() => trigger.focus());
     act(() => screen.getByRole("button", { name: "Elsewhere" }).focus());
@@ -96,6 +98,15 @@ describe("Menu", () => {
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("menu")).toBeNull();
     expect(document.activeElement).toBe(trigger);
+  });
+
+  test("focus leaving the window (Tab into the browser, app switch) closes it", async () => {
+    renderUi(<Menu label="Create a set" items={picks(vi.fn())} />);
+    const trigger = screen.getByRole("button", { name: "Create a set" });
+    await userEvent.click(trigger);
+    vi.spyOn(document, "hasFocus").mockReturnValue(false);
+    act(() => trigger.blur());
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   });
 
   test("the arrows walk the picks", async () => {
