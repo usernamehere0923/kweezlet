@@ -92,12 +92,7 @@ npm run deploy
 
 `npm run deploy` and `npm run db:migrate:remote` always ship GitHub's `master`, from whatever branch you are on. They fast-forward your local `master` first and build in a temporary folder, so a feature branch and its unsaved changes stay as they are (only a checked-out `master` gets the new commits). Local `master` with commits not on GitHub: they stop.
 
-If the update has new files in `migrations/`, apply them first. There is no staging: this changes your real cards.
-
-```sh
-npm run db:migrate:remote
-npm run deploy
-```
+New files in `migrations/` are applied by `npm run deploy` itself, after the build and before the upload. There is no staging: this changes your real cards. A failed migration stops the deploy. `npm run db:migrate:remote` applies them on their own.
 
 Something went wrong in the live database: fix it with a new migration. Last resort: D1 Time Travel restores the database up to 7 days back (Cloudflare dashboard → D1 → kweezlet).
 
