@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { PublicUser } from "../../worker/types";
 import { useT } from "../i18n";
 import { api, UNAUTHORIZED_EVENT } from "./api";
+import { setFlushOwner } from "./studyTime";
 import { useTheme } from "./theme";
 
 type Me = PublicUser;
@@ -28,6 +29,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signedIn = useCallback(
     (me: Me) => {
+      // Right away, not in an effect: a study page mounting in this same
+      // render must already see whose flushes it may send.
+      setFlushOwner(me.username);
       setSession({ status: "loggedIn", user: me });
       setLocale(me.locale);
       setTheme(me.theme);
@@ -45,12 +49,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await api.logout.$post();
+    setFlushOwner(null);
     setSession(ANONYMOUS);
   }, []);
 
   useEffect(() => void refresh(), [refresh]);
   useEffect(() => {
-    const onUnauthorized = () => setSession(ANONYMOUS);
+    const onUnauthorized = () => {
+      setFlushOwner(null);
+      setSession(ANONYMOUS);
+    };
     window.addEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, onUnauthorized);
   }, []);

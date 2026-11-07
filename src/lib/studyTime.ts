@@ -42,7 +42,19 @@ type Context = { setId?: number; mode: StudyMode };
  * retry after midnight or after switching sets books it where it happened.
  * The id lets the worker count a retry once when only the answer got lost.
  */
-type Flush = { id: string; day: string; context: Context; counts: Counts; tried: boolean; sending: boolean };
+type Flush = {
+  id: string;
+  /** The user it was counted for: only sent while that user is logged in. */
+  owner: Owner;
+  day: string;
+  context: Context;
+  counts: Counts;
+  tried: boolean;
+  sending: boolean;
+};
+
+/** A username (the UI never sees ids); null = logged out; undefined = no session known (tests without one). */
+type Owner = string | null | undefined;
 
 /**
  * Flushes not yet confirmed. Module-wide, not per hook: a flush that fails
@@ -50,10 +62,22 @@ type Flush = { id: string; day: string; context: Context; counts: Counts; tried:
  * vanishing with the hook's refs.
  */
 const queue: Flush[] = [];
+const MAX_QUEUE = 240; // two hours of 30-second flushes
+
+/**
+ * Who is logged in, set by the session (src/lib/session.tsx). Logging out does
+ * not reload the page, so the queue outlives the user: without this, Anna's
+ * waiting flushes would go out with Ben's cookie after he logs in on her iPad.
+ */
+let currentOwner: Owner;
+export function setFlushOwner(owner: string | null) {
+  currentOwner = owner;
+}
 
 /** Tests only: start every test without leftovers of the last one. */
 export function forgetQueuedFlushes() {
   queue.length = 0;
+  currentOwner = undefined;
 }
 
 /** Random id; getRandomValues also works on http://<mac-ip> (randomUUID needs https). */
@@ -62,13 +86,14 @@ function flushId(): string {
 }
 
 /** Turns counts into a flush in the queue: into the last one if it was never tried and has room. */
-function seal(counts: Counts, context: Context) {
+function seal(counts: Counts, context: Context, owner: Owner) {
   if (isEmpty(counts)) return;
   const day = localDay();
   const last = queue.at(-1);
   if (
     last &&
     !last.tried &&
+    last.owner === owner &&
     last.day === day &&
     last.context.setId === context.setId &&
     last.context.mode === context.mode &&
@@ -77,7 +102,10 @@ function seal(counts: Counts, context: Context) {
     for (const key of COUNTERS) last.counts[key] += counts[key];
     return;
   }
-  queue.push({ id: flushId(), day, context, counts: { ...counts }, tried: false, sending: false });
+  queue.push({ id: flushId(), owner, day, context, counts: { ...counts }, tried: false, sending: false });
+  // Hours offline, or a logged-out user's flushes that never get an owner
+  // back: bounded, the oldest go first.
+  if (queue.length > MAX_QUEUE) queue.splice(0, queue.length - MAX_QUEUE);
 }
 
 function send(flush: Flush, keepalive: boolean) {
@@ -112,12 +140,14 @@ function send(flush: Flush, keepalive: boolean) {
  * last chance.
  */
 function drain(keepalive: boolean) {
+  // Someone else's flushes wait for their owner to log in again.
+  const mine = queue.filter((flush) => flush.owner === currentOwner && currentOwner !== null);
   if (keepalive) {
-    for (const flush of queue) if (!flush.sending) send(flush, true);
+    for (const flush of mine) if (!flush.sending) send(flush, true);
     return;
   }
-  if (queue.some((flush) => flush.sending)) return;
-  if (queue[0]) send(queue[0], false);
+  if (mine.some((flush) => flush.sending)) return;
+  if (mine[0]) send(mine[0], false);
 }
 
 export function useStudyActivity({
@@ -136,6 +166,9 @@ export function useStudyActivity({
   const lastFlushAt = useRef(0);
   // The session context, kept current: a page can switch to another set.
   const context = useRef({ setId, mode });
+  // The user this page was opened as. On a 401 the session drops to logged
+  // out before the page unmounts; its last flush still belongs to this user.
+  const owner = useRef(currentOwner);
 
   const record = useCallback((delta: StudyDelta) => {
     lastInputAt.current = Date.now();
@@ -147,7 +180,7 @@ export function useStudyActivity({
   // What was counted becomes a flush; then whatever waits goes out, earlier
   // failures included (even when nothing new was counted).
   const flush = useCallback((keepalive = false) => {
-    seal(pending.current, context.current);
+    seal(pending.current, context.current, owner.current);
     pending.current = emptyCounts();
     drain(keepalive);
   }, []);
@@ -156,7 +189,7 @@ export function useStudyActivity({
     // Switching sets: what was counted so far belongs to the old one.
     const was = context.current;
     if (was.setId === setId && was.mode === mode) return;
-    seal(pending.current, was);
+    seal(pending.current, was, owner.current);
     pending.current = emptyCounts();
     context.current = { setId, mode };
   }, [setId, mode]);

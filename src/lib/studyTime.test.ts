@@ -3,7 +3,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { mockApi } from "../test/server";
-import { useStudyActivity } from "./studyTime";
+import { setFlushOwner, useStudyActivity } from "./studyTime";
 
 function beacons(calls: { path: string; body: unknown }[]) {
   return calls
@@ -117,6 +117,45 @@ describe("useStudyActivity", () => {
     expect(sent[1].id).toBe(sent[0].id);
     expect(sent[2].id).not.toBe(sent[0].id);
     unmount();
+  });
+
+  it("a waiting flush goes out only for the user it was counted for", async () => {
+    vi.useFakeTimers();
+    let up = false;
+    const { calls } = mockApi({
+      "POST /api/study/activity": () => {
+        if (!up) {
+          up = true;
+          return { status: 500, json: {} };
+        }
+        return { json: { ok: true } };
+      },
+    });
+    // Anna studies on a shared iPad; her last flush fails.
+    setFlushOwner("anna");
+    const anna = renderHook(() => useStudyActivity({ active: true, setId: 3, mode: "match" }));
+    act(() => anna.result.current.record({ cards: 6 }));
+    await act(async () => {
+      anna.unmount();
+    });
+    expect(beacons(calls)).toHaveLength(1);
+
+    // She logs out (no reload), Ben logs in and studies: her flush stays put.
+    setFlushOwner(null);
+    setFlushOwner("ben");
+    const ben = renderHook(() => useStudyActivity({ active: true, mode: "learn" }));
+    await act(async () => {
+      vi.advanceTimersByTime(31_000);
+    });
+    expect(beacons(calls).filter((body) => body.cards === 6)).toHaveLength(1);
+    ben.unmount();
+
+    // Anna back: it goes out for her.
+    setFlushOwner("anna");
+    const again = renderHook(() => useStudyActivity({ active: false, mode: "learn" }));
+    await act(async () => {});
+    expect(beacons(calls).filter((body) => body.cards === 6)).toHaveLength(2);
+    again.unmount();
   });
 
   it("a refused flush (4xx) is dropped, not resent forever", async () => {
