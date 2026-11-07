@@ -2,7 +2,7 @@
 // reports for the statistics — the day's counters, the study day behind the
 // streak, and which set was studied last (quick resume).
 import { env } from "cloudflare:workers";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { exportUserData } from "../worker/export";
 import { addSet } from "./fixtures";
 import { addUser, api, signedIn } from "./helpers";
@@ -170,10 +170,12 @@ describe("POST /api/study/activity", () => {
     await env.DB.prepare("UPDATE activity_flushes SET created_at = unixepoch() - 8 * 86400 WHERE user_id = ?")
       .bind(anna)
       .run();
-    // (One flush in 16 prunes: those whose random hex id starts with "0".)
-    await api("/api/study/activity", { method: "POST", cookie: annaCookie, json: { ...flush, id: "0next-id-1" } });
+    // About one flush in 16 prunes, by the server's dice: this one does.
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    await api("/api/study/activity", { method: "POST", cookie: annaCookie, json: { ...flush, id: "next-id-01" } });
+    vi.restoreAllMocks();
     const ids = await env.DB.prepare("SELECT id FROM activity_flushes WHERE user_id = ?").bind(anna).all();
-    expect(ids.results).toEqual([{ id: "0next-id-1" }]);
+    expect(ids.results).toEqual([{ id: "next-id-01" }]);
   });
 
   it("flush ids stay out of the export", async () => {

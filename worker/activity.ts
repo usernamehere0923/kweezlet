@@ -38,6 +38,7 @@ const activityBody = z.object({
 
 /** How long a flush id is remembered: retries come within minutes, at most days. */
 const FLUSH_ID_DAYS = 7;
+const PRUNE_CHANCE = 1 / 16;
 
 export const activityRoutes = new Hono<AppEnv>().post("/study/activity", validate("json", activityBody), async (c) => {
   const user = c.get("user");
@@ -94,9 +95,9 @@ export const activityRoutes = new Hono<AppEnv>().post("/study/activity", validat
     statements.push(
       db.prepare("INSERT INTO activity_flushes (user_id, id) VALUES (?, ?) ON CONFLICT DO NOTHING").bind(user.id, id),
     );
-    // Old ids go now and then, not on every flush: ids are random hex, so
-    // about one flush in 16 carries the prune.
-    if (id.startsWith("0")) {
+    // Old ids go now and then, not on every flush: about one in 16 carries
+    // the prune. Decided here, not by the client's id, which could be anything.
+    if (Math.random() < PRUNE_CHANCE) {
       statements.push(
         db
           .prepare("DELETE FROM activity_flushes WHERE user_id = ? AND created_at < unixepoch() - ?")
