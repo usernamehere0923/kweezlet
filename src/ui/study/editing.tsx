@@ -8,7 +8,6 @@ import { SegmentedControl } from "../SegmentedControl";
 import { SpeakButton } from "../speech";
 import { surface } from "../surfaces";
 import { useAutoGrow } from "../useAutoGrow";
-import { MEDIA, useMediaQuery } from "../useMediaQuery";
 import { ClozeText } from "./cloze";
 import { TermImage, TermImagePicker } from "./images";
 
@@ -237,6 +236,12 @@ export function TermProgressDot({ progress }: { progress: TermProgress }) {
   );
 }
 
+// TermList `columns` from lg: the list box dissolves into a two-column grid and
+// each row becomes its own card. `wideCard` is `surface` behind lg: (keep in step).
+const wideList =
+  "lg:grid lg:grid-cols-2 lg:gap-3 lg:divide-y-0 lg:overflow-visible lg:rounded-none lg:border-0 lg:bg-transparent";
+const wideCard = "lg:rounded-ui-xl lg:border lg:border-line-soft lg:bg-surface";
+
 /** The terms of a set, read-only. `progress` adds a status dot before each term;
  * `image` shows the term's picture as a thumbnail; `speak` adds a speaker per
  * term and definition (the set's languages). */
@@ -250,14 +255,13 @@ export function TermList({
   /** Wide screens: one row-card per term, two per column. The phone keeps the joined list. */
   columns?: boolean;
 }) {
-  const wide = useMediaQuery(MEDIA.lg);
-  const grid = Boolean(columns) && wide;
+  // CSS only, no JS width check: the joined list from the phone up, row-cards from lg.
   return (
-    <ul className={grid ? "grid grid-cols-2 gap-3" : cx(surface, "divide-y divide-line-soft overflow-hidden")}>
+    <ul className={cx(surface, "divide-y divide-line-soft overflow-hidden", columns && wideList)}>
       {terms.map((item, i) =>
         item.kind === "cloze" ? (
           // A gap sentence holds its answer: one line, the hidden part marked.
-          <li key={i} className={cx("flex items-center gap-2.5 px-5 py-4 text-ink", grid && surface)}>
+          <li key={i} className={cx("flex items-center gap-2.5 px-5 py-4 text-ink", columns && wideCard)}>
             {item.image && <TermImage src={item.image} alt="" variant="thumb" />}
             {item.progress && <TermProgressDot progress={item.progress} />}
             <span className="flex-1">
@@ -267,7 +271,13 @@ export function TermList({
           </li>
         ) : (
           // A row-card stacks the pair; the joined list splits it term | definition.
-          <li key={i} className={cx("grid gap-1 px-5 py-4", grid ? surface : "md:grid-cols-[1fr_2fr] md:gap-8")}>
+          <li
+            key={i}
+            className={cx(
+              "grid gap-1 px-5 py-4 md:grid-cols-[1fr_2fr] md:gap-8",
+              columns && cx(wideCard, "lg:grid-cols-1 lg:gap-1"),
+            )}
+          >
             <span className="flex items-center gap-2.5 font-medium text-ink">
               {item.image && <TermImage src={item.image} alt="" variant="thumb" />}
               {item.progress && <TermProgressDot progress={item.progress} />}

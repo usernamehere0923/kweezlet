@@ -4,7 +4,7 @@ import { createRef, useState } from "react";
 import { describe, expect, test, vi } from "vitest";
 import { renderUi } from "../../test/render";
 import { mockSpeech } from "../../test/speech";
-import { ClozeText, MEDIA, TermEditorRow, TermList, type TermEditorHandle } from "..";
+import { ClozeText, TermEditorRow, TermList, type TermEditorHandle } from "..";
 
 test("TermEditorRow: typing, Enter moves on, delete, focus handle", async () => {
   const onNext = vi.fn();
@@ -59,21 +59,17 @@ describe("TermList", () => {
     ]);
   });
 
-  test("with columns, wide screens get one row-card per term", () => {
-    vi.stubGlobal("matchMedia", (media: string) => ({
-      media,
-      matches: media === MEDIA.lg,
-      addEventListener: () => {},
-      removeEventListener: () => {},
-    }));
+  test("with columns: the joined list, row-cards from lg (CSS only)", () => {
     const { container } = renderUi(<TermList columns terms={[{ term: "el gato", definition: "the cat" }]} />);
-    expect(container.querySelector("ul")!.className).toContain("grid");
-    expect(container.querySelectorAll("li")[0].className).toContain("rounded-ui-xl");
+    const list = container.querySelector("ul")!.className.split(" ");
+    expect(list).toEqual(expect.arrayContaining(["divide-y", "lg:grid", "lg:grid-cols-2", "lg:divide-y-0"]));
+    expect(container.querySelector("li")!.className.split(" ")).toContain("lg:rounded-ui-xl");
   });
 
-  test("with columns, the phone keeps the joined list", () => {
-    const { container } = renderUi(<TermList columns terms={[{ term: "el gato", definition: "the cat" }]} />);
-    expect(container.querySelector("ul")!.className).toContain("divide-y");
+  test("without columns the list stays joined at every width", () => {
+    const { container } = renderUi(<TermList terms={[{ term: "el gato", definition: "the cat" }]} />);
+    expect(container.querySelector("ul")!.className).not.toContain("lg:");
+    expect(container.querySelector("li")!.className).not.toContain("lg:");
   });
 });
 
