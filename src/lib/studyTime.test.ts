@@ -3,6 +3,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { mockApi } from "../test/server";
+import { SERVER_ERROR_EVENT } from "./api";
 import { setFlushOwner, useStudyActivity } from "./studyTime";
 
 function beacons(calls: { path: string; body: unknown }[]) {
@@ -276,6 +277,22 @@ describe("useStudyActivity", () => {
     // All three went out in the same tick; once one got through, the failed
     // one got another go right away.
     expect(beacons(calls).map((body) => body.cards)).toEqual([1, 2, 3, 2]);
+    unmount();
+  });
+
+  it("failing flushes raise no error toast: they are background work and retry on their own", async () => {
+    vi.useFakeTimers();
+    const toasts = vi.fn();
+    window.addEventListener(SERVER_ERROR_EVENT, toasts);
+    mockApi({ "POST /api/study/activity": () => ({ status: 500, json: {} }) });
+    const { result, unmount } = renderHook(() => useStudyActivity({ active: true, mode: "flashcards" }));
+    act(() => result.current.record({ cards: 1 }));
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    // Offline as well (fetch throws).
+    vi.stubGlobal("fetch", () => Promise.reject(new TypeError("offline")));
+    await act(() => vi.advanceTimersByTimeAsync(30_000));
+    expect(toasts).not.toHaveBeenCalled();
+    window.removeEventListener(SERVER_ERROR_EVENT, toasts);
     unmount();
   });
 

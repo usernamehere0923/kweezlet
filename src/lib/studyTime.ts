@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import type { StudyMode } from "../../worker/activity";
-import { api } from "./api";
+import { api, BACKGROUND_HEADER } from "./api";
 import { localDay } from "./studyDay";
 
 /**
@@ -143,7 +143,7 @@ function send(flush: Flush, keepalive: boolean) {
   const abort = new AbortController();
   const timeout = setTimeout(() => abort.abort(), SEND_TIMEOUT_MS);
   const init: RequestInit = { signal: abort.signal, ...(keepalive ? { keepalive } : {}) };
-  void api.study.activity.$post({ json }, { init }).then((res) => {
+  void api.study.activity.$post({ json }, { init, headers: { [BACKGROUND_HEADER]: "1" } }).then((res) => {
     clearTimeout(timeout);
     flush.sending = false;
     // No connection (0) or a server error: the flush stays for the next try,
