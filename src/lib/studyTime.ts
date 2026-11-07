@@ -32,6 +32,91 @@ const COUNTERS = ["seconds", "cards", "correct", "wrong", "learned"] as const;
 type Counts = Record<(typeof COUNTERS)[number], number>;
 const emptyCounts = (): Counts => ({ seconds: 0, cards: 0, correct: 0, wrong: 0, learned: 0 });
 const isEmpty = (counts: Counts) => COUNTERS.every((key) => counts[key] === 0);
+/** worker/activity.ts rejects a body above these (400): never build one. */
+const CAPS: Counts = { seconds: 3600, cards: 10_000, correct: 10_000, wrong: 10_000, learned: 10_000 };
+
+type Context = { setId?: number; mode: StudyMode };
+
+/**
+ * One flush, fixed when it is made: its day, set and mode stay with it, so a
+ * retry after midnight or after switching sets books it where it happened.
+ * The id lets the worker count a retry once when only the answer got lost.
+ */
+type Flush = { id: string; day: string; context: Context; counts: Counts; tried: boolean; sending: boolean };
+
+/**
+ * Flushes not yet confirmed. Module-wide, not per hook: a flush that fails
+ * after its page is gone waits here for the next study page instead of
+ * vanishing with the hook's refs.
+ */
+const queue: Flush[] = [];
+
+/** Tests only: start every test without leftovers of the last one. */
+export function forgetQueuedFlushes() {
+  queue.length = 0;
+}
+
+/** Random id; getRandomValues also works on http://<mac-ip> (randomUUID needs https). */
+function flushId(): string {
+  return [...crypto.getRandomValues(new Uint8Array(16))].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/** Turns counts into a flush in the queue: into the last one if it was never tried and has room. */
+function seal(counts: Counts, context: Context) {
+  if (isEmpty(counts)) return;
+  const day = localDay();
+  const last = queue.at(-1);
+  if (
+    last &&
+    !last.tried &&
+    last.day === day &&
+    last.context.setId === context.setId &&
+    last.context.mode === context.mode &&
+    COUNTERS.every((key) => last.counts[key] + counts[key] <= CAPS[key])
+  ) {
+    for (const key of COUNTERS) last.counts[key] += counts[key];
+    return;
+  }
+  queue.push({ id: flushId(), day, context, counts: { ...counts }, tried: false, sending: false });
+}
+
+function send(flush: Flush, keepalive: boolean) {
+  flush.tried = true;
+  flush.sending = true;
+  const { setId, mode } = flush.context;
+  const json = {
+    day: flush.day,
+    ...flush.counts,
+    ...(setId !== undefined && Number.isInteger(setId) ? { setId, mode } : {}),
+    id: flush.id,
+  };
+  // keepalive lets a flush outlive the page it came from.
+  void api.study.activity.$post({ json }, keepalive ? { init: { keepalive: true } } : undefined).then((res) => {
+    flush.sending = false;
+    // No connection (0) or a server error: the flush stays for the next try,
+    // also when it went out as the page was hiding (the page often comes back).
+    // number, not the route's typed 200 | 400: apiFetch answers 0 offline.
+    const status: number = res.status;
+    if (status === 0 || status >= 500) return;
+    // Counted, or refused for good (4xx): resending can't change a refusal.
+    queue.splice(queue.indexOf(flush), 1);
+    if (res.ok && !keepalive) drain(false);
+  });
+}
+
+/**
+ * Sends what waits. Normally one flush at a time, oldest first, the next one
+ * after an answer. Leaving the page (keepalive): everything at once, it is the
+ * last chance.
+ */
+function drain(keepalive: boolean) {
+  if (keepalive) {
+    for (const flush of queue) if (!flush.sending) send(flush, true);
+    return;
+  }
+  if (queue.some((flush) => flush.sending)) return;
+  if (queue[0]) send(queue[0], false);
+}
 
 export function useStudyActivity({
   active,
@@ -57,31 +142,26 @@ export function useStudyActivity({
     }
   }, []);
 
+  // What was counted becomes a flush; then whatever waits goes out, earlier
+  // failures included (even when nothing new was counted).
   const flush = useCallback((keepalive = false) => {
-    const counts = { ...pending.current };
-    if (isEmpty(counts)) return;
+    seal(pending.current, context.current);
     pending.current = emptyCounts();
-    const { setId, mode } = context.current;
-    const json = {
-      day: localDay(),
-      ...counts,
-      ...(setId !== undefined && Number.isInteger(setId) ? { setId, mode } : {}),
-    };
-    // keepalive lets the last flush outlive the page it came from.
-    void api.study.activity.$post({ json }, keepalive ? { init: { keepalive: true } } : undefined).then((res) => {
-      // A flush that failed counted nothing: put it back for the next one.
-      // A keepalive flush has no next one (the page is already gone).
-      if (!res.ok && !keepalive) {
-        for (const key of COUNTERS) pending.current[key] += counts[key];
-      }
-    });
+    drain(keepalive);
   }, []);
 
   useEffect(() => {
+    // Switching sets: what was counted so far belongs to the old one.
+    const was = context.current;
+    if (was.setId === setId && was.mode === mode) return;
+    seal(pending.current, was);
+    pending.current = emptyCounts();
     context.current = { setId, mode };
-  });
+  }, [setId, mode]);
 
   useEffect(() => {
+    // Flushes an earlier page could not get out go now.
+    drain(false);
     // Whatever was counted leaves with the page, even before the session
     // becomes active: record() can run a moment before that happens.
     const leaving = () => flush(true);
@@ -124,6 +204,10 @@ export function useStudyActivity({
       }
       document.removeEventListener("visibilitychange", hidden);
       clearInterval(timer);
+      // The session ended (a round over, "play again" resets it): its counts
+      // go now, not 30 seconds into the next round or never (an iOS app
+      // closed from the switcher often fires no pagehide).
+      flush(true);
     };
   }, [active, flush]);
 

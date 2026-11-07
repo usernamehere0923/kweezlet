@@ -36,6 +36,7 @@ describe("useStudyActivity", () => {
         learned: 1,
         setId: 7,
         mode: "flashcards",
+        id: expect.stringMatching(/^[0-9a-f]{32}$/),
       },
     ]);
     unmount();
@@ -109,8 +110,169 @@ describe("useStudyActivity", () => {
       vi.advanceTimersByTime(31_000);
     });
 
-    // The second flush carries the lost half along with its own.
-    expect(beacons(calls).map((body) => body.seconds)).toEqual([30, 60]);
+    // The failed flush goes again as it was (same id: the worker counts it
+    // once even if only its answer got lost), then the new one.
+    const sent = beacons(calls);
+    expect(sent.map((body) => body.seconds)).toEqual([30, 30, 30]);
+    expect(sent[1].id).toBe(sent[0].id);
+    expect(sent[2].id).not.toBe(sent[0].id);
+    unmount();
+  });
+
+  it("a refused flush (4xx) is dropped, not resent forever", async () => {
+    vi.useFakeTimers();
+    const { calls } = mockApi({ "POST /api/study/activity": () => ({ status: 400, json: {} }) });
+    const { unmount } = renderHook(() => useStudyActivity({ active: true, mode: "learn" }));
+
+    await act(async () => {
+      vi.advanceTimersByTime(31_000);
+    });
+    await act(async () => {
+      vi.advanceTimersByTime(31_000);
+    });
+    // Two flushes, each sent once.
+    const sent = beacons(calls);
+    expect(sent).toHaveLength(2);
+    expect(sent[1].id).not.toBe(sent[0].id);
+    unmount();
+  });
+
+  it("a retry keeps the day and the set it was made for", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 9, 11, 23, 59, 20));
+    let up = false;
+    const { calls } = mockApi({
+      "POST /api/study/activity": () => {
+        if (!up) {
+          up = true;
+          return { status: 500, json: {} };
+        }
+        return { json: { ok: true } };
+      },
+    });
+    const { rerender, unmount } = renderHook(
+      (props: { setId: number }) => useStudyActivity({ active: true, setId: props.setId, mode: "flashcards" }),
+      { initialProps: { setId: 1 } },
+    );
+
+    // 23:59:51, set 1: fails. Then the page switches to set 2 and midnight passes.
+    await act(async () => {
+      vi.advanceTimersByTime(31_000);
+    });
+    rerender({ setId: 2 });
+    await act(async () => {
+      vi.advanceTimersByTime(31_000);
+    });
+
+    const [failed, retry, next] = beacons(calls);
+    expect(failed).toMatchObject({ day: "2026-10-11", setId: 1 });
+    expect(retry).toEqual(failed);
+    expect(next).toMatchObject({ day: "2026-10-12", setId: 2 });
+    unmount();
+  });
+
+  it("a flush that fails while the tab hides is retried when it comes back", async () => {
+    vi.useFakeTimers();
+    let up = false;
+    const { calls } = mockApi({
+      "POST /api/study/activity": () => {
+        if (!up) {
+          up = true;
+          return { status: 500, json: {} };
+        }
+        return { json: { ok: true } };
+      },
+    });
+    const { result, unmount } = renderHook(() => useStudyActivity({ active: true, mode: "flashcards" }));
+
+    act(() => result.current.record({ cards: 4 }));
+    // iPhone: app switch, no signal at that moment.
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    await act(async () => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    await act(async () => {
+      vi.advanceTimersByTime(31_000);
+    });
+
+    const sent = beacons(calls);
+    expect(sent[0]).toMatchObject({ cards: 4 });
+    expect(sent[1]).toEqual(sent[0]);
+    unmount();
+  });
+
+  it("a flush that fails as the page goes is sent by the next study page", async () => {
+    vi.useFakeTimers();
+    let up = false;
+    const { calls } = mockApi({
+      "POST /api/study/activity": () => {
+        if (!up) {
+          up = true;
+          return { status: 500, json: {} };
+        }
+        return { json: { ok: true } };
+      },
+    });
+    const first = renderHook(() => useStudyActivity({ active: true, setId: 3, mode: "match" }));
+    act(() => first.result.current.record({ cards: 6 }));
+    await act(async () => {
+      first.unmount();
+    });
+    const second = renderHook(() => useStudyActivity({ active: false, setId: 4, mode: "learn" }));
+    await act(async () => {});
+
+    const sent = beacons(calls);
+    expect(sent).toHaveLength(2);
+    expect(sent[1]).toEqual(sent[0]);
+    expect(sent[1]).toMatchObject({ cards: 6, setId: 3, mode: "match" });
+    second.unmount();
+  });
+
+  it("a session that ends (round over) sends its counts at once", async () => {
+    vi.useFakeTimers();
+    const { calls } = mockApi({ "POST /api/study/activity": () => ({ json: { ok: true } }) });
+    const { result, rerender, unmount } = renderHook(
+      (props: { active: boolean }) => useStudyActivity({ active: props.active, setId: 3, mode: "match" }),
+      { initialProps: { active: true } },
+    );
+
+    act(() => result.current.record({ cards: 6 }));
+    // "Play again": the next round has not started yet.
+    await act(async () => {
+      rerender({ active: false });
+    });
+    expect(beacons(calls)).toEqual([expect.objectContaining({ cards: 6, setId: 3, mode: "match" })]);
+    unmount();
+  });
+
+  it("never builds a flush above the worker's limits", async () => {
+    vi.useFakeTimers();
+    let online = false;
+    const { calls } = mockApi({
+      "POST /api/study/activity": () => (online ? { json: { ok: true } } : { status: 500, json: {} }),
+    });
+    const { result, unmount } = renderHook(() => useStudyActivity({ active: true, mode: "flashcards" }));
+
+    // Offline: the first flush fails; the later ones wait behind it and pile
+    // up into one, but only up to the worker's limit.
+    for (let i = 0; i < 4; i++) {
+      act(() => result.current.record({ cards: 4000 }));
+      await act(async () => {
+        vi.advanceTimersByTime(30_000);
+      });
+    }
+    online = true;
+    await act(async () => {
+      vi.advanceTimersByTime(30_000);
+    });
+
+    const sent = beacons(calls);
+    expect(sent.every((body) => (body.cards as number) <= 10_000)).toBe(true);
+    // Every flush counted once: all 16'000 cards arrive, none twice.
+    const counted = new Map(sent.map((body) => [body.id, body.cards as number]));
+    expect([...counted.values()].reduce((sum, cards) => sum + cards, 0)).toBe(16_000);
+    expect(counted.size).toBeGreaterThan(2);
     unmount();
   });
 
