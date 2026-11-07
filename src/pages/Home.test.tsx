@@ -2,6 +2,7 @@ import { act, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, test, vi } from "vitest";
 import { SPANISH, SWISS } from "../test/fixtures";
+import { MEDIA } from "../ui";
 import { ME, renderApp } from "../test/render";
 import { FakeSocket, mockApi } from "../test/server";
 
@@ -63,7 +64,7 @@ describe("home", () => {
     // The phone-first fallback (no matchMedia) keeps the dropdown; here the screen is wide.
     vi.stubGlobal("matchMedia", (media: string) => ({
       media,
-      matches: media === "(min-width: 768px)",
+      matches: media === MEDIA.md,
       addEventListener: () => {},
       removeEventListener: () => {},
     }));
@@ -82,7 +83,7 @@ describe("home", () => {
     renderApp("/");
     expect(await screen.findByText("Spanish animals")).toBeTruthy();
     expect(screen.queryByRole("combobox")).toBeNull();
-    await userEvent.click(screen.getByRole("button", { name: "Languages" }));
+    await userEvent.click(screen.getByRole("radio", { name: "Languages" }));
     await waitFor(() => expect(calls.filter((c) => c.path === "/api/sets").at(-1)?.query.folder).toBe("3"));
     expect(await screen.findByText("Spanish animals")).toBeTruthy();
     expect(screen.queryByText("Swiss history")).toBeNull();

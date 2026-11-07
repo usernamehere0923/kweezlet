@@ -14,7 +14,13 @@ export function mockApi(routes: Record<string, Handler>) {
     const body: unknown = text ? JSON.parse(text) : undefined;
     const query = Object.fromEntries(url.searchParams);
     calls.push({ method: req.method, path: url.pathname, query, body });
-    const res = (await routes[`${req.method} ${url.pathname}`]?.(body, query)) ?? { status: 404 };
+    // Like a real fetch: an aborted signal (a timeout) ends a request that hangs.
+    const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+    const aborted = new Promise<never>((_, reject) => {
+      signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+    });
+    const answer = Promise.resolve(routes[`${req.method} ${url.pathname}`]?.(body, query));
+    const res = (await Promise.race([answer, aborted])) ?? { status: 404 };
     return new Response(res.json === undefined ? null : JSON.stringify(res.json), {
       status: res.status ?? 200,
       headers: { "Content-Type": "application/json" },

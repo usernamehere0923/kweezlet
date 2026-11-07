@@ -1,5 +1,6 @@
 import { cleanup } from "@testing-library/react";
 import { afterEach, beforeEach, vi } from "vitest";
+import { forgetQueuedFlushes } from "../lib/studyTime";
 import { FakeSocket } from "./server";
 
 // Node 25+ ships its own global localStorage (undefined without
@@ -36,6 +37,8 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  // Study flushes wait module-wide for a retry (src/lib/studyTime.ts): none may leak into the next test.
+  forgetQueuedFlushes();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.useRealTimers();

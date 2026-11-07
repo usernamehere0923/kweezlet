@@ -2,7 +2,7 @@
 // reports for the statistics — the day's counters, the study day behind the
 // streak, and which set was studied last (quick resume).
 import { env } from "cloudflare:workers";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { exportUserData } from "../worker/export";
 import { addSet } from "./fixtures";
 import { addUser, api, signedIn } from "./helpers";
@@ -126,5 +126,65 @@ describe("POST /api/study/activity", () => {
     const data = await exportUserData(env.DB, anna);
     expect(data.day_stats).toEqual([expect.objectContaining({ day: "2026-10-11", cards: 5 })]);
     expect(data.set_activity).toEqual([expect.objectContaining({ set_id: setId, last_mode: "learn" })]);
+  });
+
+  it("a flush sent again with the same id counts once", async () => {
+    const { id: anna, cookie } = await signedIn("anna");
+    const flush = { day: "2026-10-11", seconds: 30, cards: 4, id: "flush-0001" };
+
+    // The answer of the first got lost: the client sends the same flush again.
+    expect((await api("/api/study/activity", { method: "POST", cookie, json: flush })).status).toBe(200);
+    expect((await api("/api/study/activity", { method: "POST", cookie, json: flush })).status).toBe(200);
+    expect(await dayStats(anna, "2026-10-11")).toMatchObject({ cards: 4, seconds: 30 });
+
+    // A new id is a new flush.
+    await api("/api/study/activity", { method: "POST", cookie, json: { ...flush, id: "flush-0002" } });
+    expect(await dayStats(anna, "2026-10-11")).toMatchObject({ cards: 8, seconds: 60 });
+  });
+
+  it("a retry moves neither the streak day nor the recently used set", async () => {
+    const { id: anna, cookie } = await signedIn("anna");
+    const { id: setId } = await addSet(anna, "Spanish");
+    const flush = { day: "2026-10-11", cards: 2, setId, mode: "learn" as const, id: "flush-0003" };
+    await api("/api/study/activity", { method: "POST", cookie, json: flush });
+    await env.DB.prepare("DELETE FROM study_days WHERE user_id = ?").bind(anna).run();
+    await env.DB.prepare("UPDATE set_activity SET last_mode = 'test' WHERE user_id = ?").bind(anna).run();
+
+    await api("/api/study/activity", { method: "POST", cookie, json: flush });
+    const days = await env.DB.prepare("SELECT COUNT(*) AS n FROM study_days WHERE user_id = ?").bind(anna).first();
+    expect(days).toEqual({ n: 0 });
+    const last = await env.DB.prepare("SELECT last_mode FROM set_activity WHERE user_id = ?").bind(anna).first();
+    expect(last).toEqual({ last_mode: "test" });
+  });
+
+  it("flush ids are per user, and old ones are forgotten", async () => {
+    const { id: anna, cookie: annaCookie } = await signedIn("anna");
+    const { id: ben, cookie: benCookie } = await signedIn("ben");
+    const flush = { day: "2026-10-11", cards: 1, id: "same-id-01" };
+    await api("/api/study/activity", { method: "POST", cookie: annaCookie, json: flush });
+    await api("/api/study/activity", { method: "POST", cookie: benCookie, json: flush });
+    expect(await dayStats(anna, "2026-10-11")).toMatchObject({ cards: 1 });
+    expect(await dayStats(ben, "2026-10-11")).toMatchObject({ cards: 1 });
+
+    // A week-old id goes with Anna's next flush.
+    await env.DB.prepare("UPDATE activity_flushes SET created_at = unixepoch() - 8 * 86400 WHERE user_id = ?")
+      .bind(anna)
+      .run();
+    // About one flush in 16 prunes, by the server's dice: this one does.
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    await api("/api/study/activity", { method: "POST", cookie: annaCookie, json: { ...flush, id: "next-id-01" } });
+    vi.restoreAllMocks();
+    const ids = await env.DB.prepare("SELECT id FROM activity_flushes WHERE user_id = ?").bind(anna).all();
+    expect(ids.results).toEqual([{ id: "next-id-01" }]);
+  });
+
+  it("flush ids stay out of the export", async () => {
+    const { id: anna, cookie } = await signedIn("anna");
+    await api("/api/study/activity", {
+      method: "POST",
+      cookie,
+      json: { day: "2026-10-11", cards: 1, id: "flush-0001" },
+    });
+    expect(await exportUserData(env.DB, anna)).not.toHaveProperty("activity_flushes");
   });
 });
