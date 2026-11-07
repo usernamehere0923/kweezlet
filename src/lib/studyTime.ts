@@ -119,7 +119,12 @@ function seal(counts: Counts, context: Context, owner: Owner) {
   queue.push({ id: flushId(), owner, day, context, counts: { ...counts }, tried: false, sending: false });
   // Hours offline, or a logged-out user's flushes that never get an owner
   // back: bounded, the oldest go first.
-  if (queue.length > MAX_QUEUE) queue.splice(0, queue.length - MAX_QUEUE);
+  // One on its way stays: dropped here, a failed answer would lose it unseen.
+  while (queue.length > MAX_QUEUE) {
+    const oldest = queue.findIndex((flush) => !flush.sending);
+    if (oldest < 0) break;
+    queue.splice(oldest, 1);
+  }
 }
 
 function send(flush: Flush, keepalive: boolean) {
