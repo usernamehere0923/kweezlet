@@ -252,7 +252,7 @@ export function TermList({
 }: {
   terms: { kind?: "pair" | "cloze"; term: string; definition: string; progress?: TermProgress; image?: string }[];
   speak?: { termLang: string | null; defLang: string | null };
-  /** Wide screens: one row-card per term, two per column. The phone keeps the joined list. */
+  /** From lg (CSS only): one row-card per term, two per row. Narrower keeps the joined list. */
   columns?: boolean;
 }) {
   // CSS only, no JS width check: the joined list from the phone up, row-cards from lg.
