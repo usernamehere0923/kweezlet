@@ -142,6 +142,21 @@ describe("POST /api/study/activity", () => {
     expect(await dayStats(anna, "2026-10-11")).toMatchObject({ cards: 8, seconds: 60 });
   });
 
+  it("a retry moves neither the streak day nor the recently used set", async () => {
+    const { id: anna, cookie } = await signedIn("anna");
+    const { id: setId } = await addSet(anna, "Spanish");
+    const flush = { day: "2026-10-11", cards: 2, setId, mode: "learn" as const, id: "flush-0003" };
+    await api("/api/study/activity", { method: "POST", cookie, json: flush });
+    await env.DB.prepare("DELETE FROM study_days WHERE user_id = ?").bind(anna).run();
+    await env.DB.prepare("UPDATE set_activity SET last_mode = 'test' WHERE user_id = ?").bind(anna).run();
+
+    await api("/api/study/activity", { method: "POST", cookie, json: flush });
+    const days = await env.DB.prepare("SELECT COUNT(*) AS n FROM study_days WHERE user_id = ?").bind(anna).first();
+    expect(days).toEqual({ n: 0 });
+    const last = await env.DB.prepare("SELECT last_mode FROM set_activity WHERE user_id = ?").bind(anna).first();
+    expect(last).toEqual({ last_mode: "test" });
+  });
+
   it("flush ids are per user, and old ones are forgotten", async () => {
     const { id: anna, cookie: annaCookie } = await signedIn("anna");
     const { id: ben, cookie: benCookie } = await signedIn("ben");
@@ -155,9 +170,10 @@ describe("POST /api/study/activity", () => {
     await env.DB.prepare("UPDATE activity_flushes SET created_at = unixepoch() - 8 * 86400 WHERE user_id = ?")
       .bind(anna)
       .run();
-    await api("/api/study/activity", { method: "POST", cookie: annaCookie, json: { ...flush, id: "next-id-01" } });
+    // (One flush in 16 prunes: those whose random hex id starts with "0".)
+    await api("/api/study/activity", { method: "POST", cookie: annaCookie, json: { ...flush, id: "0next-id-1" } });
     const ids = await env.DB.prepare("SELECT id FROM activity_flushes WHERE user_id = ?").bind(anna).all();
-    expect(ids.results).toEqual([{ id: "next-id-01" }]);
+    expect(ids.results).toEqual([{ id: "0next-id-1" }]);
   });
 
   it("flush ids stay out of the export", async () => {

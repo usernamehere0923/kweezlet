@@ -43,14 +43,12 @@ export const activityRoutes = new Hono<AppEnv>().post("/study/activity", validat
   const user = c.get("user");
   const { day, seconds = 0, cards = 0, correct = 0, wrong = 0, learned = 0, setId, mode, id } = c.req.valid("json");
   const db = c.env.DB;
-  if (id !== undefined) {
-    // Counted already: the answer was lost on the way, not the flush.
-    const seen = await db
-      .prepare("SELECT 1 FROM activity_flushes WHERE user_id = ? AND id = ?")
-      .bind(user.id, id)
-      .first();
-    if (seen) return c.json({ ok: true }, 200);
-  }
+  const flushId = id ?? null;
+  // One round trip: every write below counts only if this flush id is new
+  // (a retry whose first answer got lost finds its id and adds nothing). The
+  // id is recorded last in the same batch, so counts and id land together.
+  // Without an id, `id = NULL` matches nothing: the flush always counts.
+  const fresh = "NOT EXISTS (SELECT 1 FROM activity_flushes WHERE user_id = ?1 AND id = ?2)";
   // No notifyLater here, deliberately: flushes come every 30 seconds while
   // someone is studying and would reload the study page that sent them
   // mid-round (the same reason POST /api/study/day stays quiet). Another
@@ -60,18 +58,21 @@ export const activityRoutes = new Hono<AppEnv>().post("/study/activity", validat
     // Only provided counters move: one flush adds what happened since the last.
     db
       .prepare(
-        `INSERT INTO day_stats (user_id, day, cards, correct, wrong, learned, seconds) VALUES (?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO day_stats (user_id, day, cards, correct, wrong, learned, seconds)
+           SELECT ?1, ?3, ?4, ?5, ?6, ?7, ?8 WHERE ${fresh}
            ON CONFLICT (user_id, day) DO UPDATE SET
              cards = cards + excluded.cards, correct = correct + excluded.correct, wrong = wrong + excluded.wrong,
              learned = learned + excluded.learned, seconds = seconds + excluded.seconds`,
       )
-      .bind(user.id, day, cards, correct, wrong, learned, seconds),
+      .bind(user.id, flushId, day, cards, correct, wrong, learned, seconds),
   ];
   if (seconds + cards + correct + wrong + learned > 0) {
     // Real activity is a study day too: the streak survives even when the
     // day request of useStudyDay fails (both write the same table).
     statements.push(
-      db.prepare("INSERT INTO study_days (user_id, day) VALUES (?, ?) ON CONFLICT DO NOTHING").bind(user.id, day),
+      db
+        .prepare(`INSERT INTO study_days (user_id, day) SELECT ?1, ?3 WHERE ${fresh} ON CONFLICT DO NOTHING`)
+        .bind(user.id, flushId, day),
     );
   }
   if (setId !== undefined && mode !== undefined) {
@@ -81,22 +82,27 @@ export const activityRoutes = new Hono<AppEnv>().post("/study/activity", validat
       db
         .prepare(
           `INSERT INTO set_activity (user_id, set_id, last_studied_at, last_mode)
-               SELECT ?2, id, unixepoch(), ?3 FROM sets WHERE id = ?1 AND user_id = ?2
+               SELECT ?1, id, unixepoch(), ?4 FROM sets WHERE id = ?3 AND user_id = ?1 AND ${fresh}
                ON CONFLICT (user_id, set_id) DO UPDATE SET last_studied_at = unixepoch(), last_mode = excluded.last_mode`,
         )
-        .bind(setId, user.id, mode),
+        .bind(user.id, flushId, setId, mode),
     );
   }
   if (id !== undefined) {
-    // In the same batch as the counters: both land, or neither. Two copies
-    // racing each other: the second hits the primary key, fails whole and
-    // is retried, and then finds the id.
+    // Last, after the writes it guards. D1 runs one batch at a time, so a
+    // second copy racing this one sees the id and counts nothing.
     statements.push(
-      db.prepare("INSERT INTO activity_flushes (user_id, id) VALUES (?, ?)").bind(user.id, id),
-      db
-        .prepare("DELETE FROM activity_flushes WHERE user_id = ? AND created_at < unixepoch() - ?")
-        .bind(user.id, FLUSH_ID_DAYS * 86_400),
+      db.prepare("INSERT INTO activity_flushes (user_id, id) VALUES (?, ?) ON CONFLICT DO NOTHING").bind(user.id, id),
     );
+    // Old ids go now and then, not on every flush: ids are random hex, so
+    // about one flush in 16 carries the prune.
+    if (id.startsWith("0")) {
+      statements.push(
+        db
+          .prepare("DELETE FROM activity_flushes WHERE user_id = ? AND created_at < unixepoch() - ?")
+          .bind(user.id, FLUSH_ID_DAYS * 86_400),
+      );
+    }
   }
   await db.batch(statements);
   return c.json({ ok: true }, 200);
