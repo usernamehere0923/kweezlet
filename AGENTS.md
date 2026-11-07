@@ -55,7 +55,7 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 
 ### Git
 
-- Session start: always pull in GitHub's `master` first (`git fetch origin`, then `git pull --ff-only` on `master`). Other sessions merge PRs; a stale local `master` builds on old code.
+- Session start: always pull in GitHub's `master` first: `git fetch origin`, then `git pull --ff-only` if `master` is checked out and clean; otherwise read `origin/master`. Never switch branches, stash or reset for it. Other sessions merge PRs; a stale local `master` builds on old code.
 - One branch and pull request per phase (like `phase-2-learn`), merged into `master` when it is green: merge commit, then delete the branch. Trivial fixes (docs, formatting) may go straight to `master`.
 - No worktrees (exception: the throwaway one `scripts/release.sh` creates and deletes). `master` is a protected branch: it cannot be force-pushed.
 - Commit after every step that works (`check` + `test` green), not one big commit at the end. Message: what changed, in plain words. Then push.
