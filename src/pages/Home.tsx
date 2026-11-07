@@ -334,21 +334,16 @@ export function HomePage() {
           {wide && (folders.length > 0 || ideas.length > 0) && (
             <aside className="md:w-52 md:shrink-0">
               {folders.length > 0 && (
-                <>
-                  <Heading level={3} className="mb-2">
-                    {t("folders.label")}
-                  </Heading>
-                  <SideList
-                    label={t("folders.label")}
-                    value={folder}
-                    onChange={pickFolder}
-                    items={folderChoices.map(({ id, label, folder: item }) =>
-                      item
-                        ? { id, label, editLabel: t("folders.editTitle"), onEdit: () => setEditing(item) }
-                        : { id, label },
-                    )}
-                  />
-                </>
+                <SideList
+                  label={t("folders.label")}
+                  value={folder}
+                  onChange={pickFolder}
+                  items={folderChoices.map(({ id, label, folder: item }) =>
+                    item
+                      ? { id, label, editLabel: t("folders.editTitle"), onEdit: () => setEditing(item) }
+                      : { id, label },
+                  )}
+                />
               )}
               {ideas.length > 0 && (
                 <div className="mt-3">

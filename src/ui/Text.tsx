@@ -24,17 +24,24 @@ export function PageTitle({
 /** Section headings. level 2 = serif section title, level 3 = small sans label. */
 export function Heading({
   level = 2,
+  id,
   children,
   className,
 }: {
   level?: 2 | 3;
+  /** For aria-labelledby: a group named by the heading above it. */
+  id?: string;
   children: ReactNode;
   className?: string;
 }) {
   return level === 2 ? (
-    <h2 className={cx("font-display text-2xl leading-snug font-normal text-ink", className)}>{children}</h2>
+    <h2 id={id} className={cx("font-display text-2xl leading-snug font-normal text-ink", className)}>
+      {children}
+    </h2>
   ) : (
-    <h3 className={cx("text-[15px] font-semibold text-ink", className)}>{children}</h3>
+    <h3 id={id} className={cx("text-[15px] font-semibold text-ink", className)}>
+      {children}
+    </h3>
   );
 }
 

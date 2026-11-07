@@ -235,7 +235,8 @@ export function Controls() {
           code={`<SideList label="Folder" value={folder} onChange={setFolder}
   items={[{ id: "all", label: "All sets" },
           { id: "3", label: "Spanish", editLabel: "Edit folder", onEdit: edit },   // pencil on the picked row
-          { id: "none", label: "No folder" }]} />   // wide screens; the phone gets a Select`}
+          { id: "none", label: "No folder" }]} />   // wide screens; the phone gets a Select
+// label is the visible heading and names the group; rows are pressed toggles (a filter, not a nav)`}
         >
           <div className="flex justify-start">
             <SideList
