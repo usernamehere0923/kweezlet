@@ -1,5 +1,5 @@
 // The Statistics page's numbers and series (GET /api/stats) and what Home
-// shows under "Recently used" / "Recently created" (GET /api/stats/recent).
+// shows what "quick resume" continues (GET /api/stats/recent).
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import type { RecentStats, Stats } from "../worker/stats";
@@ -122,7 +122,7 @@ describe("GET /api/stats", () => {
 });
 
 describe("GET /api/stats/recent", () => {
-  it("studied newest first with its mode, created newest first", async () => {
+  it("studied newest first with its mode", async () => {
     const { id: anna, cookie } = await signedIn("anna");
     const older = await addSet(anna, "Older", {
       terms: [
@@ -145,7 +145,6 @@ describe("GET /api/stats/recent", () => {
     expect(recent.studied.map((set) => set.id)).toEqual([newer.id, older.id]);
     expect(recent.studied[0]).toMatchObject({ mode: "flashcards", lastStudiedAt: expect.any(Number), termCount: 0 });
     expect(recent.studied[1]).toMatchObject({ mode: "learn", termCount: 2 });
-    expect(recent.created.map((set) => set.id)).toEqual([newer.id, older.id]);
   });
 
   it("only my own sets come back", async () => {
@@ -157,6 +156,6 @@ describe("GET /api/stats/recent", () => {
       .run();
 
     const recent = await (await api("/api/stats/recent", { cookie })).json();
-    expect(recent).toEqual({ studied: [], created: [] });
+    expect(recent).toEqual({ studied: [] });
   });
 });

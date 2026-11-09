@@ -34,10 +34,8 @@ export type Stats = {
 /** A set with the moment and mode it was last studied in ("quick resume"). */
 export type RecentSet = SetSummary & { lastStudiedAt: number; mode: StudyMode };
 export type RecentStats = {
-  /** Newest first: "Recently studied" and, first of all, the quick resume. */
+  /** Newest first: the first one is what "quick resume" continues. */
   studied: RecentSet[];
-  /** Newest first: "Recently created". */
-  created: SetSummary[];
 };
 
 const statsQuery = z.object({
@@ -114,34 +112,27 @@ export const statsRoutes = new Hono<AppEnv>()
     return c.json(stats, 200);
   })
 
-  // What to show under "Recently used" and "Recently created" on Home. The
-  // first studied entry is the quick resume: the set to continue with.
+  // The set "quick resume" continues on Home: the last studied one, with the
+  // moment and mode it was last studied in.
   .get("/stats/recent", async (c) => {
     const user = c.get("user");
-    const [studiedResult, createdResult] = await c.env.DB.batch([
-      c.env.DB.prepare(
-        `SELECT ${SET_COLUMNS}, ${COUNT_COLUMNS}, a.last_studied_at, a.last_mode
-             FROM sets s
-             JOIN set_activity a ON a.set_id = s.id AND a.user_id = s.user_id
-            WHERE s.user_id = ?
-            ORDER BY a.last_studied_at DESC, s.id DESC
-            LIMIT 8`,
-      ).bind(user.id),
-      c.env.DB.prepare(
-        `SELECT ${SET_COLUMNS}, ${COUNT_COLUMNS}
-             FROM sets s WHERE s.user_id = ?
-            ORDER BY s.created_at DESC, s.id DESC
-            LIMIT 8`,
-      ).bind(user.id),
-    ]);
     type StudiedRow = SetRow & CountRow & { last_studied_at: number; last_mode: StudyMode };
+    const { results } = await c.env.DB.prepare(
+      `SELECT ${SET_COLUMNS}, ${COUNT_COLUMNS}, a.last_studied_at, a.last_mode
+         FROM sets s
+         JOIN set_activity a ON a.set_id = s.id AND a.user_id = s.user_id
+        WHERE s.user_id = ?
+        ORDER BY a.last_studied_at DESC, s.id DESC
+        LIMIT 8`,
+    )
+      .bind(user.id)
+      .all<StudiedRow>();
     const recent: RecentStats = {
-      studied: (studiedResult!.results as StudiedRow[]).map((row) => ({
+      studied: results.map((row) => ({
         ...toSetJson(row),
         lastStudiedAt: row.last_studied_at,
         mode: row.last_mode,
       })),
-      created: (createdResult!.results as (SetRow & CountRow)[]).map(toSetJson),
     };
     return c.json(recent, 200);
   });
