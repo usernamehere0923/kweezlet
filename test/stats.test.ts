@@ -145,6 +145,22 @@ describe("GET /api/stats/recent", () => {
     expect(recent.studied[0]).toMatchObject({ mode: "flashcards", lastStudiedAt: expect.any(Number), termCount: 2 });
   });
 
+  it("studied in the same second: the newer set wins", async () => {
+    const { id: anna, cookie } = await signedIn("anna");
+    const first = await addSet(anna, "First");
+    const second = await addSet(anna, "Second");
+    // The newer set inserted first, so the row order alone would pick the other one.
+    await env.DB.prepare(
+      `INSERT INTO set_activity (user_id, set_id, last_studied_at, last_mode) VALUES
+         (?, ?, 1000, 'learn'), (?, ?, 1000, 'learn')`,
+    )
+      .bind(anna, second.id, anna, first.id)
+      .run();
+
+    const recent = (await (await api("/api/stats/recent", { cookie })).json()) as RecentStats;
+    expect(recent.studied.map((set) => set.id)).toEqual([second.id]);
+  });
+
   it("only my own sets come back", async () => {
     const { cookie } = await signedIn("anna");
     const ben = await addUser("ben", "secret-pw");
