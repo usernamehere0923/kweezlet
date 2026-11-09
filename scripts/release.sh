@@ -4,13 +4,20 @@
 # (only a checked-out master is fast-forwarded): the build runs in a throwaway
 # worktree that is deleted afterwards.
 #
-#   bash scripts/release.sh deploy [wrangler args]    (npm run deploy: migrates, then deploys)
-#   bash scripts/release.sh migrate [wrangler args]   (npm run db:migrate:remote: migrations only)
+#   bash scripts/release.sh deploy    (npm run deploy: migrates, then deploys)
+#   bash scripts/release.sh migrate   (npm run db:migrate:remote: migrations only)
+# Both dump the live database to backups/ before any migration.
 set -euo pipefail
 
+# No wrangler args, no CLOUDFLARE_ENV: the dump and the migrations always hit
+# wrangler.jsonc's DB, so --env, --config or --dry-run would split the code
+# from its migrated database (or migrate for a deploy that never happens).
 action=${1:-}
-[[ $action == deploy || $action == migrate ]] || { echo "usage: release.sh deploy|migrate" >&2; exit 2; }
-shift
+if [[ $# -ne 1 || ($action != deploy && $action != migrate) ]]; then
+  echo "usage: release.sh deploy|migrate (no further arguments)" >&2
+  exit 2
+fi
+[[ -z ${CLOUDFLARE_ENV:-} ]] || { echo "release.sh: unset CLOUDFLARE_ENV first" >&2; exit 2; }
 
 repo=$(git rev-parse --show-toplevel)
 cd "$repo"
@@ -19,7 +26,7 @@ cd "$repo"
 # edits it cannot ship itself.
 if [[ -z ${RELEASE_FROM_MASTER:-} ]]; then
   git fetch --quiet origin master
-  RELEASE_FROM_MASTER=1 exec bash -c "$(git show origin/master:scripts/release.sh)" release.sh "$action" "$@"
+  RELEASE_FROM_MASTER=1 exec bash -c "$(git show origin/master:scripts/release.sh)" release.sh "$action"
 fi
 
 # Unmerged work never ships: local master must not be ahead of GitHub.
@@ -61,38 +68,53 @@ for file in "$repo"/.env*.local; do
   [[ -e $file ]] && cp "$file" "$dir/"
 done
 
-wrangler="$repo/node_modules/.bin/wrangler"
+# Same lockfile and installed: reuse the packages instead of a fresh install.
+# Either way every wrangler call below runs master's wrangler version.
+if [[ -d $repo/node_modules ]] && cmp -s "$repo/package-lock.json" package-lock.json; then
+  ln -s "$repo/node_modules" node_modules
+else
+  npm ci --no-audit --no-fund --loglevel=error
+fi
+# The installed binary, never npx: with stdin not a terminal, npx would fetch
+# an unpinned wrangler from npm when it is missing and run it on live data.
+wrangler="$dir/node_modules/.bin/wrangler"
+
+# Applies pending migrations to the live database, a full dump first.
+# stdin from /dev/null: wrangler skips its "continue?" prompt. Nothing
+# pending: a no-op. A failed list, export or migration stops here (set -e).
+migrate_live() {
+  # Captured, not piped into grep -q: with pipefail an early grep exit would
+  # SIGPIPE wrangler and read as "pending".
+  local pending backup
+  pending=$("$wrangler" d1 migrations list DB --remote </dev/null)
+  [[ $pending == *"No migrations to apply"* ]] && return 0
+  # The very first migration pending: a new, empty database, nothing to keep.
+  # Otherwise a dump first, kept locally (backups/, gitignored), outliving
+  # D1 Time Travel's 7 days. Written as .incomplete.sql (keeps the .sql
+  # ending) and renamed when complete, so a broken export never looks like a
+  # backup.
+  if [[ $pending != *0001_auth* ]]; then
+    mkdir -p "$repo/backups"
+    backup="$repo/backups/$(date +%Y-%m-%d-%H%M%S)"
+    echo "Dumping the live database (the app pauses until this is done)..."
+    "$wrangler" d1 export DB --remote --output "$backup.incomplete.sql" </dev/null
+    mv "$backup.incomplete.sql" "$backup.sql"
+    backup="$backup.sql"
+    echo "Backup of the live database: $backup"
+  fi
+  "$wrangler" d1 migrations apply DB --remote </dev/null
+}
+
 case $action in
   migrate)
-    # Only wrangler is needed: no install.
-    "$wrangler" d1 migrations apply DB --remote "$@"
+    migrate_live
     ;;
   deploy)
-    # Same lockfile: reuse the installed packages instead of a fresh install.
-    if cmp -s "$repo/package-lock.json" package-lock.json; then
-      ln -s "$repo/node_modules" node_modules
-    else
-      npm ci --no-audit --no-fund --loglevel=error
-    fi
     npx vite build
-    # Pending migrations first, from this same master: the new code may need
-    # them. After the build (a failed build leaves the database alone), before
-    # the upload. Migrations are additive here, so the old code keeps running
-    # meanwhile. stdin from /dev/null: wrangler skips its "continue?" prompt.
-    # Nothing pending: a no-op. A failed migration stops the deploy (set -e).
-    # Captured, not piped into grep -q: with pipefail an early grep exit
-    # would SIGPIPE wrangler and read as "pending". A failed list stops here.
-    pending=$("$wrangler" d1 migrations list DB --remote </dev/null)
-    if [[ $pending != *"No migrations to apply"* ]]; then
-      # Something will change the live data: a full dump first, kept locally
-      # (backups/, gitignored). Outlives D1 Time Travel's 7 days. A failed
-      # export stops the deploy before anything changed.
-      mkdir -p "$repo/backups"
-      backup="$repo/backups/$(date +%Y-%m-%d-%H%M%S).sql"
-      "$wrangler" d1 export DB --remote --output "$backup" </dev/null
-      echo "Backup of the live database: $backup"
-    fi
-    "$wrangler" d1 migrations apply DB --remote </dev/null
-    npx wrangler deploy "$@"
+    # Migrations first, from this same master: the new code may need them.
+    # After the build (a failed build leaves the database alone), before the
+    # upload. Additive, so the old code keeps running meanwhile.
+    migrate_live
+    "$wrangler" deploy
     ;;
 esac
