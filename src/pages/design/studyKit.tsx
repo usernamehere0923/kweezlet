@@ -271,6 +271,7 @@ export function StudyKit() {
   onDelete={() => remove(i)} />
 // kind + onKind: switch a row to a gap sentence ("Bern is the {{capital}}."); Make gap marks the selection
 <TermList terms={terms} />   // progress: "known" | "learning" | "new" adds a TermProgressDot; kind "cloze" shows the sentence
+<TermList columns terms={terms} />   // from lg: one row-card per term, two per row (CSS only); below lg the joined list
 <TermProgressDot progress="learning" />`}
       >
         <div className="flex flex-col gap-3">
@@ -303,6 +304,12 @@ export function StudyKit() {
               progress: (["known", "learning", "new"] as const)[i],
             }))}
           />
+        </div>
+        <div className="mt-6">
+          <Text variant="small" className="mb-2 text-muted">
+            columns: row-cards from lg (widen the window)
+          </Text>
+          <TermList columns terms={[...ANIMALS, { kind: "cloze", term: CLOZE, definition: "federal city" }]} />
         </div>
       </Section>
 

@@ -12,20 +12,28 @@ export const SERVER_ERROR_EVENT = "kz:server-error";
  * (ok false, status 0), so a page handles it like any failed request.
  */
 async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  // Work the user didn't start (study-time flushes, which retry on their own)
+  // shows no error toast: offline with a backlog would stack one per flush.
+  const quiet = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined)).has(
+    BACKGROUND_HEADER,
+  );
   let res: Response;
   try {
     res = await fetch(input, { ...init, credentials: "same-origin" });
   } catch {
-    window.dispatchEvent(new CustomEvent(SERVER_ERROR_EVENT, { detail: "offline" }));
+    if (!quiet) window.dispatchEvent(new CustomEvent(SERVER_ERROR_EVENT, { detail: "offline" }));
     return Response.error();
   }
   const url = String(input instanceof Request ? input.url : input);
   if (res.status === 401 && !url.endsWith("/api/login")) {
     window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
   }
-  if (res.status >= 500) window.dispatchEvent(new CustomEvent(SERVER_ERROR_EVENT, { detail: "server" }));
+  if (res.status >= 500 && !quiet) window.dispatchEvent(new CustomEvent(SERVER_ERROR_EVENT, { detail: "server" }));
   return res;
 }
+
+/** Marks a request as background work: no error toast (see apiFetch). */
+export const BACKGROUND_HEADER = "X-Kz-Background";
 
 /**
  * The typed API client. Paths and bodies are checked against the worker's routes:

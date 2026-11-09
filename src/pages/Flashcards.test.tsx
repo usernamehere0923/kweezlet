@@ -28,6 +28,18 @@ function flashcardsApi(detail = SPANISH_DETAIL) {
 const FLIP = "Tap or press Space to flip";
 
 describe("flashcards", () => {
+  test("the study time leaves with the page, sent as the logged-in user", async () => {
+    // The session tells the flush queue who is logged in; without that the
+    // queue would hold the flush back (it only sends its owner's flushes).
+    const { calls } = mockApi({ ...flashcardsApi(), "POST /api/study/activity": () => ({ json: { ok: true } }) });
+    const { unmount } = renderApp("/sets/7/flashcards");
+    await userEvent.click(await screen.findByRole("button", { name: FLIP }));
+    await act(async () => unmount());
+    expect(calls.filter((call) => call.path === "/api/study/activity")).toEqual([
+      expect.objectContaining({ body: expect.objectContaining({ cards: 1, setId: 7, mode: "flashcards" }) }),
+    ]);
+  });
+
   test("shows the first card with progress and the streak", async () => {
     mockApi(flashcardsApi());
     renderApp("/sets/7/flashcards");

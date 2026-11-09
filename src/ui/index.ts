@@ -19,7 +19,7 @@ export { ThemePicker } from "./ThemePicker";
 export { SpeakButton, type Speech } from "./speech";
 export { PageLoadFailed } from "./PageLoadFailed";
 export { PageLoading, Spinner } from "./Spinner";
-export { useMediaQuery } from "./useMediaQuery";
+export { MEDIA, useMediaQuery } from "./useMediaQuery";
 export { Card, EmptyState, Tag } from "./surfaces";
 export { Heading, PageTitle, Text, TextLink } from "./Text";
 export { ToastProvider, useToast } from "./Toast";

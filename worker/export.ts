@@ -20,7 +20,7 @@ export const exportTables: string[] = [
 ];
 
 /** Tables that have a user_id but must never be exported (secrets, plumbing). */
-export const privateTables = ["sessions"];
+export const privateTables = ["sessions", "activity_flushes"];
 
 export async function exportUserData(
   db: D1Database,

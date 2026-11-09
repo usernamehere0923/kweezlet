@@ -9,7 +9,7 @@ Quizlet-style flashcard app. React + Tailwind UI, Cloudflare Worker (Hono) API, 
 - `npm test`: worker (Workers runtime) + UI (jsdom) tests. `npm run check`: types + lint + format; `npm run format` fixes formatting.
 - `npm run db:migrate`: apply new migrations locally, keeps data. `npm run db:reset` wipes all his local data: only when he asks to start over. Wrong demo password → `user:add -- demo demo`.
 - `npm run user:add -- <name> <password> [--remote]`: create user / reset password. No registration in the app.
-- `npm run deploy`: build + upload (setup: `README.md`). New migrations → `db:migrate:remote` first. Both ship GitHub's `master` only (`scripts/release.sh`), never the current branch.
+- `npm run deploy`: build, dump the live database to `backups/` (only when migrations are pending; gitignored), apply them, upload (setup: `README.md`). The user wants no manual backup step: never ask him to back up first. `db:migrate:remote` = migrations only. Both ship GitHub's `master` only (`scripts/release.sh`), never the current branch. Migrations must stay additive: old code runs against the new schema until the upload lands.
 - `npm run types`: after changing `wrangler.jsonc`.
 - `npm run gen:icons` / `npm run gen:og`: after changing `assets/icons/*` or `assets/og/card.html`.
 
@@ -36,7 +36,7 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 ### Database
 
 - Schema changes = a NEW file `migrations/000N_name.sql`. Never edit a migration that already ran.
-- There is no staging: `db:migrate:remote` changes his real cards. Before telling him to run it, remind him to tap Settings → "Download my data" on the live app first. Mistake afterwards → fix with a new migration; last resort: D1 Time Travel (restore up to 7 days back).
+- There is no staging: `deploy` (and `db:migrate:remote`) change his real cards. Mistake afterwards → fix with a new migration; last resort: D1 Time Travel (restore up to 7 days back).
 - Every business table has `user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE`.
 - Every query on user data has `WHERE user_id = ?` bound to `c.get("user").id`. Never trust a `user_id` from the request.
 - Every table with `user_id` goes into `exportTables` in `worker/export.ts` ("Download my data"). A test fails if one is missing.
@@ -55,6 +55,7 @@ Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` nee
 
 ### Git
 
+- Session start: always pull in GitHub's `master` first: `git fetch origin`, then `git pull --ff-only` if `master` is checked out and clean; otherwise read `origin/master`. Never switch branches, stash or reset for it. Other sessions merge PRs; a stale local `master` builds on old code.
 - One branch and pull request per phase (like `phase-2-learn`), merged into `master` when it is green: merge commit, then delete the branch. Trivial fixes (docs, formatting) may go straight to `master`.
 - No worktrees (exception: the throwaway one `scripts/release.sh` creates and deletes). `master` is a protected branch: it cannot be force-pushed.
 - Commit after every step that works (`check` + `test` green), not one big commit at the end. Message: what changed, in plain words. Then push.

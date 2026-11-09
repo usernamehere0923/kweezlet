@@ -76,7 +76,8 @@ export function Controls() {
           code={`<Menu label="Create a set" icon="plus" items={[
   { label: "Create a set", icon: "plus", to: "/sets/new" },     // a page, or…
   { label: "From material", icon: "bulb", onClick: start },     // …an action
-]} />   // one button, more ways to do the thing; Esc / outside click / pick closes`}
+]} />   // one button, more ways to do the thing; Esc / outside click / pick closes
+// align="end": list under the button's right edge; "auto": decided on open, toward the room (button in the right half → end)`}
         >
           <div className="flex flex-wrap items-center gap-3">
             <Menu
@@ -92,6 +93,16 @@ export function Controls() {
               icon="moreHorizontal"
               variant="secondary"
               align="end"
+              items={[
+                { label: "Edit", icon: "edit", onClick: () => toast("edit", "info") },
+                { label: "Delete", icon: "trash", onClick: () => toast("delete", "info") },
+              ]}
+            />
+            <Menu
+              label="Align auto"
+              icon="moreHorizontal"
+              variant="secondary"
+              align="auto"
               items={[
                 { label: "Edit", icon: "edit", onClick: () => toast("edit", "info") },
                 { label: "Delete", icon: "trash", onClick: () => toast("delete", "info") },
@@ -224,7 +235,8 @@ export function Controls() {
           code={`<SideList label="Folder" value={folder} onChange={setFolder}
   items={[{ id: "all", label: "All sets" },
           { id: "3", label: "Spanish", editLabel: "Edit folder", onEdit: edit },   // pencil on the picked row
-          { id: "none", label: "No folder" }]} />   // wide screens; the phone gets a Select`}
+          { id: "none", label: "No folder" }]} />   // wide screens; the phone gets a Select
+// label is the visible heading and names the group; rows are radios (pick one; arrows move the pick)`}
         >
           <div className="flex justify-start">
             <SideList

@@ -18,6 +18,7 @@ import {
   Heading,
   IconButton,
   Menu,
+  type MenuItem,
   PageTitle,
   SearchField,
   Select,
@@ -28,6 +29,7 @@ import {
   StudySetCard,
   Text,
   UnfinishedDrafts,
+  MEDIA,
   useMediaQuery,
 } from "../ui";
 import { FolderEditor } from "./home/FolderEditor";
@@ -62,7 +64,9 @@ export function HomePage() {
   const [dueCount, setDueCount] = useState(0);
   const [streak, setStreak] = useState({ streak: 0, studiedToday: false });
   const [drafts, setDrafts] = useState<DraftSummary[]>([]);
-  const [folders, setFolders] = useState<Folder[]>([]);
+  // null until the first answer, like stats and recent.
+  const [loadedFolders, setFolders] = useState<Folder[] | null>(null);
+  const folders = loadedFolders ?? [];
   const [stats, setStats] = useState<Stats | null>(null);
   const [recent, setRecent] = useState<RecentStats | null>(null);
   const [editing, setEditing] = useState<Folder | null>(null);
@@ -75,7 +79,7 @@ export function HomePage() {
   );
   const request = useRef(0);
   // Wide screens get the folder sidebar, the phone the dropdown below.
-  const wide = useMediaQuery("(min-width: 768px)");
+  const wide = useMediaQuery(MEDIA.md);
 
   useEffect(() => {
     const pause = setTimeout(() => setQuery(q), q ? SEARCH_PAUSE_MS : 0);
@@ -197,6 +201,17 @@ export function HomePage() {
   // or a folder filter is about one thing, not the whole account.
   const unfiltered = !query && !q && folder === "all";
   const resume = recent?.studied[0] ?? null;
+  // One list for the phone's dropdown and the wide screen's side list.
+  const folderChoices: { id: string; label: string; folder?: Folder }[] = [
+    { id: "all", label: t("folders.all") },
+    ...folders.map((item) => ({ id: String(item.id), label: item.name, folder: item })),
+    { id: "none", label: t("folders.none") },
+  ];
+  // The empty state and the toolbar offer the same ways to make a set.
+  const createItems: MenuItem[] = [
+    { label: t("sets.new"), icon: "plus", to: "/sets/new" },
+    { label: t("home.fromMaterial"), icon: "bulb", to: "/create/ai" },
+  ];
 
   return (
     <div>
@@ -278,40 +293,22 @@ export function HomePage() {
           icon="folderPlus"
           title={t("sets.emptyTitle")}
           text={t("sets.emptyText")}
-          action={
-            <Menu
-              label={t("sets.emptyAction")}
-              icon="plus"
-              variant="primary"
-              items={[
-                { label: t("sets.new"), icon: "plus", to: "/sets/new" },
-                { label: t("home.fromMaterial"), icon: "bulb", to: "/create/ai" },
-              ]}
-            />
-          }
+          action={<Menu label={t("sets.emptyAction")} icon="plus" variant="primary" items={createItems} />}
         />
       ) : (
         <div className="flex flex-col gap-6 md:flex-row md:items-start">
           {/* Wide screens: folders in a list at the side. The phone keeps the dropdown. */}
           {wide && folders.length > 0 && (
             <aside className="md:w-52 md:shrink-0">
-              <Heading level={3} className="mb-2">
-                {t("folders.label")}
-              </Heading>
               <SideList
                 label={t("folders.label")}
                 value={folder}
                 onChange={pickFolder}
-                items={[
-                  { id: "all", label: t("folders.all") },
-                  ...folders.map((item) => ({
-                    id: String(item.id),
-                    label: item.name,
-                    editLabel: t("folders.editTitle"),
-                    onEdit: () => setEditing(item),
-                  })),
-                  { id: "none", label: t("folders.none") },
-                ]}
+                items={folderChoices.map(({ id, label, folder: item }) =>
+                  item
+                    ? { id, label, editLabel: t("folders.editTitle"), onEdit: () => setEditing(item) }
+                    : { id, label },
+                )}
               />
             </aside>
           )}
@@ -323,11 +320,7 @@ export function HomePage() {
                   value={folder}
                   onChange={pickFolder}
                   className="flex-1"
-                  options={[
-                    { value: "all", label: t("folders.all") },
-                    ...folders.map((item) => ({ value: String(item.id), label: item.name })),
-                    { value: "none", label: t("folders.none") },
-                  ]}
+                  options={folderChoices.map(({ id, label }) => ({ value: id, label }))}
                 />
                 {picked && <IconButton icon="edit" label={t("folders.editTitle")} onClick={() => setEditing(picked)} />}
               </div>
@@ -346,10 +339,8 @@ export function HomePage() {
                 label={t("sets.new")}
                 icon="plus"
                 variant={dueCount > 0 ? "secondary" : "primary"}
-                items={[
-                  { label: t("sets.new"), icon: "plus", to: "/sets/new" },
-                  { label: t("home.fromMaterial"), icon: "bulb", to: "/create/ai" },
-                ]}
+                align="auto"
+                items={createItems}
               />
             </div>
             {/* Same tree position with and without results, so the input keeps focus while typing. */}

@@ -4,8 +4,8 @@
 # (only a checked-out master is fast-forwarded): the build runs in a throwaway
 # worktree that is deleted afterwards.
 #
-#   bash scripts/release.sh deploy [wrangler args]    (npm run deploy)
-#   bash scripts/release.sh migrate [wrangler args]   (npm run db:migrate:remote)
+#   bash scripts/release.sh deploy [wrangler args]    (npm run deploy: migrates, then deploys)
+#   bash scripts/release.sh migrate [wrangler args]   (npm run db:migrate:remote: migrations only)
 set -euo pipefail
 
 action=${1:-}
@@ -75,6 +75,24 @@ case $action in
       npm ci --no-audit --no-fund --loglevel=error
     fi
     npx vite build
+    # Pending migrations first, from this same master: the new code may need
+    # them. After the build (a failed build leaves the database alone), before
+    # the upload. Migrations are additive here, so the old code keeps running
+    # meanwhile. stdin from /dev/null: wrangler skips its "continue?" prompt.
+    # Nothing pending: a no-op. A failed migration stops the deploy (set -e).
+    # Captured, not piped into grep -q: with pipefail an early grep exit
+    # would SIGPIPE wrangler and read as "pending". A failed list stops here.
+    pending=$("$wrangler" d1 migrations list DB --remote </dev/null)
+    if [[ $pending != *"No migrations to apply"* ]]; then
+      # Something will change the live data: a full dump first, kept locally
+      # (backups/, gitignored). Outlives D1 Time Travel's 7 days. A failed
+      # export stops the deploy before anything changed.
+      mkdir -p "$repo/backups"
+      backup="$repo/backups/$(date +%Y-%m-%d-%H%M%S).sql"
+      "$wrangler" d1 export DB --remote --output "$backup" </dev/null
+      echo "Backup of the live database: $backup"
+    fi
+    "$wrangler" d1 migrations apply DB --remote </dev/null
     npx wrangler deploy "$@"
     ;;
 esac
