@@ -31,7 +31,6 @@ import {
   useMediaQuery,
 } from "../ui";
 import { FolderEditor } from "./home/FolderEditor";
-import { FolderSuggestions, folderIdeas } from "./home/FolderSuggestions";
 
 /** How long typing has to pause before the search goes out. */
 const SEARCH_PAUSE_MS = 250;
@@ -64,9 +63,6 @@ export function HomePage() {
   const [streak, setStreak] = useState({ streak: 0, studiedToday: false });
   const [drafts, setDrafts] = useState<DraftSummary[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
-  // Distinguished from "no folders": the suggestions wait for the answer so
-  // they do not flash up for folders the user already has.
-  const [foldersReady, setFoldersReady] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
   const [recent, setRecent] = useState<RecentStats | null>(null);
   const [editing, setEditing] = useState<Folder | null>(null);
@@ -103,10 +99,7 @@ export function HomePage() {
   const loadFolders = useCallback(
     () =>
       api.folders.$get().then(async (res) => {
-        if (res.ok) {
-          setFolders(await res.json());
-          setFoldersReady(true);
-        }
+        if (res.ok) setFolders(await res.json());
       }),
     [],
   );
@@ -204,12 +197,6 @@ export function HomePage() {
   // or a folder filter is about one thing, not the whole account.
   const unfiltered = !query && !q && folder === "all";
   const resume = recent?.studied[0] ?? null;
-  // Category folders with one tap still to make (hidden once the name is taken).
-  const ideas = foldersReady ? folderIdeas(t, folders) : [];
-  const afterFolder = () => {
-    void loadFolders();
-    void reload();
-  };
 
   return (
     <div>
@@ -281,28 +268,6 @@ export function HomePage() {
               </div>
             </Card>
           )}
-
-          {recent && recent.studied.length > 0 && (
-            <div>
-              <Heading level={3} className="mb-2">
-                {t("home.recentStudied")}
-              </Heading>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {recent.studied.slice(0, 4).map((set, i) => setCard(set, i))}
-              </div>
-            </div>
-          )}
-
-          {recent && recent.created.length > 0 && (
-            <div>
-              <Heading level={3} className="mb-2">
-                {t("home.recentCreated")}
-              </Heading>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {recent.created.slice(0, 4).map((set, i) => setCard(set, i))}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -328,35 +293,26 @@ export function HomePage() {
       ) : (
         <div className="flex flex-col gap-6 md:flex-row md:items-start">
           {/* Wide screens: folders in a list at the side. The phone keeps the dropdown. */}
-          {wide && (folders.length > 0 || ideas.length > 0) && (
+          {wide && folders.length > 0 && (
             <aside className="md:w-52 md:shrink-0">
-              {folders.length > 0 && (
-                <>
-                  <Heading level={3} className="mb-2">
-                    {t("folders.label")}
-                  </Heading>
-                  <SideList
-                    label={t("folders.label")}
-                    value={folder}
-                    onChange={pickFolder}
-                    items={[
-                      { id: "all", label: t("folders.all") },
-                      ...folders.map((item) => ({
-                        id: String(item.id),
-                        label: item.name,
-                        editLabel: t("folders.editTitle"),
-                        onEdit: () => setEditing(item),
-                      })),
-                      { id: "none", label: t("folders.none") },
-                    ]}
-                  />
-                </>
-              )}
-              {ideas.length > 0 && (
-                <div className="mt-3">
-                  <FolderSuggestions names={ideas} onCreated={afterFolder} />
-                </div>
-              )}
+              <Heading level={3} className="mb-2">
+                {t("folders.label")}
+              </Heading>
+              <SideList
+                label={t("folders.label")}
+                value={folder}
+                onChange={pickFolder}
+                items={[
+                  { id: "all", label: t("folders.all") },
+                  ...folders.map((item) => ({
+                    id: String(item.id),
+                    label: item.name,
+                    editLabel: t("folders.editTitle"),
+                    onEdit: () => setEditing(item),
+                  })),
+                  { id: "none", label: t("folders.none") },
+                ]}
+              />
             </aside>
           )}
           <div className="min-w-0 flex-1">
@@ -374,11 +330,6 @@ export function HomePage() {
                   ]}
                 />
                 {picked && <IconButton icon="edit" label={t("folders.editTitle")} onClick={() => setEditing(picked)} />}
-              </div>
-            )}
-            {!wide && ideas.length > 0 && (
-              <div className="mb-3">
-                <FolderSuggestions names={ideas} onCreated={afterFolder} />
               </div>
             )}
             {/* The phone: search on its own line, the create-set menu under it. */}
