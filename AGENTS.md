@@ -1,73 +1,59 @@
 # kweezlet
 
-Quizlet-style flashcard app. React + Tailwind UI, Cloudflare Worker (Hono) API, D1 (SQLite) database, one Durable Object for live sync.
+Quizlet-style flashcard app. React + Tailwind UI, Cloudflare Worker (Hono) API, D1 database, one Durable Object for live sync.
 
 ## Commands
 
-- `npm run dev`: app + API + database on http://localhost:5173. Login `demo` / `demo`. He usually starts it by double-clicking `Start kweezlet.command`. Page loads forever after a config change → restart with `npm run dev -- --force`.
-- `npm run dev -- --host`: same, reachable from the iPhone at `http://<mac-ip>:5173` (same wifi).
-- `npm test`: worker (Workers runtime) + UI (jsdom) tests. `npm run check`: types + lint + format; `npm run format` fixes formatting.
-- `npm run db:migrate`: apply new migrations locally, keeps data. `npm run db:reset` wipes all his local data: only when he asks to start over. Wrong demo password → `user:add -- demo demo`.
-- `npm run user:add -- <name> <password> [--remote]`: create user / reset password. No registration in the app.
-- `npm run deploy`: build, dump the live database to `backups/` (only when migrations are pending; gitignored), apply them, upload (setup: `README.md`). The user wants no manual backup step: never ask him to back up first. `db:migrate:remote` = migrations only. Both ship GitHub's `master` only (`scripts/release.sh`), never the current branch. Migrations must stay additive: old code runs against the new schema until the upload lands.
-- `npm run types`: after changing `wrangler.jsonc`.
-- `npm run gen:icons` / `npm run gen:og`: after changing `assets/icons/*` or `assets/og/card.html`.
+- `npm run dev`: http://localhost:5173, login `demo` / `demo`. User starts it via `Start kweezlet.command`. Endless load after a config change → `npm run dev -- --force`. iPhone (same wifi) → `-- --host`.
+- `npm run db:reset` wipes all local data: only when the user asks to start over. Wrong demo password → `npm run user:add -- demo demo`. No registration in the app: users only via `user:add [--remote]`.
+- `npm run deploy` ships GitHub's `master` only (`scripts/release.sh`), never the current branch; it dumps the live DB to `backups/` itself. Never ask the user to back up first. Migrations stay additive: old code runs against the new schema until the upload lands.
+- After changing `wrangler.jsonc` → `npm run types`; `assets/icons/*` / `assets/og/card.html` → `gen:icons` / `gen:og`.
 
-Pinned on purpose, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` needs it), TypeScript 6.x (`typescript-eslint` rejects 7), `compatibility_date` (see `wrangler.jsonc`).
+Pinned, don't bump: vitest 4.x (`@cloudflare/vitest-pool-workers` needs it), TypeScript 6.x (`typescript-eslint` rejects 7), `compatibility_date`.
 
-## Rules
+## Look
 
-### Look
-
-- Build screens ONLY from `src/ui` (`import { Button, Card, FlipCard } from "../ui"`). The `/design` page shows every piece with a snippet.
-- Styling only via tokens (`bg-surface`, `font-display`...), valued by the user's theme. `#hex` only in `src/themes/*.css`. No auto dark mode. New theme: recipe in `src/themes/index.css`.
+- Screens ONLY from `src/ui`; `/design` shows every piece. Missing one → add to `src/ui`, export, show on `/design`.
+- Styling only via theme tokens; `#hex` only in `src/themes/*.css`. No auto dark mode.
 - One primary (`accent`) button per screen. Teal = secondary/links. Green/red only for correct/wrong.
-- Missing a component? Add it to `src/ui` (or `src/ui/study`), export it from `index.ts`, show it on `/design`.
-- Progress animates ONLY through `ProgressBar` (wipe-in on mount, slide on change; `/design` → "Progress motion"). No other progress animation. Exception: `ResultSummary`'s score ring counts up (`useCountUp`).
-- Other motion only via `@theme` `--animate-*` tokens inside `src/ui` pieces (`/design` → "Motion"), never hand-made on a page. Confetti only for a real win.
-- Mobile first, 390px wide. Inputs stay `text-base` (16px) or iOS zooms in.
-- Visible change → drive the running app with Playwright (chromium, 390px), look at a screenshot. Green tests alone are not "done".
+- Progress animates ONLY via `ProgressBar` (exception: `ResultSummary` score ring). Other motion only via `--animate-*` tokens inside `src/ui`, never hand-made on a page. Confetti only for a real win.
+- Mobile first, 390px. Inputs stay `text-base` (16px) or iOS zooms in.
+- Visible change → Playwright (chromium, 390px) on the running app, look at a screenshot. Green tests are not "done".
 
-### Text
+## Text
 
-- Every visible string goes through `t("key")` / `tn("key", count)` from `useT()`. Add the key to `src/i18n/en.ts` AND `src/i18n/de-CH.ts` (the build fails otherwise).
+- Every visible string via `t()` / `tn()`, key in `en.ts` AND `de-CH.ts`.
 - German = Swiss: "ss", never the sharp s. No gendered forms ("der Nutzer", not "Nutzer:innen").
 
-### Database
+## Database
 
-- Schema changes = a NEW file `migrations/000N_name.sql`. Never edit a migration that already ran.
-- There is no staging: `deploy` (and `db:migrate:remote`) change his real cards. Mistake afterwards → fix with a new migration; last resort: D1 Time Travel (restore up to 7 days back).
-- Every business table has `user_id INTEGER NOT NULL REFERENCES users (id) ON DELETE CASCADE`.
-- Every query on user data has `WHERE user_id = ?` bound to `c.get("user").id`. Never trust a `user_id` from the request.
-- Every table with `user_id` goes into `exportTables` in `worker/export.ts` ("Download my data"). A test fails if one is missing.
-- New table with user data → sample rows for `demo` in `scripts/seed.ts` (`db:reset` runs it). Local only.
-- Values always via `.bind(...)`, never pasted into SQL strings.
+- No staging: `deploy` and `db:migrate:remote` change the user's real cards. Mistake → new migration; last resort D1 Time Travel (7 days). Never edit a migration that already ran.
+- Every business table: `user_id ... REFERENCES users (id) ON DELETE CASCADE`. Every query: `WHERE user_id = ?` bound to `c.get("user").id`, never a `user_id` from the request. Values only via `.bind()`.
+- Table with `user_id` → `exportTables` in `worker/export.ts` (a test enforces it) + demo rows in `scripts/seed.ts`.
+- Full pattern (table, scoped route, export): `test/ownership.test.ts`.
 
-### API
+## API
 
-- Routes live in `worker/*.ts`, mounted in `worker/index.ts` by chaining (`.route(...)`), so the UI gets their types.
-- Everything under `/api/*` needs a login automatically (`requireUser`); only paths in `PUBLIC_PATHS` (`worker/auth.ts`) don't.
-- Validate every body/query with `validate("json", zodSchema)` from `worker/validate.ts`. Errors come back as `{ error: "validation", fields: { name: "too_small" } }`; show them with `fieldErrors(res)` + `t()`.
-- The UI calls the API only through `api` from `src/lib/api.ts` (typed). 401 and server errors are handled there.
-- Secrets (`ZAI_API_KEY`) live only in the worker env (`.dev.vars`, `wrangler secret put`): never in code, a response, a log line the UI sees, or a `VITE_` var. `src/` imports only types from `worker/` (exceptions: languages, progress, grading, cloze, themes, ai/prices; eslint enforces it). AI failures reach the UI as `ZaiErrorKind`, never z.ai's message.
-- After a write the user's other devices should see: `notifyLater(c, "topic")` in the worker (sent after the response), `useLive("topic", reload)` in the page.
-- Example of the full pattern (table, scoped route, export): `test/ownership.test.ts`.
+- Routes mounted in `worker/index.ts` by chaining `.route(...)`, else the UI loses their types.
+- `/api/*` needs login except `PUBLIC_PATHS`. Validate with `validate(...)`; show errors with `fieldErrors(res)` + `t()`. UI calls only through `api` (`src/lib/api.ts`).
+- Secrets (`ZAI_API_KEY`) only in the worker env: never in code, a response, a log the UI sees, or a `VITE_` var. AI failures reach the UI as `ZaiErrorKind`, never z.ai's message.
+- Write other devices should see → `notifyLater(c, "topic")` + `useLive("topic", reload)`.
 
-### Git
+## Git
 
-- Session start: always pull in GitHub's `master` first: `git fetch origin`, then `git pull --ff-only` if `master` is checked out and clean; otherwise read `origin/master`. Never switch branches, stash or reset for it. Other sessions merge PRs; a stale local `master` builds on old code.
-- One branch and pull request per phase (like `phase-2-learn`), merged into `master` when it is green: merge commit, then delete the branch. Trivial fixes (docs, formatting) may go straight to `master`.
-- No worktrees (exception: the throwaway one `scripts/release.sh` creates and deletes). `master` is a protected branch: it cannot be force-pushed.
-- Commit after every step that works (`check` + `test` green), not one big commit at the end. Message: what changed, in plain words. Then push.
+- Session start: `git fetch origin`; `git pull --ff-only` if on clean `master`, else read `origin/master`. Never switch branches, stash or reset for it: other sessions merge PRs.
+- One branch + PR per phase, merge commit when green, delete branch. Docs/formatting fixes may go straight to `master`.
+- No worktrees (except the throwaway one `release.sh` makes). `master` is protected: no force-push.
+- Commit + push after every working step (`check` + `test` green). Message: what changed, plain words.
 
-### Tests and coverage
+## Tests
 
-- CI checks every push to `master`: `test:coverage` floor 95% lines (`vitest.config.ts`), 75% of changed lines (`scripts/patch-coverage.sh`). Red → write the test, never lower a number.
-- Worker → `test/*.test.ts`. UI → `*.test.tsx` next to the code, helpers in `src/test/`. Query by role/label.
+- CI: 95% lines overall, 75% of changed lines. Red → write the test, never lower a number.
+- Worker → `test/*.test.ts`. UI → `*.test.tsx` next to the code. Query by role/label.
 
-### Before asking for anything new
+## Ask first
 
-- Card images: no R2 (it needs a credit card). Ask before picking an image approach.
-- Sharing sets between users breaks the "only your own rows" rule on purpose. Ask first.
-- New dependencies: ask first.
-- PWA = installable only (`public/manifest.webmanifest`, icons). No service worker, no offline support: decided, don't build or suggest it.
+- Card images: no R2 (needs a credit card).
+- Sharing sets between users (breaks "only your own rows" on purpose).
+- New dependencies.
+- PWA = installable only. No service worker, no offline: decided, don't build or suggest it.
