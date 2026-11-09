@@ -272,7 +272,7 @@ describe("home", () => {
     mockApi({
       "GET /api/me": () => ({ json: ME }),
       "GET /api/sets": () => ({ json: [SPANISH] }),
-      "GET /api/stats/recent": () => ({ json: { studied: [{ ...SPANISH, lastStudiedAt: 1, mode }], created: [] } }),
+      "GET /api/stats/recent": () => ({ json: { studied: [{ ...SPANISH, lastStudiedAt: 1, mode }] } }),
     });
     renderApp("/");
     expect(await screen.findByText("Quick resume")).toBeTruthy();

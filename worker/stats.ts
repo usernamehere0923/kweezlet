@@ -34,7 +34,8 @@ export type Stats = {
 /** A set with the moment and mode it was last studied in ("quick resume"). */
 export type RecentSet = SetSummary & { lastStudiedAt: number; mode: StudyMode };
 export type RecentStats = {
-  /** Newest first: the first one is what "quick resume" continues. */
+  /** The last studied set, what "quick resume" continues; empty if none. An
+   * array so a page still open from before keeps working. */
   studied: RecentSet[];
 };
 
@@ -123,7 +124,7 @@ export const statsRoutes = new Hono<AppEnv>()
          JOIN set_activity a ON a.set_id = s.id AND a.user_id = s.user_id
         WHERE s.user_id = ?
         ORDER BY a.last_studied_at DESC, s.id DESC
-        LIMIT 8`,
+        LIMIT 1`,
     )
       .bind(user.id)
       .all<StudiedRow>();

@@ -64,9 +64,7 @@ export function HomePage() {
   const [dueCount, setDueCount] = useState(0);
   const [streak, setStreak] = useState({ streak: 0, studiedToday: false });
   const [drafts, setDrafts] = useState<DraftSummary[]>([]);
-  // null until the first answer, like stats and recent.
-  const [loadedFolders, setFolders] = useState<Folder[] | null>(null);
-  const folders = loadedFolders ?? [];
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [recent, setRecent] = useState<RecentStats | null>(null);
   const [editing, setEditing] = useState<Folder | null>(null);
@@ -142,7 +140,7 @@ export function HomePage() {
   );
   useEffect(() => void loadStats(), [loadStats]);
 
-  // Quick resume and the recently used sets (worker/stats.ts).
+  // The last studied set for quick resume (worker/stats.ts).
   const loadRecent = useCallback(
     () =>
       api.stats.recent.$get().then(async (res) => {
@@ -182,20 +180,6 @@ export function HomePage() {
     void loadStats();
     void loadRecent();
   });
-
-  // The set cards of the grid and the "recently" rows above it.
-  const setCard = (set: SetSummary, i: number) => (
-    <StudySetCard
-      key={set.id}
-      index={i}
-      title={set.title}
-      tag={folder === "all" ? folderName(set.folderId) : undefined}
-      termCount={set.termCount}
-      known={set.knownCount}
-      learning={set.learningCount}
-      onClick={() => navigate(`/sets/${set.id}`)}
-    />
-  );
 
   // The dashboard strip belongs to the unfiltered overview only: searching
   // or a folder filter is about one thing, not the whole account.
@@ -249,7 +233,7 @@ export function HomePage() {
         </div>
       )}
 
-      {/* The dashboard strip: compact numbers, quick resume, recently used. */}
+      {/* The dashboard strip: compact numbers and quick resume. */}
       {unfiltered && sets !== null && sets.length > 0 && (
         <div className="mb-6 flex flex-col gap-6">
           {stats && (
@@ -351,7 +335,20 @@ export function HomePage() {
                 <EmptyState icon="folder" title={t("folders.emptyTitle")} text={t("folders.emptyText")} />
               )
             ) : (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{sets.map((set, i) => setCard(set, i))}</div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {sets.map((set, i) => (
+                  <StudySetCard
+                    key={set.id}
+                    index={i}
+                    title={set.title}
+                    tag={folder === "all" ? folderName(set.folderId) : undefined}
+                    termCount={set.termCount}
+                    known={set.knownCount}
+                    learning={set.learningCount}
+                    onClick={() => navigate(`/sets/${set.id}`)}
+                  />
+                ))}
+              </div>
             )}
           </div>
         </div>

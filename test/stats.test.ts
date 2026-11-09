@@ -1,5 +1,5 @@
-// The Statistics page's numbers and series (GET /api/stats) and what Home
-// shows what "quick resume" continues (GET /api/stats/recent).
+// The Statistics page's numbers and series (GET /api/stats) and the set Home's
+// "quick resume" continues (GET /api/stats/recent).
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import type { RecentStats, Stats } from "../worker/stats";
@@ -122,15 +122,15 @@ describe("GET /api/stats", () => {
 });
 
 describe("GET /api/stats/recent", () => {
-  it("studied newest first with its mode", async () => {
+  it("only the last studied set, with its mode and counts", async () => {
     const { id: anna, cookie } = await signedIn("anna");
-    const older = await addSet(anna, "Older", {
+    const older = await addSet(anna, "Older");
+    const newer = await addSet(anna, "Newer", {
       terms: [
         ["a", "1"],
         ["b", "2"],
       ],
     });
-    const newer = await addSet(anna, "Newer");
     await env.DB.prepare(
       `INSERT INTO set_activity (user_id, set_id, last_studied_at, last_mode) VALUES
          (?, ?, unixepoch() - 600, 'learn'), (?, ?, unixepoch(), 'flashcards')`,
@@ -141,10 +141,8 @@ describe("GET /api/stats/recent", () => {
     const res = await api("/api/stats/recent", { cookie });
     expect(res.status).toBe(200);
     const recent = (await res.json()) as RecentStats;
-    // The first studied entry is what "quick resume" continues with.
-    expect(recent.studied.map((set) => set.id)).toEqual([newer.id, older.id]);
-    expect(recent.studied[0]).toMatchObject({ mode: "flashcards", lastStudiedAt: expect.any(Number), termCount: 0 });
-    expect(recent.studied[1]).toMatchObject({ mode: "learn", termCount: 2 });
+    expect(recent.studied.map((set) => set.id)).toEqual([newer.id]);
+    expect(recent.studied[0]).toMatchObject({ mode: "flashcards", lastStudiedAt: expect.any(Number), termCount: 2 });
   });
 
   it("only my own sets come back", async () => {
